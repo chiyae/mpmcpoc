@@ -52,123 +52,13 @@ import {
   DialogTitle,
   DialogTrigger,
 } from '@/components/ui/dialog';
+import { ItemDetails } from '@/components/item-details';
+import { AdjustStockForm } from '@/components/adjust-stock-form';
+import { useToast } from "@/hooks/use-toast";
 
-export const columns: ColumnDef<Item>[] = [
-  {
-    id: 'select',
-    header: ({ table }) => (
-      <Checkbox
-        checked={
-          table.getIsAllPageRowsSelected() ||
-          (table.getIsSomePageRowsSelected() && 'indeterminate')
-        }
-        onCheckedChange={(value) => table.toggleAllPageRowsSelected(!!value)}
-        aria-label="Select all"
-      />
-    ),
-    cell: ({ row }) => (
-      <Checkbox
-        checked={row.getIsSelected()}
-        onCheckedChange={(value) => row.toggleSelected(!!value)}
-        aria-label="Select row"
-      />
-    ),
-    enableSorting: false,
-    enableHiding: false,
-  },
-  {
-    accessorKey: 'name',
-    header: ({ column }) => {
-      return (
-        <Button
-          variant="ghost"
-          onClick={() => column.toggleSorting(column.getIsSorted() === 'asc')}
-        >
-          Item Name
-          <CaretSortIcon className="ml-2 h-4 w-4" />
-        </Button>
-      );
-    },
-    cell: ({ row }) => <div className="capitalize">{row.getValue('name')}</div>,
-  },
-  {
-    accessorKey: 'category',
-    header: 'Category',
-    cell: ({ row }) => (
-      <div className="capitalize">{row.getValue('category')}</div>
-    ),
-  },
-  {
-    accessorKey: 'quantity',
-    header: () => <div className="text-right">Quantity</div>,
-    cell: ({ row }) => {
-      const quantity = parseFloat(row.getValue('quantity'));
-      const { reorderLevel } = row.original;
-      const isLowStock = quantity < reorderLevel;
-
-      return (
-        <div className="text-right font-medium">
-          {isLowStock ? (
-            <Badge variant="destructive">
-              {quantity} (Low)
-            </Badge>
-          ) : (
-            quantity
-          )}
-        </div>
-      );
-    },
-  },
-   {
-    accessorKey: 'expiryDate',
-    header: 'Expiry Date',
-    cell: ({ row }) => {
-      const expiryDate = parseISO(row.getValue('expiryDate'));
-      const daysToExpiry = differenceInDays(expiryDate, new Date());
-      let badgeVariant: 'default' | 'secondary' | 'destructive' = 'secondary';
-
-      if (daysToExpiry < 0) {
-        badgeVariant = 'destructive';
-      } else if (daysToExpiry <= 30) {
-        badgeVariant = 'destructive';
-      }
-
-      return <Badge variant={badgeVariant}>{new Date(row.getValue('expiryDate')).toLocaleDateString()}</Badge>;
-
-    },
-  },
-  {
-    id: 'actions',
-    enableHiding: false,
-    cell: ({ row }) => {
-      const item = row.original;
-
-      return (
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <Button variant="ghost" className="h-8 w-8 p-0">
-              <span className="sr-only">Open menu</span>
-              <DotsHorizontalIcon className="h-4 w-4" />
-            </Button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="end">
-            <DropdownMenuLabel>Actions</DropdownMenuLabel>
-            <DropdownMenuItem
-              onClick={() => navigator.clipboard.writeText(item.id)}
-            >
-              Copy item ID
-            </DropdownMenuItem>
-            <DropdownMenuSeparator />
-            <DropdownMenuItem>View item details</DropdownMenuItem>
-            <DropdownMenuItem>Adjust stock</DropdownMenuItem>
-          </DropdownMenuContent>
-        </DropdownMenu>
-      );
-    },
-  },
-];
 
 export default function BulkStoreInventoryPage() {
+  const { toast } = useToast();
   const [data, setData] = React.useState<Item[]>(bulkStoreItems);
   const [sorting, setSorting] = React.useState<SortingState>([]);
   const [columnFilters, setColumnFilters] = React.useState<ColumnFiltersState>(
@@ -177,7 +67,168 @@ export default function BulkStoreInventoryPage() {
   const [columnVisibility, setColumnVisibility] =
     React.useState<VisibilityState>({});
   const [rowSelection, setRowSelection] = React.useState({});
-  const [isFormOpen, setIsFormOpen] = React.useState(false);
+  const [isAddItemFormOpen, setIsAddItemFormOpen] = React.useState(false);
+
+  const [selectedItem, setSelectedItem] = React.useState<Item | null>(null);
+  const [isViewDetailsOpen, setIsViewDetailsOpen] = React.useState(false);
+  const [isAdjustStockOpen, setIsAdjustStockOpen] = React.useState(false);
+
+
+  const handleCopyItemId = (itemId: string) => {
+    navigator.clipboard.writeText(itemId);
+    toast({
+      title: "Copied to Clipboard",
+      description: `Item ID: ${itemId}`,
+    });
+  }
+
+  const handleOpenViewDetails = (item: Item) => {
+    setSelectedItem(item);
+    setIsViewDetailsOpen(true);
+  };
+
+  const handleOpenAdjustStock = (item: Item) => {
+    setSelectedItem(item);
+    setIsAdjustStockOpen(true);
+  };
+
+
+  const handleAddItem = (newItem: Item) => {
+    setData((prev) => [...prev, newItem]);
+    setIsAddItemFormOpen(false);
+  };
+
+  const handleAdjustStock = (itemId: string, adjustment: number) => {
+    setData((prev) =>
+      prev.map((item) =>
+        item.id === itemId
+          ? { ...item, quantity: item.quantity + adjustment }
+          : item
+      )
+    );
+    setIsAdjustStockOpen(false);
+    toast({
+        title: "Stock Adjusted",
+        description: `Successfully updated stock for item ${itemId}.`,
+    });
+  };
+
+  const columns: ColumnDef<Item>[] = [
+    {
+      id: 'select',
+      header: ({ table }) => (
+        <Checkbox
+          checked={
+            table.getIsAllPageRowsSelected() ||
+            (table.getIsSomePageRowsSelected() && 'indeterminate')
+          }
+          onCheckedChange={(value) => table.toggleAllPageRowsSelected(!!value)}
+          aria-label="Select all"
+        />
+      ),
+      cell: ({ row }) => (
+        <Checkbox
+          checked={row.getIsSelected()}
+          onCheckedChange={(value) => row.toggleSelected(!!value)}
+          aria-label="Select row"
+        />
+      ),
+      enableSorting: false,
+      enableHiding: false,
+    },
+    {
+      accessorKey: 'name',
+      header: ({ column }) => {
+        return (
+          <Button
+            variant="ghost"
+            onClick={() => column.toggleSorting(column.getIsSorted() === 'asc')}
+          >
+            Item Name
+            <CaretSortIcon className="ml-2 h-4 w-4" />
+          </Button>
+        );
+      },
+      cell: ({ row }) => <div className="capitalize">{row.getValue('name')}</div>,
+    },
+    {
+      accessorKey: 'category',
+      header: 'Category',
+      cell: ({ row }) => (
+        <div className="capitalize">{row.getValue('category')}</div>
+      ),
+    },
+    {
+      accessorKey: 'quantity',
+      header: () => <div className="text-right">Quantity</div>,
+      cell: ({ row }) => {
+        const quantity = parseFloat(row.getValue('quantity'));
+        const { reorderLevel } = row.original;
+        const isLowStock = quantity < reorderLevel;
+  
+        return (
+          <div className="text-right font-medium">
+            {isLowStock ? (
+              <Badge variant="destructive">
+                {quantity} (Low)
+              </Badge>
+            ) : (
+              quantity
+            )}
+          </div>
+        );
+      },
+    },
+     {
+      accessorKey: 'expiryDate',
+      header: 'Expiry Date',
+      cell: ({ row }) => {
+        const expiryDate = parseISO(row.getValue('expiryDate'));
+        const daysToExpiry = differenceInDays(expiryDate, new Date());
+        let badgeVariant: 'default' | 'secondary' | 'destructive' = 'secondary';
+  
+        if (daysToExpiry < 0) {
+          badgeVariant = 'destructive';
+        } else if (daysToExpiry <= 30) {
+          badgeVariant = 'destructive';
+        }
+  
+        return <Badge variant={badgeVariant}>{new Date(row.getValue('expiryDate')).toLocaleDateString()}</Badge>;
+  
+      },
+    },
+    {
+      id: 'actions',
+      enableHiding: false,
+      cell: ({ row }) => {
+        const item = row.original;
+  
+        return (
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="ghost" className="h-8 w-8 p-0">
+                <span className="sr-only">Open menu</span>
+                <DotsHorizontalIcon className="h-4 w-4" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              <DropdownMenuLabel>Actions</DropdownMenuLabel>
+              <DropdownMenuItem onClick={() => handleCopyItemId(item.id)}>
+                Copy item ID
+              </DropdownMenuItem>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem onClick={() => handleOpenViewDetails(item)}>
+                View item details
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => handleOpenAdjustStock(item)}>
+                Adjust stock
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        );
+      },
+    },
+  ];
 
   const table = useReactTable({
     data,
@@ -196,12 +247,12 @@ export default function BulkStoreInventoryPage() {
       columnVisibility,
       rowSelection,
     },
+    meta: {
+      handleOpenViewDetails,
+      handleOpenAdjustStock,
+      handleCopyItemId,
+    }
   });
-
-  const handleAddItem = (newItem: Item) => {
-    setData((prev) => [...prev, newItem]);
-    setIsFormOpen(false);
-  };
 
 
   return (
@@ -217,7 +268,7 @@ export default function BulkStoreInventoryPage() {
             />
             <div className="flex items-center gap-2">
                 <Button variant="outline">Request Stock Transfer</Button>
-                 <Dialog open={isFormOpen} onOpenChange={setIsFormOpen}>
+                 <Dialog open={isAddItemFormOpen} onOpenChange={setIsAddItemFormOpen}>
                   <DialogTrigger asChild>
                     <Button>Add New Item</Button>
                   </DialogTrigger>
@@ -333,6 +384,35 @@ export default function BulkStoreInventoryPage() {
             </Button>
             </div>
       </div>
+      
+      {selectedItem && (
+        <>
+          <Dialog open={isViewDetailsOpen} onOpenChange={setIsViewDetailsOpen}>
+            <DialogContent className="sm:max-w-4xl">
+              <DialogHeader>
+                <DialogTitle>Item Details</DialogTitle>
+                <DialogDescription>
+                  Detailed information for {selectedItem.name}.
+                </DialogDescription>
+              </DialogHeader>
+              <ItemDetails item={selectedItem} />
+            </DialogContent>
+          </Dialog>
+
+          <Dialog open={isAdjustStockOpen} onOpenChange={setIsAdjustStockOpen}>
+            <DialogContent className="sm:max-w-[425px]">
+              <DialogHeader>
+                <DialogTitle>Adjust Stock: {selectedItem.name}</DialogTitle>
+                <DialogDescription>
+                  Current quantity: {selectedItem.quantity}. Enter a positive value to add stock, or a negative value to remove stock.
+                </DialogDescription>
+              </DialogHeader>
+              <AdjustStockForm item={selectedItem} onAdjustStock={handleAdjustStock} />
+            </DialogContent>
+          </Dialog>
+        </>
+      )}
+
     </div>
   );
 }

@@ -23,7 +23,9 @@ export default function BulkStoreLayout({ children }: { children: ReactNode }) {
     <SidebarProvider>
       <Sidebar>
         <SidebarHeader>
-          <Logo />
+          <Link href="/">
+            <Logo />
+          </Link>
         </SidebarHeader>
         <SidebarContent>
           <SidebarMenu>

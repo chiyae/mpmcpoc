@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button"
 import { ThemeToggle } from "./theme-toggle"
 import { Home } from "lucide-react"
 import Link from "next/link"
+import Logo from "./logo"
 
 type DashboardHeaderProps = {
     title: string;
@@ -23,6 +24,9 @@ export default function DashboardHeader({ title, user }: DashboardHeaderProps) {
     return (
         <header className="sticky top-0 z-10 flex h-16 items-center gap-4 border-b bg-background/80 backdrop-blur-sm px-4 md:px-6">
             <SidebarTrigger className="md:hidden" />
+            <Link href="/" className="hidden md:block">
+                <Logo />
+            </Link>
 
             <h1 className="text-lg font-semibold md:text-2xl">{title}</h1>
 

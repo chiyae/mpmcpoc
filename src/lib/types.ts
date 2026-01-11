@@ -4,6 +4,8 @@ export type ItemCategory = 'Medicine' | 'Medical Supply' | 'Consumable';
 export type Location = 'Bulk Store' | 'Dispensary';
 export type OrderStatus = 'Pending' | 'Approved' | 'Issued' | 'Rejected';
 export type LpoStatus = 'Pending' | 'Approved' | 'Rejected' | 'Completed';
+export type PaymentMethod = 'Cash' | 'Mobile Money' | 'Bank' | 'Invoice';
+export type PaymentStatus = 'Paid' | 'Unpaid';
 
 export interface Item {
   id: string; // unique item code
@@ -51,15 +53,22 @@ export interface BillItem {
   itemName?: string;
 }
 
+export interface PaymentDetails {
+    method: PaymentMethod;
+    amountTendered: number;
+    change: number;
+    transactionId?: string;
+    status: PaymentStatus;
+}
+
 export interface Bill {
   id: string; // Bill Number
   date: string; // ISO date string
   patientName: string;
   receiptNumber?: string;
-  consultationFee: number;
-  labFee: number;
   items: BillItem[];
   grandTotal: number;
+  paymentDetails: PaymentDetails;
 }
 
 export interface Service {

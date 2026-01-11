@@ -21,8 +21,9 @@ import {
 } from '@/components/ui/select';
 import { useToast } from '@/hooks/use-toast';
 import { dispensaryItems, predefinedServices } from '@/lib/data';
-import type { Bill, BillItem, Service } from '@/lib/types';
+import type { Bill, BillItem, PaymentMethod } from '@/lib/types';
 import { PlusCircle, Trash2 } from 'lucide-react';
+import { Label } from '@/components/ui/label';
 
 export default function PatientBillingPage() {
   const { toast } = useToast();
@@ -32,6 +33,9 @@ export default function PatientBillingPage() {
   const [selectedMedicine, setSelectedMedicine] = React.useState<string | undefined>();
   const [medicineQuantity, setMedicineQuantity] = React.useState('1');
   const [selectedService, setSelectedService] = React.useState<string | undefined>();
+
+  const [paymentMethod, setPaymentMethod] = React.useState<PaymentMethod>('Cash');
+  const [amountTendered, setAmountTendered] = React.useState('');
 
   const addMedicineToBill = () => {
     if (!selectedMedicine || !medicineQuantity) {
@@ -94,6 +98,12 @@ export default function PatientBillingPage() {
         return;
     }
 
+    // Prevent adding the same service multiple times
+    if (billItems.some(item => item.itemId === service.id)) {
+        toast({ variant: 'destructive', title: 'Service Already Added', description: `${service.name} is already on the bill.`});
+        return;
+    }
+
     const newBillItem: BillItem = {
       itemId: service.id,
       itemName: service.name,
@@ -111,32 +121,47 @@ export default function PatientBillingPage() {
   
   const grandTotal = billItems.reduce((total, item) => total + item.total, 0);
 
+  const tenderedAmountValue = parseFloat(amountTendered);
+  const change = (paymentMethod === 'Cash' && tenderedAmountValue >= grandTotal) 
+    ? tenderedAmountValue - grandTotal 
+    : 0;
+
+  const canFinalize = billItems.length > 0 && !!patientName && 
+    (paymentMethod === 'Invoice' || paymentMethod !== 'Cash' || (paymentMethod === 'Cash' && tenderedAmountValue >= grandTotal));
+
+
   const handleFinalizeBill = () => {
-    if (!patientName) {
-        toast({ variant: 'destructive', title: 'Error', description: 'Please enter a patient name.' });
-        return;
-    }
-    if (billItems.length === 0) {
-        toast({ variant: 'destructive', title: 'Error', description: 'Cannot create an empty bill.' });
+    if (!canFinalize) {
+        toast({ variant: 'destructive', title: 'Error', description: 'Please fill all required fields and ensure tendered amount is sufficient.' });
         return;
     }
 
     const newBill: Partial<Bill> = {
         id: `BILL-${Date.now()}`,
+        date: new Date().toISOString(),
         patientName,
         items: billItems,
         grandTotal,
+        paymentDetails: {
+          method: paymentMethod,
+          amountTendered: paymentMethod === 'Cash' ? tenderedAmountValue : grandTotal,
+          change,
+          status: paymentMethod === 'Invoice' ? 'Unpaid' : 'Paid',
+        }
     };
 
     console.log("Finalized Bill:", newBill);
 
     toast({
         title: "Bill Finalized",
-        description: `Bill for ${patientName} has been generated and sent for dispensation.`,
+        description: `Bill for ${patientName} has been generated.`,
     });
 
+    // Reset state
     setPatientName('');
     setBillItems([]);
+    setPaymentMethod('Cash');
+    setAmountTendered('');
   };
 
   return (
@@ -147,7 +172,7 @@ export default function PatientBillingPage() {
         </CardHeader>
         <CardContent className="space-y-4">
           <div>
-            <label htmlFor="patientName" className="block text-sm font-medium text-gray-700 mb-1">Patient Name</label>
+            <Label htmlFor="patientName">Patient Name</Label>
             <Input
               id="patientName"
               placeholder="Enter patient's full name"
@@ -251,11 +276,49 @@ export default function PatientBillingPage() {
             </TableBody>
           </Table>
         </CardContent>
-        <CardFooter className="flex flex-col items-end space-y-2">
-            <div className="text-xl font-bold">
-                Grand Total: ${grandTotal.toFixed(2)}
+        <CardFooter className="flex flex-col items-end space-y-4">
+            <div className="grid grid-cols-2 gap-4 w-full max-w-sm self-end">
+                <div className="col-span-2 text-right text-2xl font-bold">
+                    Grand Total: ${grandTotal.toFixed(2)}
+                </div>
+
+                <div className="col-span-2">
+                    <Label htmlFor='paymentMethod'>Payment Method</Label>
+                    <Select value={paymentMethod} onValueChange={(value) => setPaymentMethod(value as PaymentMethod)}>
+                        <SelectTrigger id="paymentMethod">
+                            <SelectValue placeholder="Select payment method" />
+                        </SelectTrigger>
+                        <SelectContent>
+                            <SelectItem value="Cash">Cash</SelectItem>
+                            <SelectItem value="Mobile Money">Mobile Money</SelectItem>
+                            <SelectItem value="Bank">Bank Transfer / Card</SelectItem>
+                            <SelectItem value="Invoice">Send as Invoice</SelectItem>
+                        </SelectContent>
+                    </Select>
+                </div>
+                
+                {paymentMethod === 'Cash' && (
+                    <>
+                         <div>
+                            <Label htmlFor='amountTendered'>Amount Tendered</Label>
+                            <Input
+                                id="amountTendered"
+                                type="number"
+                                placeholder='0.00'
+                                value={amountTendered}
+                                onChange={(e) => setAmountTendered(e.target.value)}
+                            />
+                        </div>
+                        <div>
+                             <Label>Change</Label>
+                             <div className="text-2xl font-bold p-2 border rounded-md bg-muted text-right">
+                                ${change.toFixed(2)}
+                             </div>
+                        </div>
+                    </>
+                )}
             </div>
-            <Button size="lg" onClick={handleFinalizeBill} disabled={billItems.length === 0 || !patientName}>
+            <Button size="lg" onClick={handleFinalizeBill} disabled={!canFinalize}>
                 Finalize & Generate Bill
             </Button>
         </CardFooter>

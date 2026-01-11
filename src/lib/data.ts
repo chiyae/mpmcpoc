@@ -1,4 +1,4 @@
-import type { Item, Lpo, InternalOrder, Service } from './types';
+import type { Item, Lpo, InternalOrder, Service, Bill } from './types';
 
 const generateUsageHistory = () => {
   const history = [];
@@ -158,3 +158,6 @@ export const lpos: Lpo[] = [];
 
 // Mock Internal Orders
 export const internalOrders: InternalOrder[] = [];
+
+// Mock Bills
+export const bills: Bill[] = [];

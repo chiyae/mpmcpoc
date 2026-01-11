@@ -11,7 +11,7 @@ import {
   SidebarFooter,
   SidebarInset,
 } from "@/components/ui/sidebar";
-import { Home, Package, Truck, LineChart, Settings, LogOut } from "lucide-react";
+import { Home, Package, Truck, LineChart, Settings, LogOut, Pill } from "lucide-react";
 import Logo from "@/components/logo";
 import DashboardHeader from "@/components/dashboard-header";
 
@@ -42,6 +42,14 @@ export default function DispensaryLayout({ children }: { children: ReactNode }) 
                 <Link href="/dispensary/inventory">
                   <Package />
                   <span>Inventory</span>
+                </Link>
+              </SidebarMenuButton>
+            </SidebarMenuItem>
+            <SidebarMenuItem>
+              <SidebarMenuButton asChild tooltip="Dispense">
+                <Link href="/dispensary/dispense">
+                  <Pill />
+                  <span>Dispense</span>
                 </Link>
               </SidebarMenuButton>
             </SidebarMenuItem>

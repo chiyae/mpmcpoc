@@ -6,7 +6,7 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { Pill, Warehouse } from "lucide-react";
+import { Pill, Warehouse, DollarSign } from "lucide-react";
 import Logo from "@/components/logo";
 
 export default function Home() {
@@ -19,7 +19,7 @@ export default function Home() {
         </p>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-8 max-w-4xl w-full">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-8 max-w-6xl w-full">
         <Link href="/bulk-store/dashboard">
           <Card className="hover:border-primary transition-all duration-300 transform hover:scale-105 hover:shadow-xl">
             <CardHeader className="items-center text-center">
@@ -50,12 +50,32 @@ export default function Home() {
                 Dispensary
               </CardTitle>
               <CardDescription>
-                Dispense items, handle patient billing, and manage local stock.
+                Dispense items and manage local stock levels.
               </CardDescription>
             </CardHeader>
             <CardContent>
               <div className="text-center text-primary font-semibold">
                 Enter Dispensary
+              </div>
+            </CardContent>
+          </Card>
+        </Link>
+        <Link href="/billing/dashboard">
+          <Card className="hover:border-primary transition-all duration-300 transform hover:scale-105 hover:shadow-xl">
+            <CardHeader className="items-center text-center">
+              <div className="p-4 bg-green-500/10 rounded-full mb-4">
+                <DollarSign className="w-10 h-10 text-green-500" />
+              </div>
+              <CardTitle className="text-2xl font-headline">
+                Billing
+              </CardTitle>
+              <CardDescription>
+                Handle patient billing, invoices, and payments.
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="text-center text-primary font-semibold">
+                Enter Billing
               </div>
             </CardContent>
           </Card>

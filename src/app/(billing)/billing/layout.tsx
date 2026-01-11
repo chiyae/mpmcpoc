@@ -11,13 +11,13 @@ import {
   SidebarFooter,
   SidebarInset,
 } from "@/components/ui/sidebar";
-import { Home, Package, Truck, LineChart, Settings, LogOut } from "lucide-react";
+import { Home, DollarSign, FileText, Settings, LogOut } from "lucide-react";
 import Logo from "@/components/logo";
 import DashboardHeader from "@/components/dashboard-header";
 
 
-export default function DispensaryLayout({ children }: { children: ReactNode }) {
-  const user = { name: "Dispensary User", role: "Dispensary", avatarUrl: "https://picsum.photos/seed/11/100/100" };
+export default function BillingLayout({ children }: { children: ReactNode }) {
+  const user = { name: "Billing User", role: "Billing", avatarUrl: "https://picsum.photos/seed/12/100/100" };
   
   return (
     <SidebarProvider>
@@ -31,33 +31,25 @@ export default function DispensaryLayout({ children }: { children: ReactNode }) 
           <SidebarMenu>
             <SidebarMenuItem>
               <SidebarMenuButton asChild tooltip="Dashboard">
-                <Link href="/dispensary/dashboard">
+                <Link href="/billing/dashboard">
                   <Home />
                   <span>Dashboard</span>
                 </Link>
               </SidebarMenuButton>
             </SidebarMenuItem>
             <SidebarMenuItem>
-              <SidebarMenuButton asChild tooltip="Inventory">
+              <SidebarMenuButton asChild tooltip="Invoices">
                 <Link href="#">
-                  <Package />
-                  <span>Inventory</span>
+                  <FileText />
+                  <span>Invoices</span>
                 </Link>
               </SidebarMenuButton>
             </SidebarMenuItem>
-            <SidebarMenuItem>
-              <SidebarMenuButton asChild tooltip="Internal Orders">
+             <SidebarMenuItem>
+              <SidebarMenuButton asChild tooltip="Patient Billing">
                 <Link href="#">
-                  <Truck />
-                  <span>Internal Orders</span>
-                </Link>
-              </SidebarMenuButton>
-            </SidebarMenuItem>
-            <SidebarMenuItem>
-              <SidebarMenuButton asChild tooltip="Reports">
-                <Link href="#">
-                  <LineChart />
-                  <span>Reports</span>
+                  <DollarSign />
+                  <span>Patient Billing</span>
                 </Link>
               </SidebarMenuButton>
             </SidebarMenuItem>
@@ -85,7 +77,7 @@ export default function DispensaryLayout({ children }: { children: ReactNode }) 
         </SidebarFooter>
       </Sidebar>
       <SidebarInset className="flex flex-col">
-        <DashboardHeader title="Dispensary" user={user} />
+        <DashboardHeader title="Billing" user={user} />
         <main className="flex-1 p-4 md:p-6 lg:p-8">
           {children}
         </main>

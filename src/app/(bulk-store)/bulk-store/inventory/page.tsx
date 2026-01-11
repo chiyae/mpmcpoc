@@ -42,7 +42,7 @@ import {
 import { Badge } from '@/components/ui/badge';
 import { bulkStoreItems } from '@/lib/data';
 import { vendors } from '@/lib/vendors';
-import type { Item, Vendor } from '@/lib/types';
+import type { Item, GenerateLpoOutput } from '@/lib/types';
 import { differenceInDays, parseISO, format } from 'date-fns';
 import { AddItemForm } from '@/components/add-item-form';
 import {
@@ -59,7 +59,7 @@ import { ItemDetails } from '@/components/item-details';
 import { AdjustStockForm } from '@/components/adjust-stock-form';
 import { useToast } from "@/hooks/use-toast";
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { generateLpo, type GenerateLpoOutput } from '@/ai/flows/lpo-generation';
+import { generateLpo } from '@/ai/flows/lpo-generation';
 import { Skeleton } from '@/components/ui/skeleton';
 
 export default function BulkStoreInventoryPage() {

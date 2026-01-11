@@ -39,7 +39,7 @@ export default function BulkStoreLayout({ children }: { children: ReactNode }) {
             </SidebarMenuItem>
             <SidebarMenuItem>
               <SidebarMenuButton asChild tooltip="Inventory">
-                <Link href="#">
+                <Link href="/bulk-store/inventory">
                   <Package />
                   <span>Inventory</span>
                 </Link>

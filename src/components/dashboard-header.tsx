@@ -27,6 +27,11 @@ function HeaderActions({ user }: { user: DashboardHeaderProps['user'] }) {
 
     return (
         <div className="ml-auto flex items-center gap-4">
+            <Link href="/" passHref>
+              <Button variant="ghost" size="icon" aria-label="Home">
+                <Home className="h-5 w-5" />
+              </Button>
+            </Link>
             <ThemeToggle />
             <DropdownMenu>
                 <DropdownMenuTrigger asChild>
@@ -46,12 +51,9 @@ function HeaderActions({ user }: { user: DashboardHeaderProps['user'] }) {
                     </DropdownMenuLabel>
                     <DropdownMenuSeparator />
                     <DropdownMenuGroup>
-                       <Link href="/">
-                        <DropdownMenuItem>
-                            <Home className="mr-2 h-4 w-4" />
-                            <span>Home</span>
-                        </DropdownMenuItem>
-                       </Link>
+                       <DropdownMenuItem disabled>
+                         {/* Placeholder for future actions */}
+                       </DropdownMenuItem>
                     </DropdownMenuGroup>
                 </DropdownMenuContent>
             </DropdownMenu>

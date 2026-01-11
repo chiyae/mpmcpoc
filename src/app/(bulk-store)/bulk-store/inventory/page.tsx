@@ -40,9 +40,9 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
-import { bulkStoreItems } from '@/lib/data';
+import { bulkStoreItems, lpos } from '@/lib/data';
 import { vendors } from '@/lib/vendors';
-import type { Item, GenerateLpoOutput } from '@/lib/types';
+import type { Item, GenerateLpoOutput, Lpo } from '@/lib/types';
 import { differenceInDays, parseISO, format } from 'date-fns';
 import { AddItemForm } from '@/components/add-item-form';
 import {
@@ -112,10 +112,17 @@ export default function BulkStoreInventoryPage() {
   };
 
   const handleConfirmLpo = () => {
-    // In a real app, this would trigger a more complex LPO generation process (e.g., PDF, API call).
+    if (!generatedLpo) return;
+
+    const newLpo: Lpo = {
+      ...generatedLpo,
+      status: "Pending",
+    };
+    lpos.unshift(newLpo); // Add to the beginning of the array
+
     toast({
       title: "LPO Confirmed",
-      description: `LPO ${generatedLpo?.lpoId} has been logged and is ready for processing.`,
+      description: `LPO ${generatedLpo.lpoId} has been logged and is ready for processing.`,
     });
     setIsLpoDialogOpen(false);
     setGeneratedLpo(null);
@@ -456,7 +463,7 @@ export default function BulkStoreInventoryPage() {
               <DialogHeader>
                 <DialogTitle>Adjust Stock: {selectedItem.name}</DialogTitle>
                 <DialogDescription>
-                  Make a correction to the current stock quantity. Use 'Add New Item' to add a new batch with a different expiry date.
+                  Make a correction to the current stock quantity. Use a positive number to add stock, and a negative number to remove it (e.g. for breakages or count correction). To add a new batch with a different expiry date, please use the 'Add New Item' function.
                 </DialogDescription>
               </DialogHeader>
               <AdjustStockForm item={selectedItem} onAdjustStock={handleAdjustStock} />

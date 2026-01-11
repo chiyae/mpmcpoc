@@ -3,6 +3,7 @@ import { z } from 'zod';
 export type ItemCategory = 'Medicine' | 'Medical Supply' | 'Consumable';
 export type Location = 'Bulk Store' | 'Dispensary';
 export type OrderStatus = 'Pending' | 'Approved' | 'Issued' | 'Rejected';
+export type LpoStatus = 'Pending' | 'Approved' | 'Rejected' | 'Completed';
 
 export interface Item {
   id: string; // unique item code
@@ -99,3 +100,8 @@ export const GenerateLpoOutputSchema = z.object({
   summary: z.string().describe('A brief overall summary of the generated LPO.'),
 });
 export type GenerateLpoOutput = z.infer<typeof GenerateLpoOutputSchema>;
+
+// Interface for saved LPOs, extending the AI output with a status
+export interface Lpo extends GenerateLpoOutput {
+  status: LpoStatus;
+}

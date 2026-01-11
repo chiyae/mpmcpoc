@@ -11,7 +11,7 @@ import {
   SidebarFooter,
   SidebarInset,
 } from "@/components/ui/sidebar";
-import { Home, Package, Truck, LineChart, Settings, LogOut } from "lucide-react";
+import { Home, Package, Truck, LineChart, Settings, LogOut, ScrollText } from "lucide-react";
 import Logo from "@/components/logo";
 import DashboardHeader from "@/components/dashboard-header";
 
@@ -42,6 +42,14 @@ export default function BulkStoreLayout({ children }: { children: ReactNode }) {
                 <Link href="/bulk-store/inventory">
                   <Package />
                   <span>Inventory</span>
+                </Link>
+              </SidebarMenuButton>
+            </SidebarMenuItem>
+            <SidebarMenuItem>
+              <SidebarMenuButton asChild tooltip="LPOs">
+                <Link href="/bulk-store/lpos">
+                  <ScrollText />
+                  <span>LPOs</span>
                 </Link>
               </SidebarMenuButton>
             </SidebarMenuItem>

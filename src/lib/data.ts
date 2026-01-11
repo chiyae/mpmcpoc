@@ -1,4 +1,4 @@
-import type { Item } from './types';
+import type { Item, Lpo } from './types';
 
 const generateUsageHistory = () => {
   const history = [];
@@ -145,3 +145,6 @@ export const dispensaryItems: Item[] = [
         usageHistory: generateUsageHistory(),
       },
 ];
+
+// Mock LPOs
+export const lpos: Lpo[] = [];

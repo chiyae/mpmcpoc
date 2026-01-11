@@ -48,6 +48,7 @@ export interface BillItem {
   quantity: number;
   unitPrice: number;
   total: number;
+  itemName?: string;
 }
 
 export interface Bill {
@@ -59,6 +60,12 @@ export interface Bill {
   labFee: number;
   items: BillItem[];
   grandTotal: number;
+}
+
+export interface Service {
+    id: string;
+    name: string;
+    fee: number;
 }
 
 // AI LPO Generation Schemas

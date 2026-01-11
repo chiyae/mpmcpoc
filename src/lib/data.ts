@@ -1,4 +1,4 @@
-import type { Item, Lpo, InternalOrder } from './types';
+import type { Item, Lpo, InternalOrder, Service } from './types';
 
 const generateUsageHistory = () => {
   const history = [];
@@ -144,6 +144,13 @@ export const dispensaryItems: Item[] = [
         location: 'Dispensary',
         usageHistory: generateUsageHistory(),
       },
+];
+
+export const predefinedServices: Service[] = [
+    { id: 'CONS-REG', name: 'Regular Consultation', fee: 50 },
+    { id: 'CONS-SPEC', name: 'Specialist Consultation', fee: 100 },
+    { id: 'LAB-BC', name: 'Blood Count Test', fee: 25 },
+    { id: 'PROC-INJ', name: 'Injection Administration', fee: 15 },
 ];
 
 // Mock LPOs

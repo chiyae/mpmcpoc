@@ -20,19 +20,18 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { useToast } from '@/hooks/use-toast';
-import { dispensaryItems } from '@/lib/data';
-import type { Bill, BillItem } from '@/lib/types';
+import { dispensaryItems, predefinedServices } from '@/lib/data';
+import type { Bill, BillItem, Service } from '@/lib/types';
 import { PlusCircle, Trash2 } from 'lucide-react';
 
 export default function PatientBillingPage() {
   const { toast } = useToast();
   const [patientName, setPatientName] = React.useState('');
   const [billItems, setBillItems] = React.useState<BillItem[]>([]);
-  const [serviceName, setServiceName] = React.useState('');
-  const [serviceFee, setServiceFee] = React.useState('');
-
+  
   const [selectedMedicine, setSelectedMedicine] = React.useState<string | undefined>();
   const [medicineQuantity, setMedicineQuantity] = React.useState('1');
+  const [selectedService, setSelectedService] = React.useState<string | undefined>();
 
   const addMedicineToBill = () => {
     if (!selectedMedicine || !medicineQuantity) {
@@ -53,7 +52,6 @@ export default function PatientBillingPage() {
       return;
     }
     
-    // Check if item already exists in bill
     const existingItemIndex = billItems.findIndex(bi => bi.itemId === item.id);
     if(existingItemIndex > -1) {
         const newQuantity = billItems[existingItemIndex].quantity + quantity;
@@ -84,27 +82,27 @@ export default function PatientBillingPage() {
   };
 
   const addServiceToBill = () => {
-    if (!serviceName || !serviceFee) {
-      toast({ variant: 'destructive', title: 'Error', description: 'Please enter a service name and fee.' });
-      return;
+    if (!selectedService) {
+        toast({ variant: 'destructive', title: 'Error', description: 'Please select a service.' });
+        return;
     }
 
-    const fee = parseFloat(serviceFee);
-    if (isNaN(fee) || fee <= 0) {
-      toast({ variant: 'destructive', title: 'Error', description: 'Please enter a valid service fee.' });
-      return;
+    const service = predefinedServices.find(s => s.id === selectedService);
+
+    if (!service) {
+        toast({ variant: 'destructive', title: 'Error', description: 'Service not found.' });
+        return;
     }
 
     const newBillItem: BillItem = {
-      itemId: `SERVICE-${serviceName.replace(/\s+/g, '-').toUpperCase()}`,
-      itemName: serviceName,
+      itemId: service.id,
+      itemName: service.name,
       quantity: 1,
-      unitPrice: fee,
-      total: fee,
+      unitPrice: service.fee,
+      total: service.fee,
     };
     setBillItems([...billItems, newBillItem]);
-    setServiceName('');
-    setServiceFee('');
+    setSelectedService(undefined);
   };
 
   const removeItemFromBill = (itemId: string) => {
@@ -122,10 +120,6 @@ export default function PatientBillingPage() {
         toast({ variant: 'destructive', title: 'Error', description: 'Cannot create an empty bill.' });
         return;
     }
-
-    // In a real app, you would send this to a backend to be processed
-    // and then pushed to the dispensary for dispensing.
-    // For now, we just show a success toast and clear the form.
 
     const newBill: Partial<Bill> = {
         id: `BILL-${Date.now()}`,
@@ -201,20 +195,18 @@ export default function PatientBillingPage() {
             <div className="space-y-2">
                  <h3 className="font-medium">Add Service</h3>
                 <div className="flex flex-col md:flex-row gap-2">
-                    <Input
-                        placeholder="Service Name (e.g. Consultation)"
-                        value={serviceName}
-                        onChange={(e) => setServiceName(e.target.value)}
-                        className="flex-1"
-                    />
-                    <Input
-                        type="number"
-                        placeholder="Fee"
-                        className="w-full md:w-32"
-                        value={serviceFee}
-                        onChange={(e) => setServiceFee(e.target.value)}
-                        min="0"
-                    />
+                     <Select value={selectedService} onValueChange={setSelectedService}>
+                        <SelectTrigger className="flex-1">
+                            <SelectValue placeholder="Select a service" />
+                        </SelectTrigger>
+                        <SelectContent>
+                            {predefinedServices.map((service) => (
+                                <SelectItem key={service.id} value={service.id}>
+                                    {service.name} - ${service.fee.toFixed(2)}
+                                </SelectItem>
+                            ))}
+                        </SelectContent>
+                    </Select>
                     <Button onClick={addServiceToBill}><PlusCircle className="mr-2 h-4 w-4" /> Add Service</Button>
                 </div>
             </div>

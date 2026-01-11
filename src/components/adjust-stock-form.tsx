@@ -56,21 +56,23 @@ export function AdjustStockForm({ item, onAdjustStock }: AdjustStockFormProps) {
           name="adjustment"
           render={({ field }) => (
             <FormItem>
-              <FormLabel>Stock Adjustment</FormLabel>
+              <FormLabel>Stock Correction</FormLabel>
               <FormControl>
                 <Input type="number" placeholder="e.g., -10 or 25" {...field} />
               </FormControl>
               <FormDescription>
-                Enter a positive number to add stock, or a negative number to remove it.
+                Current quantity: {item.quantity}. Enter a positive value to increase stock, or a negative value to decrease it (e.g. for breakages or count correction).
               </FormDescription>
               <FormMessage />
             </FormItem>
           )}
         />
         <div className="flex justify-end">
-          <Button type="submit">Adjust Stock</Button>
+          <Button type="submit">Apply Correction</Button>
         </div>
       </form>
     </Form>
   );
 }
+
+    

@@ -96,6 +96,10 @@ export default function BulkStoreInventoryPage() {
   const handleAddItem = (newItem: Item) => {
     setData((prev) => [...prev, newItem]);
     setIsAddItemFormOpen(false);
+    toast({
+        title: "Item Added",
+        description: `Successfully added ${newItem.name} to the inventory.`,
+    });
   };
 
   const handleAdjustStock = (itemId: string, adjustment: number) => {
@@ -404,7 +408,7 @@ export default function BulkStoreInventoryPage() {
               <DialogHeader>
                 <DialogTitle>Adjust Stock: {selectedItem.name}</DialogTitle>
                 <DialogDescription>
-                  Current quantity: {selectedItem.quantity}. Enter a positive value to add stock, or a negative value to remove stock.
+                  Make a correction to the current stock quantity. Use 'Add New Item' to add a new batch with a different expiry date.
                 </DialogDescription>
               </DialogHeader>
               <AdjustStockForm item={selectedItem} onAdjustStock={handleAdjustStock} />
@@ -416,3 +420,5 @@ export default function BulkStoreInventoryPage() {
     </div>
   );
 }
+
+    

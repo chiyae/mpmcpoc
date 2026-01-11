@@ -39,7 +39,7 @@ export default function DispensaryLayout({ children }: { children: ReactNode }) 
             </SidebarMenuItem>
             <SidebarMenuItem>
               <SidebarMenuButton asChild tooltip="Inventory">
-                <Link href="#">
+                <Link href="/dispensary/inventory">
                   <Package />
                   <span>Inventory</span>
                 </Link>

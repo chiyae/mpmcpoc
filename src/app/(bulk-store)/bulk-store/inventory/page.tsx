@@ -51,10 +51,13 @@ import {
   DialogHeader,
   DialogTitle,
   DialogTrigger,
+  DialogFooter,
+  DialogClose,
 } from '@/components/ui/dialog';
 import { ItemDetails } from '@/components/item-details';
 import { AdjustStockForm } from '@/components/adjust-stock-form';
 import { useToast } from "@/hooks/use-toast";
+import { ScrollArea } from '@/components/ui/scroll-area';
 
 
 export default function BulkStoreInventoryPage() {
@@ -72,6 +75,24 @@ export default function BulkStoreInventoryPage() {
   const [selectedItem, setSelectedItem] = React.useState<Item | null>(null);
   const [isViewDetailsOpen, setIsViewDetailsOpen] = React.useState(false);
   const [isAdjustStockOpen, setIsAdjustStockOpen] = React.useState(false);
+  const [isLpoDialogOpen, setIsLpoDialogOpen] = React.useState(false);
+  const [lowStockItems, setLowStockItems] = React.useState<Item[]>([]);
+
+  const handleOpenLpoDialog = () => {
+    const items = data.filter(item => item.quantity < item.reorderLevel);
+    setLowStockItems(items);
+    setIsLpoDialogOpen(true);
+  };
+
+  const handleGenerateLpo = () => {
+    // In a real app, this would trigger a more complex LPO generation process (e.g., PDF, API call).
+    // For now, we just show a confirmation toast.
+    toast({
+      title: "LPO Generated",
+      description: `LPO created for ${lowStockItems.length} low-stock item(s).`,
+    });
+    setIsLpoDialogOpen(false);
+  };
 
 
   const handleCopyItemId = (itemId: string) => {
@@ -271,7 +292,7 @@ export default function BulkStoreInventoryPage() {
             className="max-w-sm"
             />
             <div className="flex items-center gap-2">
-                <Button variant="outline">Request Stock Transfer</Button>
+                <Button variant="outline" onClick={handleOpenLpoDialog}>Generate LPO</Button>
                  <Dialog open={isAddItemFormOpen} onOpenChange={setIsAddItemFormOpen}>
                   <DialogTrigger asChild>
                     <Button>Add New Item</Button>
@@ -417,8 +438,50 @@ export default function BulkStoreInventoryPage() {
         </>
       )}
 
+      <Dialog open={isLpoDialogOpen} onOpenChange={setIsLpoDialogOpen}>
+        <DialogContent className="sm:max-w-2xl">
+          <DialogHeader>
+            <DialogTitle>Generate Local Purchase Order (LPO)</DialogTitle>
+            <DialogDescription>
+              The following items are below their reorder level and will be added to the LPO.
+            </DialogDescription>
+          </DialogHeader>
+          {lowStockItems.length > 0 ? (
+            <ScrollArea className="max-h-80">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Item Name</TableHead>
+                      <TableHead>Current Qty</TableHead>
+                      <TableHead>Reorder Level</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {lowStockItems.map((item) => (
+                      <TableRow key={item.id}>
+                        <TableCell>{item.name}</TableCell>
+                        <TableCell>{item.quantity}</TableCell>
+                        <TableCell>{item.reorderLevel}</TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+            </ScrollArea>
+          ) : (
+            <p className="py-8 text-center text-muted-foreground">
+              No items are currently below their reorder level.
+            </p>
+          )}
+          <DialogFooter>
+            <DialogClose asChild>
+              <Button variant="outline">Cancel</Button>
+            </DialogClose>
+            <Button onClick={handleGenerateLpo} disabled={lowStockItems.length === 0}>
+              Confirm & Generate LPO
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
-
-    

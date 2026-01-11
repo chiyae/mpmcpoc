@@ -47,7 +47,7 @@ export default function BillingLayout({ children }: { children: ReactNode }) {
             </SidebarMenuItem>
              <SidebarMenuItem>
               <SidebarMenuButton asChild tooltip="Patient Billing">
-                <Link href="#">
+                <Link href="/billing/patient-billing">
                   <DollarSign />
                   <span>Patient Billing</span>
                 </Link>

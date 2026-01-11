@@ -4,7 +4,6 @@ import * as React from 'react';
 import {
   CaretSortIcon,
   ChevronDownIcon,
-  DotsHorizontalIcon,
 } from '@radix-ui/react-icons';
 import {
   ColumnDef,
@@ -20,6 +19,7 @@ import {
 } from '@tanstack/react-table';
 
 import { Button } from '@/components/ui/button';
+import { Checkbox } from '@/components/ui/checkbox';
 import {
   DropdownMenu,
   DropdownMenuCheckboxItem,
@@ -36,10 +36,12 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
-import { dispensaryItems } from '@/lib/data';
-import type { Item } from '@/lib/types';
+import { dispensaryItems, internalOrders } from '@/lib/data';
+import type { InternalOrder, Item } from '@/lib/types';
 import { differenceInDays, parseISO } from 'date-fns';
 import { useToast } from "@/hooks/use-toast";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import { RequestStockForm } from '@/components/request-stock-form';
 
 export default function DispensaryInventoryPage() {
   const { toast } = useToast();
@@ -48,8 +50,41 @@ export default function DispensaryInventoryPage() {
   const [columnFilters, setColumnFilters] = React.useState<ColumnFiltersState>([]);
   const [columnVisibility, setColumnVisibility] = React.useState<VisibilityState>({});
   const [rowSelection, setRowSelection] = React.useState({});
+  const [isRequestStockOpen, setIsRequestStockOpen] = React.useState(false);
+
+  const handleRequestStock = (newOrder: InternalOrder) => {
+    internalOrders.unshift(newOrder);
+    setIsRequestStockOpen(false);
+    table.resetRowSelection();
+    toast({
+      title: "Stock Request Submitted",
+      description: `Order #${newOrder.id} has been sent to the bulk store for processing.`,
+    });
+  };
 
   const columns: ColumnDef<Item>[] = [
+    {
+      id: 'select',
+      header: ({ table }) => (
+        <Checkbox
+          checked={
+            table.getIsAllPageRowsSelected() ||
+            (table.getIsSomePageRowsSelected() && 'indeterminate')
+          }
+          onCheckedChange={(value) => table.toggleAllPageRowsSelected(!!value)}
+          aria-label="Select all"
+        />
+      ),
+      cell: ({ row }) => (
+        <Checkbox
+          checked={row.getIsSelected()}
+          onCheckedChange={(value) => row.toggleSelected(!!value)}
+          aria-label="Select row"
+        />
+      ),
+      enableSorting: false,
+      enableHiding: false,
+    },
     {
       accessorKey: 'name',
       header: ({ column }) => {
@@ -116,7 +151,10 @@ export default function DispensaryInventoryPage() {
         cell: ({ row }) => {
           return (
             <div className="text-right">
-                <Button variant="outline" size="sm">Request Stock</Button>
+                <Button variant="outline" size="sm" onClick={() => {
+                  row.toggleSelected(true);
+                  setIsRequestStockOpen(true);
+                }}>Request Stock</Button>
             </div>
           )
         },
@@ -142,6 +180,9 @@ export default function DispensaryInventoryPage() {
     },
   });
 
+  const selectedItems = table.getFilteredSelectedRowModel().rows.map(row => row.original);
+
+
   return (
     <div className="w-full">
         <div className="flex items-center justify-between py-4">
@@ -154,7 +195,26 @@ export default function DispensaryInventoryPage() {
             className="max-w-sm"
             />
             <div className="flex items-center gap-2">
-                <Button>Request New Stock Transfer</Button>
+                <Dialog open={isRequestStockOpen} onOpenChange={setIsRequestStockOpen}>
+                  <DialogTrigger asChild>
+                    <Button disabled={selectedItems.length === 0}>
+                      Request New Stock Transfer ({selectedItems.length})
+                    </Button>
+                  </DialogTrigger>
+                  <DialogContent className="sm:max-w-2xl">
+                    <DialogHeader>
+                      <DialogTitle>Request New Stock Transfer</DialogTitle>
+                      <DialogDescription>
+                        Specify the quantities you need from the bulk store.
+                      </DialogDescription>
+                    </DialogHeader>
+                    <RequestStockForm 
+                      selectedItems={selectedItems} 
+                      onSubmit={handleRequestStock} 
+                      onCancel={() => setIsRequestStockOpen(false)}
+                    />
+                  </DialogContent>
+                </Dialog>
                 <DropdownMenu>
                 <DropdownMenuTrigger asChild>
                     <Button variant="outline" className="ml-auto">

@@ -43,8 +43,15 @@ import { Badge } from '@/components/ui/badge';
 import { bulkStoreItems } from '@/lib/data';
 import type { Item } from '@/lib/types';
 import { differenceInDays, parseISO } from 'date-fns';
-
-const data: Item[] = bulkStoreItems;
+import { AddItemForm } from '@/components/add-item-form';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from '@/components/ui/dialog';
 
 export const columns: ColumnDef<Item>[] = [
   {
@@ -162,6 +169,7 @@ export const columns: ColumnDef<Item>[] = [
 ];
 
 export default function BulkStoreInventoryPage() {
+  const [data, setData] = React.useState<Item[]>(bulkStoreItems);
   const [sorting, setSorting] = React.useState<SortingState>([]);
   const [columnFilters, setColumnFilters] = React.useState<ColumnFiltersState>(
     []
@@ -169,6 +177,7 @@ export default function BulkStoreInventoryPage() {
   const [columnVisibility, setColumnVisibility] =
     React.useState<VisibilityState>({});
   const [rowSelection, setRowSelection] = React.useState({});
+  const [isFormOpen, setIsFormOpen] = React.useState(false);
 
   const table = useReactTable({
     data,
@@ -189,6 +198,12 @@ export default function BulkStoreInventoryPage() {
     },
   });
 
+  const handleAddItem = (newItem: Item) => {
+    setData((prev) => [...prev, newItem]);
+    setIsFormOpen(false);
+  };
+
+
   return (
     <div className="w-full">
         <div className="flex items-center justify-between py-4">
@@ -202,7 +217,20 @@ export default function BulkStoreInventoryPage() {
             />
             <div className="flex items-center gap-2">
                 <Button variant="outline">Request Stock Transfer</Button>
-                <Button>Add New Item</Button>
+                 <Dialog open={isFormOpen} onOpenChange={setIsFormOpen}>
+                  <DialogTrigger asChild>
+                    <Button>Add New Item</Button>
+                  </DialogTrigger>
+                  <DialogContent className="sm:max-w-[625px]">
+                    <DialogHeader>
+                      <DialogTitle>Add New Item</DialogTitle>
+                      <DialogDescription>
+                        Fill in the details below to add a new item to the bulk store inventory.
+                      </DialogDescription>
+                    </DialogHeader>
+                    <AddItemForm onAddItem={handleAddItem} />
+                  </DialogContent>
+                </Dialog>
                 <DropdownMenu>
                 <DropdownMenuTrigger asChild>
                     <Button variant="outline" className="ml-auto">

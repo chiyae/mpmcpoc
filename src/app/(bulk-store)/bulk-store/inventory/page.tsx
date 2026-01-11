@@ -41,8 +41,9 @@ import {
 } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
 import { bulkStoreItems } from '@/lib/data';
-import type { Item } from '@/lib/types';
-import { differenceInDays, parseISO } from 'date-fns';
+import { vendors } from '@/lib/vendors';
+import type { Item, Vendor } from '@/lib/types';
+import { differenceInDays, parseISO, format } from 'date-fns';
 import { AddItemForm } from '@/components/add-item-form';
 import {
   Dialog,
@@ -58,7 +59,8 @@ import { ItemDetails } from '@/components/item-details';
 import { AdjustStockForm } from '@/components/adjust-stock-form';
 import { useToast } from "@/hooks/use-toast";
 import { ScrollArea } from '@/components/ui/scroll-area';
-
+import { generateLpo, type GenerateLpoOutput } from '@/ai/flows/lpo-generation';
+import { Skeleton } from '@/components/ui/skeleton';
 
 export default function BulkStoreInventoryPage() {
   const { toast } = useToast();
@@ -76,22 +78,47 @@ export default function BulkStoreInventoryPage() {
   const [isViewDetailsOpen, setIsViewDetailsOpen] = React.useState(false);
   const [isAdjustStockOpen, setIsAdjustStockOpen] = React.useState(false);
   const [isLpoDialogOpen, setIsLpoDialogOpen] = React.useState(false);
-  const [lowStockItems, setLowStockItems] = React.useState<Item[]>([]);
 
-  const handleOpenLpoDialog = () => {
-    const items = data.filter(item => item.quantity < item.reorderLevel);
-    setLowStockItems(items);
+  const [isGeneratingLpo, setIsGeneratingLpo] = React.useState(false);
+  const [generatedLpo, setGeneratedLpo] = React.useState<GenerateLpoOutput | null>(null);
+
+
+  const handleOpenLpoDialog = async () => {
     setIsLpoDialogOpen(true);
+    setIsGeneratingLpo(true);
+    setGeneratedLpo(null);
+
+    const lowStockItems = data.filter(item => item.quantity < item.reorderLevel);
+
+    if (lowStockItems.length === 0) {
+        setIsGeneratingLpo(false);
+        return;
+    }
+    
+    try {
+        const lpo = await generateLpo({ lowStockItems, vendors });
+        setGeneratedLpo(lpo);
+    } catch (error) {
+        console.error("Failed to generate LPO:", error);
+        toast({
+            variant: "destructive",
+            title: "AI LPO Generation Failed",
+            description: "There was an error communicating with the AI. Please try again.",
+        });
+        setIsLpoDialogOpen(false); // Close dialog on error
+    } finally {
+        setIsGeneratingLpo(false);
+    }
   };
 
-  const handleGenerateLpo = () => {
+  const handleConfirmLpo = () => {
     // In a real app, this would trigger a more complex LPO generation process (e.g., PDF, API call).
-    // For now, we just show a confirmation toast.
     toast({
-      title: "LPO Generated",
-      description: `LPO created for ${lowStockItems.length} low-stock item(s).`,
+      title: "LPO Confirmed",
+      description: `LPO ${generatedLpo?.lpoId} has been logged and is ready for processing.`,
     });
     setIsLpoDialogOpen(false);
+    setGeneratedLpo(null);
   };
 
 
@@ -292,7 +319,7 @@ export default function BulkStoreInventoryPage() {
             className="max-w-sm"
             />
             <div className="flex items-center gap-2">
-                <Button variant="outline" onClick={handleOpenLpoDialog}>Generate LPO</Button>
+                <Button variant="outline" onClick={handleOpenLpoDialog}>Generate LPO with AI</Button>
                  <Dialog open={isAddItemFormOpen} onOpenChange={setIsAddItemFormOpen}>
                   <DialogTrigger asChild>
                     <Button>Add New Item</Button>
@@ -439,45 +466,67 @@ export default function BulkStoreInventoryPage() {
       )}
 
       <Dialog open={isLpoDialogOpen} onOpenChange={setIsLpoDialogOpen}>
-        <DialogContent className="sm:max-w-2xl">
+        <DialogContent className="sm:max-w-4xl">
           <DialogHeader>
-            <DialogTitle>Generate Local Purchase Order (LPO)</DialogTitle>
+            <DialogTitle>AI-Generated Local Purchase Order (LPO)</DialogTitle>
             <DialogDescription>
-              The following items are below their reorder level and will be added to the LPO.
+                {isGeneratingLpo 
+                    ? "The AI is analyzing your low-stock items and vendors to generate an optimized LPO..." 
+                    : generatedLpo 
+                        ? `LPO ${generatedLpo.lpoId} generated on ${format(new Date(generatedLpo.generatedDate), 'PPP')}. Review and confirm below.`
+                        : "No items are currently below their reorder level."
+                }
             </DialogDescription>
           </DialogHeader>
-          {lowStockItems.length > 0 ? (
-            <ScrollArea className="max-h-80">
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>Item Name</TableHead>
-                      <TableHead>Current Qty</TableHead>
-                      <TableHead>Reorder Level</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {lowStockItems.map((item) => (
-                      <TableRow key={item.id}>
-                        <TableCell>{item.name}</TableCell>
-                        <TableCell>{item.quantity}</TableCell>
-                        <TableCell>{item.reorderLevel}</TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-            </ScrollArea>
-          ) : (
-            <p className="py-8 text-center text-muted-foreground">
-              No items are currently below their reorder level.
-            </p>
-          )}
+            {isGeneratingLpo && (
+                 <div className="space-y-4 py-8">
+                    <Skeleton className="h-8 w-3/4" />
+                    <Skeleton className="h-12 w-full" />
+                    <Skeleton className="h-12 w-full" />
+                    <Skeleton className="h-12 w-full" />
+                 </div>
+            )}
+            {generatedLpo && (
+            <div className="space-y-4">
+                <p className="text-sm text-muted-foreground">{generatedLpo.summary}</p>
+                <ScrollArea className="max-h-80">
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead>Item</TableHead>
+                          <TableHead>Order Qty</TableHead>
+                          <TableHead>Vendor</TableHead>
+                          <TableHead>AI Reasoning</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {generatedLpo.items.map((item) => {
+                            const vendor = vendors.find(v => v.id === item.selectedVendorId);
+                            return (
+                              <TableRow key={item.itemId}>
+                                <TableCell className="font-medium">{item.itemName}</TableCell>
+                                <TableCell>{item.quantityToOrder}</TableCell>
+                                <TableCell>{vendor?.name || 'N/A'}</TableCell>
+                                <TableCell className="text-xs text-muted-foreground">{item.reasoning}</TableCell>
+                              </TableRow>
+                            );
+                        })}
+                      </TableBody>
+                    </Table>
+                </ScrollArea>
+            </div>
+            )}
+           {!isGeneratingLpo && !generatedLpo && (
+                <p className="py-8 text-center text-muted-foreground">
+                    No items are currently below their reorder level.
+                </p>
+           )}
           <DialogFooter>
             <DialogClose asChild>
               <Button variant="outline">Cancel</Button>
             </DialogClose>
-            <Button onClick={handleGenerateLpo} disabled={lowStockItems.length === 0}>
-              Confirm & Generate LPO
+            <Button onClick={handleConfirmLpo} disabled={!generatedLpo || isGeneratingLpo}>
+              Confirm & Log LPO
             </Button>
           </DialogFooter>
         </DialogContent>

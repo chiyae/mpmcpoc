@@ -17,6 +17,15 @@ export interface Item {
   usageHistory: { date: string; quantity: number }[];
 }
 
+export interface Vendor {
+  id: string;
+  name: string;
+  contactPerson?: string;
+  email: string;
+  phone?: string;
+  supplies: string[]; // Array of item IDs they supply
+}
+
 export interface InternalOrderItem {
   itemId: string;
   quantity: number;

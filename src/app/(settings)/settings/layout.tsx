@@ -70,8 +70,8 @@ export default function SettingsLayout({ children }: { children: ReactNode }) {
               </SidebarMenuButton>
             </SidebarMenuItem>
             <SidebarMenuItem>
-              <SidebarMenuButton asChild tooltip="General Settings" disabled>
-                <Link href="#">
+              <SidebarMenuButton asChild tooltip="General Settings">
+                <Link href="/settings/general">
                   <Settings />
                   <span>General Settings</span>
                 </Link>

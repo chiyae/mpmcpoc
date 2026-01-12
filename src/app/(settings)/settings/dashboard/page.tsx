@@ -34,7 +34,7 @@ const settingsLinks = [
         description: 'Define billable services like consultation fees.'
     },
     {
-        href: '#',
+        href: '/settings/general',
         icon: Settings,
         title: 'General Settings',
         description: 'Configure application-wide settings like currency.'

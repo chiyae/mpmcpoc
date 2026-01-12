@@ -49,6 +49,11 @@ export default function UserManagementPage() {
   const isLoading = isAuthUserLoading || areUsersLoading;
 
   const [isAddUserOpen, setIsAddUserOpen] = React.useState(false);
+  const [isClient, setIsClient] = React.useState(false);
+
+  React.useEffect(() => {
+    setIsClient(true);
+  }, []);
 
   const handleUserAdded = () => {
     setIsAddUserOpen(false);
@@ -74,20 +79,22 @@ export default function UserManagementPage() {
             Add, view, and manage user accounts and roles.
             </p>
         </header>
-        <Dialog open={isAddUserOpen} onOpenChange={setIsAddUserOpen}>
-            <DialogTrigger asChild>
-                <Button>Add New User</Button>
-            </DialogTrigger>
-            <DialogContent>
-                <DialogHeader>
-                    <DialogTitle>Create New User</DialogTitle>
-                    <DialogDescription>
-                        Fill out the form below to create a new user account.
-                    </DialogDescription>
-                </DialogHeader>
-                <AddUserForm onUserAdded={handleUserAdded} />
-            </DialogContent>
-        </Dialog>
+        {isClient && (
+          <Dialog open={isAddUserOpen} onOpenChange={setIsAddUserOpen}>
+              <DialogTrigger asChild>
+                  <Button>Add New User</Button>
+              </DialogTrigger>
+              <DialogContent>
+                  <DialogHeader>
+                      <DialogTitle>Create New User</DialogTitle>
+                      <DialogDescription>
+                          Fill out the form below to create a new user account.
+                      </DialogDescription>
+                  </DialogHeader>
+                  <AddUserForm onUserAdded={handleUserAdded} />
+              </DialogContent>
+          </Dialog>
+        )}
       </div>
 
       <Card>

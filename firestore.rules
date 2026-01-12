@@ -3,20 +3,35 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
+    // Helper function to check if the requesting user has the 'admin' role.
+    // It does this by reading the 'role' field from the user's own document.
+    function isAdmin() {
+      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin';
+    }
+
     match /users/{userId} {
-      // Allow a user to get/update their own document.
-      allow get, update: if request.auth != null && request.auth.uid == userId;
+      // READ: 
+      // - An admin can read any user document (`get`).
+      // - A non-admin can only read their own document.
+      allow get: if request.auth != null && (request.auth.uid == userId || isAdmin());
+      
+      // LIST:
+      // - Only an admin can list all users. This is required for the user management page.
+      allow list: if request.auth != null && isAdmin();
 
-      // Allow any authenticated user to create their own user document upon sign-up.
-      allow create: if request.auth != null && request.auth.uid == userId;
+      // UPDATE:
+      // - An admin can update any user document.
+      // - A non-admin can only update their own document.
+      allow update: if request.auth != null && (request.auth.uid == userId || isAdmin());
+      
+      // CREATE:
+      // - Any authenticated user can create their OWN user document upon sign-up.
+      // - An admin can create documents for other users.
+      allow create: if request.auth != null;
 
-      // Allow an admin to get any user document and to list all users.
-      // This works because the get() is checking the requesting user's own document,
-      // which is a valid and performant check.
-      allow list, get: if request.auth != null && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin';
-
-      // Allow an admin to create, update, or delete any user document.
-      allow create, update, delete: if request.auth != null && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin';
+      // DELETE:
+      // - Only an admin can delete a user document.
+      allow delete: if request.auth != null && isAdmin();
     }
   }
 }

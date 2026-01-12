@@ -1,3 +1,4 @@
+
 'use client';
 
 import * as React from 'react';
@@ -25,9 +26,11 @@ import type { Bill, BillItem, PaymentMethod, BillType, Service } from '@/lib/typ
 import { PlusCircle, Trash2 } from 'lucide-react';
 import { Label } from '@/components/ui/label';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
+import { useSettings } from '@/context/settings-provider';
 
 export default function PatientBillingPage() {
   const { toast } = useToast();
+  const { currency, formatCurrency } = useSettings();
   const [patientName, setPatientName] = React.useState('');
   const [billItems, setBillItems] = React.useState<BillItem[]>([]);
   const [billType, setBillType] = React.useState<BillType>('Walk-in');
@@ -273,7 +276,7 @@ export default function PatientBillingPage() {
                         <SelectContent>
                             {predefinedServices.map((service) => (
                                 <SelectItem key={service.id} value={service.id}>
-                                    {service.name} - ${service.fee.toFixed(2)}
+                                    {service.name} - {formatCurrency(service.fee)}
                                 </SelectItem>
                             ))}
                         </SelectContent>
@@ -309,8 +312,8 @@ export default function PatientBillingPage() {
                   <TableRow key={item.itemId}>
                     <TableCell className="font-medium">{item.itemName}</TableCell>
                     <TableCell>{item.quantity}</TableCell>
-                    <TableCell>${item.unitPrice.toFixed(2)}</TableCell>
-                    <TableCell className="text-right">${item.total.toFixed(2)}</TableCell>
+                    <TableCell>{formatCurrency(item.unitPrice)}</TableCell>
+                    <TableCell className="text-right">{formatCurrency(item.total)}</TableCell>
                     <TableCell>
                       <Button variant="ghost" size="icon" onClick={() => removeItemFromBill(item.itemId)}>
                         <Trash2 className="h-4 w-4 text-destructive" />
@@ -325,7 +328,7 @@ export default function PatientBillingPage() {
         <CardFooter className="flex flex-col items-end space-y-4">
             <div className="grid grid-cols-2 gap-4 w-full max-w-sm self-end">
                 <div className="col-span-2 text-right text-2xl font-bold">
-                    Grand Total: ${grandTotal.toFixed(2)}
+                    Grand Total: {formatCurrency(grandTotal)}
                 </div>
 
                 <div className="col-span-2">
@@ -358,7 +361,7 @@ export default function PatientBillingPage() {
                         <div>
                              <Label>Change</Label>
                              <div className="text-2xl font-bold p-2 border rounded-md bg-muted text-right">
-                                ${change.toFixed(2)}
+                                {formatCurrency(change)}
                              </div>
                         </div>
                     </>

@@ -1,3 +1,4 @@
+
 'use client';
 
 import * as React from 'react';
@@ -48,9 +49,11 @@ import {
 } from '@/components/ui/dialog';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { useToast } from '@/hooks/use-toast';
+import { useSettings } from '@/context/settings-provider';
 
 export default function InvoicesAndBillsPage() {
   const { toast } = useToast();
+  const { currency, formatCurrency } = useSettings();
   const [bills, setBills] = React.useState<Bill[]>(initialBills);
   const [sorting, setSorting] = React.useState<SortingState>([]);
   const [columnFilters, setColumnFilters] = React.useState<ColumnFiltersState>([]);
@@ -93,10 +96,7 @@ export default function InvoicesAndBillsPage() {
         header: () => <div className="text-right">Amount</div>,
         cell: ({ row }) => {
             const amount = parseFloat(row.getValue("grandTotal"))
-            const formatted = new Intl.NumberFormat("en-US", {
-              style: "currency",
-              currency: "USD",
-            }).format(amount)
+            const formatted = formatCurrency(amount)
        
             return <div className="text-right font-medium">{formatted}</div>
           },
@@ -258,8 +258,8 @@ export default function InvoicesAndBillsPage() {
                               <TableRow key={item.itemId}>
                                 <TableCell className="font-medium">{item.itemName}</TableCell>
                                 <TableCell>{item.quantity}</TableCell>
-                                <TableCell>${item.unitPrice.toFixed(2)}</TableCell>
-                                <TableCell className="text-right">${item.total.toFixed(2)}</TableCell>
+                                <TableCell>{formatCurrency(item.unitPrice)}</TableCell>
+                                <TableCell className="text-right">{formatCurrency(item.total)}</TableCell>
                               </TableRow>
                             );
                         })}
@@ -267,7 +267,7 @@ export default function InvoicesAndBillsPage() {
                     </Table>
                 </ScrollArea>
                 <div className="text-right text-lg font-bold">
-                    Grand Total: ${selectedBill.grandTotal.toFixed(2)}
+                    Grand Total: {formatCurrency(selectedBill.grandTotal)}
                 </div>
             </div>
           <DialogFooter>

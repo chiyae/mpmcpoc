@@ -1,3 +1,7 @@
+
+'use client';
+
+import * as React from 'react';
 import {
   Card,
   CardContent,
@@ -6,8 +10,10 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { DollarSign, FileText, TrendingUp } from "lucide-react";
+import { useSettings } from '@/context/settings-provider';
 
 export default function BillingDashboard() {
+  const { currency, formatCurrency } = useSettings();
   const totalRevenue = 15230.50; // Mock data
   const outstandingInvoices = 15; // Mock data
   const averageBillValue = 75.50; // Mock data
@@ -21,7 +27,7 @@ export default function BillingDashboard() {
             <DollarSign className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">${totalRevenue.toFixed(2)}</div>
+            <div className="text-2xl font-bold">{formatCurrency(totalRevenue)}</div>
             <p className="text-xs text-muted-foreground">
               +10.2% from last month
             </p>
@@ -45,7 +51,7 @@ export default function BillingDashboard() {
             <TrendingUp className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">${averageBillValue.toFixed(2)}</div>
+            <div className="text-2xl font-bold">{formatCurrency(averageBillValue)}</div>
             <p className="text-xs text-muted-foreground">
               Across all patients
             </p>

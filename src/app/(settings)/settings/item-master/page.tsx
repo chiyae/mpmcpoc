@@ -1,5 +1,4 @@
 
-
 'use client';
 
 import * as React from 'react';
@@ -54,6 +53,7 @@ import { useCollection, useFirestore, useMemoFirebase } from '@/firebase';
 import { collection, doc, setDoc } from 'firebase/firestore';
 import { Skeleton } from '@/components/ui/skeleton';
 import { AddItemForm } from '@/components/add-item-form';
+import { useSettings } from '@/context/settings-provider';
 
 function formatItemName(item: Item) {
     let name = item.genericName;
@@ -76,6 +76,7 @@ function formatItemName(item: Item) {
 export default function ItemMasterPage() {
   const { toast } = useToast();
   const firestore = useFirestore();
+  const { currency, formatCurrency } = useSettings();
 
   const itemsCollectionQuery = useMemoFirebase(
     () => (firestore ? collection(firestore, 'items') : null),
@@ -167,11 +168,7 @@ export default function ItemMasterPage() {
         header: () => <div className="text-right">Unit Cost</div>,
         cell: ({ row }) => {
             const amount = parseFloat(row.getValue("unitCost"))
-            const formatted = new Intl.NumberFormat("en-US", {
-              style: "currency",
-              currency: "USD",
-            }).format(amount)
-            return <div className="text-right font-medium">{formatted}</div>
+            return <div className="text-right font-medium">{formatCurrency(amount)}</div>
         },
     },
     {
@@ -179,11 +176,7 @@ export default function ItemMasterPage() {
         header: () => <div className="text-right">Selling Price</div>,
         cell: ({ row }) => {
             const amount = parseFloat(row.getValue("sellingPrice"))
-            const formatted = new Intl.NumberFormat("en-US", {
-              style: "currency",
-              currency: "USD",
-            }).format(amount)
-            return <div className="text-right font-medium">{formatted}</div>
+            return <div className="text-right font-medium">{formatCurrency(amount)}</div>
         },
     },
     {
@@ -386,5 +379,3 @@ export default function ItemMasterPage() {
     </div>
   );
 }
-
-    

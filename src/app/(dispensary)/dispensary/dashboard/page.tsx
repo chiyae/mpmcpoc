@@ -1,3 +1,6 @@
+
+'use client';
+import * as React from 'react';
 import {
   Card,
   CardContent,
@@ -8,8 +11,10 @@ import {
 import { Package, AlertTriangle, DollarSign } from "lucide-react";
 import { dispensaryItems } from "@/lib/data";
 import { differenceInDays, parseISO } from 'date-fns';
+import { useSettings } from '@/context/settings-provider';
 
 export default function DispensaryDashboard() {
+  const { formatCurrency } = useSettings();
   const totalItems = dispensaryItems.length;
   const today = new Date();
   const nearExpiryItems = dispensaryItems.filter(item => {
@@ -53,7 +58,7 @@ export default function DispensaryDashboard() {
             <DollarSign className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">${todaysSales.toFixed(2)}</div>
+            <div className="text-2xl font-bold">{formatCurrency(todaysSales)}</div>
             <p className="text-xs text-muted-foreground">
               Total revenue from dispensed items today
             </p>

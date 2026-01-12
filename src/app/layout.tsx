@@ -1,8 +1,10 @@
+
 import type {Metadata} from 'next';
 import './globals.css';
 import { Toaster } from "@/components/ui/toaster";
 import { ThemeProvider } from '@/components/theme-provider';
 import { FirebaseClientProvider } from '@/firebase';
+import { SettingsProvider } from '@/context/settings-provider';
 
 export const metadata: Metadata = {
   title: 'MediTrack Pro',
@@ -30,7 +32,9 @@ export default function RootLayout({
             disableTransitionOnChange
         >
           <FirebaseClientProvider>
-            {children}
+            <SettingsProvider>
+              {children}
+            </SettingsProvider>
           </FirebaseClientProvider>
           <Toaster />
         </ThemeProvider>

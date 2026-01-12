@@ -46,10 +46,12 @@ import { collection, doc, setDoc } from 'firebase/firestore';
 import { Skeleton } from '@/components/ui/skeleton';
 import { AddServiceForm } from '@/components/add-service-form';
 import { EditServiceForm } from '@/components/edit-service-form';
+import { useSettings } from '@/context/settings-provider';
 
 export default function ServiceManagementPage() {
   const { toast } = useToast();
   const firestore = useFirestore();
+  const { formatCurrency } = useSettings();
 
   const servicesCollectionQuery = useMemoFirebase(
     () => (firestore ? collection(firestore, 'services') : null),
@@ -136,11 +138,7 @@ export default function ServiceManagementPage() {
         header: () => <div className="text-right">Fee</div>,
         cell: ({ row }) => {
             const amount = parseFloat(row.getValue("fee"))
-            const formatted = new Intl.NumberFormat("en-US", {
-              style: "currency",
-              currency: "USD",
-            }).format(amount)
-            return <div className="text-right font-medium">{formatted}</div>
+            return <div className="text-right font-medium">{formatCurrency(amount)}</div>
         },
     },
     {

@@ -1,3 +1,4 @@
+
 'use client';
 
 import * as React from 'react';
@@ -7,8 +8,10 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { DollarSign, FileWarning, CheckCircle } from 'lucide-react';
 import { DateRange } from 'react-day-picker';
 import { subDays } from 'date-fns';
+import { useSettings } from '@/context/settings-provider';
 
 export default function FinancialReportsPage() {
+  const { formatCurrency } = useSettings();
   const [dateRange, setDateRange] = React.useState<DateRange | undefined>({
     from: subDays(new Date(), 29),
     to: new Date(),
@@ -44,7 +47,7 @@ export default function FinancialReportsPage() {
             <DollarSign className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">${totalRevenue.toFixed(2)}</div>
+            <div className="text-2xl font-bold">{formatCurrency(totalRevenue)}</div>
             <p className="text-xs text-muted-foreground">
               Total value of all bills in selected period.
             </p>
@@ -56,7 +59,7 @@ export default function FinancialReportsPage() {
             <CheckCircle className="h-4 w-4 text-green-500" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">${paymentsReceived.toFixed(2)}</div>
+            <div className="text-2xl font-bold">{formatCurrency(paymentsReceived)}</div>
             <p className="text-xs text-muted-foreground">
               Total cash and digital payments received.
             </p>
@@ -68,7 +71,7 @@ export default function FinancialReportsPage() {
             <FileWarning className="h-4 w-4 text-destructive" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">${outstandingAmount.toFixed(2)}</div>
+            <div className="text-2xl font-bold">{formatCurrency(outstandingAmount)}</div>
             <p className="text-xs text-muted-foreground">
               Total amount on unpaid invoices.
             </p>

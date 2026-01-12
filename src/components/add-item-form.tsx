@@ -23,6 +23,7 @@ import {
   SelectValue,
 } from "@/components/ui/select"
 import type { Item } from "@/lib/types"
+import { useSettings } from "@/context/settings-provider"
 
 const formSchema = z.object({
   genericName: z.string().min(2, "Generic name is required."),
@@ -71,6 +72,7 @@ type AddItemFormProps = {
 }
 
 export function AddItemForm({ onAddItem }: AddItemFormProps) {
+  const { currency } = useSettings();
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
     defaultValues: {
@@ -298,7 +300,7 @@ export function AddItemForm({ onAddItem }: AddItemFormProps) {
             name="unitCost"
             render={({ field }) => (
               <FormItem>
-                <FormLabel>Unit Cost (USD)</FormLabel>
+                <FormLabel>Unit Cost ({currency})</FormLabel>
                 <FormControl>
                   <Input type="number" step="0.01" {...field} />
                 </FormControl>
@@ -311,7 +313,7 @@ export function AddItemForm({ onAddItem }: AddItemFormProps) {
             name="sellingPrice"
             render={({ field }) => (
               <FormItem>
-                <FormLabel>Selling Price (USD)</FormLabel>
+                <FormLabel>Selling Price ({currency})</FormLabel>
                 <FormControl>
                   <Input type="number" step="0.01" {...field} />
                 </FormControl>
@@ -330,5 +332,3 @@ export function AddItemForm({ onAddItem }: AddItemFormProps) {
     </Form>
   )
 }
-
-    

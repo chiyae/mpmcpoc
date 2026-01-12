@@ -1,3 +1,4 @@
+
 "use client";
 
 import type { Item } from "@/lib/types";
@@ -19,12 +20,14 @@ import {
 import { ScrollArea } from "./ui/scroll-area";
 import { Badge } from "./ui/badge";
 import { format } from "date-fns";
+import { useSettings } from "@/context/settings-provider";
 
 type ItemDetailsProps = {
   item: Item;
 };
 
 export function ItemDetails({ item }: ItemDetailsProps) {
+  const { formatCurrency } = useSettings();
   return (
     <div className="grid gap-6">
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -62,11 +65,11 @@ export function ItemDetails({ item }: ItemDetailsProps) {
         </div>
         <div>
           <p className="text-muted-foreground">Unit Cost</p>
-          <p className="font-medium">${item.unitCost.toFixed(2)}</p>
+          <p className="font-medium">{formatCurrency(item.unitCost)}</p>
         </div>
         <div>
           <p className="text-muted-foreground">Selling Price</p>
-          <p className="font-medium">${item.sellingPrice.toFixed(2)}</p>
+          <p className="font-medium">{formatCurrency(item.sellingPrice)}</p>
         </div>
       </div>
       <Card>

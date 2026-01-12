@@ -16,6 +16,7 @@ import {
 } from "@/components/ui/form"
 import { Input } from "@/components/ui/input"
 import type { Service } from "@/lib/types"
+import { useSettings } from "@/context/settings-provider"
 
 const formSchema = z.object({
   name: z.string().min(3, { message: "Service name must be at least 3 characters." }),
@@ -28,6 +29,7 @@ type EditServiceFormProps = {
 }
 
 export function EditServiceForm({ service, onUpdateService }: EditServiceFormProps) {
+  const { currency } = useSettings();
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
     defaultValues: {
@@ -71,7 +73,7 @@ export function EditServiceForm({ service, onUpdateService }: EditServiceFormPro
             name="fee"
             render={({ field }) => (
               <FormItem>
-                <FormLabel>Fee (USD)</FormLabel>
+                <FormLabel>Fee ({currency})</FormLabel>
                 <FormControl>
                   <Input type="number" step="0.01" placeholder="e.g. 50.00" {...field} />
                 </FormControl>

@@ -3,17 +3,16 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
     
-    // Helper function to check for admin role via custom claims
     function isAdmin() {
       return request.auth.token.role == 'admin';
     }
 
     match /users/{userId} {
-      // Admins can perform any action on any user document
+      // Admins can perform any action on any user document.
       allow list, get, create, update, delete: if isAdmin();
       
-      // Non-admin users can only get or update their own document
-      // They cannot update their own role.
+      // A non-admin user can only get or update their OWN document.
+      // They cannot change their own role.
       allow get: if request.auth.uid == userId;
       allow update: if request.auth.uid == userId && !("role" in request.resource.data);
     }

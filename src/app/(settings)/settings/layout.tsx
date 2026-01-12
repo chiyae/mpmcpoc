@@ -39,7 +39,7 @@ export default function SettingsLayout({ children }: { children: ReactNode }) {
             </SidebarMenuItem>
             <SidebarMenuItem>
               <SidebarMenuButton asChild tooltip="User Management">
-                <Link href="#">
+                <Link href="/settings/user-management">
                   <Users />
                   <span>User Management</span>
                 </Link>

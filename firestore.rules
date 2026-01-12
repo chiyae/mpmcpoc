@@ -19,31 +19,28 @@ service cloud.firestore {
     function isPharmacy() {
       return getUserData().role == 'pharmacy';
     }
-    
-    // Admins can do anything.
-    match /{path=**} {
-      allow read, write: if isAdmin();
-    }
 
-    // All authenticated users can read basic data like items, vendors, and services.
     match /items/{itemId} {
+      // Any authenticated user can read item definitions, only admins can change them.
       allow read: if request.auth != null;
-      allow write: if isAdmin(); // Only admins can modify the item master list.
+      allow write: if isAdmin();
     }
 
     match /vendors/{vendorId} {
+      // Any authenticated user can read vendor info, only admins can change it.
       allow read: if request.auth != null;
       allow write: if isAdmin();
     }
 
     match /services/{serviceId} {
+        // Any authenticated user can read service info, only admins can change it.
         allow read: if request.auth != null;
         allow write: if isAdmin();
     }
     
-    match /settings/clinic {
-      allow read: if request.auth != null;
-      allow write: if isAdmin();
+    match /settings/{settingId} {
+      // Only admins can read or write settings.
+      allow read, write: if isAdmin();
     }
 
     match /users/{userId} {
@@ -56,18 +53,21 @@ service cloud.firestore {
     // Cashiers and admins can manage bills.
     match /billings/{billingId} {
       allow read, write: if isCashier() || isAdmin();
+      allow list: if isCashier() || isAdmin();
     }
     
     // Pharmacy staff and admins can manage stock.
     match /stocks/{stockId} {
       allow read, write: if isPharmacy() || isAdmin();
+      allow list: if isPharmacy() || isAdmin();
     }
     
-    // Pharmacy staff can create internal orders, admins can manage them.
+    // Pharmacy staff can create/read internal orders, admins can manage them completely.
     match /internalOrders/{orderId} {
       allow read: if isPharmacy() || isAdmin();
-      allow create: if isPharmacy();
+      allow create: if isPharmacy() || isAdmin();
       allow update, delete: if isAdmin();
+      allow list: if isPharmacy() || isAdmin();
     }
   }
 }

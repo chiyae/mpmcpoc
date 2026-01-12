@@ -23,7 +23,10 @@ import {
 } from '@/components/ui/card';
 import Logo from '@/components/logo';
 import { useAuth, useUser } from '@/firebase';
-import { initiateEmailSignIn } from '@/firebase/non-blocking-login';
+import {
+  initiateEmailSignIn,
+  initiateEmailSignUp,
+} from '@/firebase/non-blocking-login';
 import { useRouter } from 'next/navigation';
 import { useToast } from '@/hooks/use-toast';
 
@@ -59,36 +62,52 @@ export default function LoginPage() {
   async function onSubmit(values: z.infer<typeof formSchema>) {
     setIsSubmitting(true);
     try {
-        // We use the non-blocking version, but since we want to show a toast on error,
-        // we'll use the returned promise. The user state will still update via the listener.
-        await initiateEmailSignIn(auth, values.email, values.password);
-        // The redirect will happen automatically via the useEffect hook watching the user state.
-        toast({
-            title: "Sign in successful",
-            description: "Redirecting to your dashboard...",
-        });
+      // First, try to sign in.
+      await initiateEmailSignIn(auth, values.email, values.password);
+      toast({
+        title: 'Sign in successful',
+        description: 'Redirecting to your dashboard...',
+      });
+      // The redirect will happen via the useEffect hook watching the user state.
     } catch (error: any) {
-        console.error(error);
-        let description = "An unexpected error occurred. Please try again.";
-        if (error.code === 'auth/user-not-found' || error.code === 'auth/wrong-password' || error.code === 'auth/invalid-credential') {
-          description = "Invalid email or password. Please try again.";
+      // If the user does not exist, create them.
+      if (error.code === 'auth/user-not-found' || error.code === 'auth/invalid-credential') {
+        try {
+          await initiateEmailSignUp(auth, values.email, values.password);
+          toast({
+            title: 'Account created successfully',
+            description: 'Signing you in and redirecting to your dashboard...',
+          });
+        } catch (signUpError: any) {
+          toast({
+            variant: 'destructive',
+            title: 'Sign Up Failed',
+            description: 'Could not create an account. Please try again.',
+          });
+        }
+      } else {
+        // Handle other errors like wrong password
+        let description = 'An unexpected error occurred. Please try again.';
+        if (error.code === 'auth/wrong-password') {
+          description = 'Invalid password. Please try again.';
         }
         toast({
-            variant: "destructive",
-            title: "Sign In Failed",
-            description: description,
+          variant: 'destructive',
+          title: 'Sign In Failed',
+          description: description,
         });
+      }
     } finally {
-        setIsSubmitting(false);
+      setIsSubmitting(false);
     }
   }
-  
-   if (isUserLoading || user) {
+
+  if (isUserLoading || user) {
     return (
-       <div className="flex flex-col items-center justify-center min-h-screen bg-background p-4">
-            <p>Loading...</p>
-        </div>
-    )
+      <div className="flex flex-col items-center justify-center min-h-screen bg-background p-4">
+        <p>Loading...</p>
+      </div>
+    );
   }
 
   return (
@@ -100,7 +119,8 @@ export default function LoginPage() {
           </div>
           <CardTitle className="text-2xl">Welcome Back</CardTitle>
           <CardDescription>
-            Enter your credentials to access your dashboard. Use <strong>admin@example.com</strong> and <strong>admin123</strong>.
+            Enter your credentials to access your dashboard. Use{' '}
+            <strong>admin@example.com</strong> and <strong>admin123</strong>.
           </CardDescription>
         </CardHeader>
         <CardContent>

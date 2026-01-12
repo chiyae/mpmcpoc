@@ -19,38 +19,39 @@ import {
 } from '@/components/ui/table';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
-import { dispensaryItems } from '@/lib/data';
+import { dispensaryItems, pendingDispensations as initialPendingDispensations } from '@/lib/data';
 import type { Bill } from '@/lib/types';
 import { Badge } from '@/components/ui/badge';
 import { AlertCircle } from 'lucide-react';
-
-// Mock data representing a bill sent from the billing department
-const mockBillFromBilling: Bill = {
-  id: 'BILL-2024-07-30-001',
-  date: new Date().toISOString(),
-  patientName: 'John Doe',
-  consultationFee: 50,
-  labFee: 0,
-  items: [
-    { itemId: 'PAR500', quantity: 20, unitPrice: 0.1, total: 2.0 },
-    { itemId: 'IBU200', quantity: 15, unitPrice: 0.15, total: 2.25 },
-    { itemId: 'VITC1000', quantity: 10, unitPrice: 0.2, total: 2.0 },
-  ],
-  grandTotal: 56.25,
-};
+import {
+    Dialog,
+    DialogContent,
+    DialogDescription,
+    DialogHeader,
+    DialogTitle,
+    DialogFooter,
+    DialogClose,
+  } from '@/components/ui/dialog';
 
 export default function DispensePage() {
   const { toast } = useToast();
-  const [bill, setBill] = React.useState<Bill | null>(mockBillFromBilling);
+  const [pendingDispensations, setPendingDispensations] = React.useState<Bill[]>(initialPendingDispensations);
+  const [selectedBill, setSelectedBill] = React.useState<Bill | null>(null);
+  const [isDispenseDialogOpen, setIsDispenseDialogOpen] = React.useState(false);
+
+  const handleOpenDispenseDialog = (bill: Bill) => {
+    setSelectedBill(bill);
+    setIsDispenseDialogOpen(true);
+  };
 
   const handleDispense = () => {
-    if (!bill) return;
+    if (!selectedBill) return;
 
     let canDispense = true;
     const stockUpdates: { itemId: string; newQuantity: number }[] = [];
 
     // Check stock availability first
-    bill.items.forEach((billItem) => {
+    selectedBill.items.forEach((billItem) => {
       const inventoryItem = dispensaryItems.find((item) => item.id === billItem.itemId);
       if (!inventoryItem || inventoryItem.quantity < billItem.quantity) {
         canDispense = false;
@@ -76,80 +77,119 @@ export default function DispensePage() {
         }
       });
       
+      // Remove the bill from the pending list
+      setPendingDispensations(prev => prev.filter(bill => bill.id !== selectedBill.id));
+
       toast({
         title: 'Items Dispensed',
-        description: `Stock has been updated for bill ${bill.id}.`,
+        description: `Stock has been updated for bill ${selectedBill.id}.`,
       });
-      setBill(null); // Clear the bill after dispensing
+      setIsDispenseDialogOpen(false);
+      setSelectedBill(null);
     }
   };
 
-  if (!bill) {
-    return (
-        <div className="flex items-center justify-center h-full">
-            <Card className="w-full max-w-lg text-center">
-                <CardHeader>
-                    <CardTitle>No Pending Dispensations</CardTitle>
-                    <CardDescription>
-                        There are currently no bills awaiting dispensation from the billing department.
-                    </CardDescription>
-                </CardHeader>
-            </Card>
-        </div>
-    )
-  }
-
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle>Dispense Medication</CardTitle>
-        <CardDescription>
-          Dispensing items for Bill <strong>{bill.id}</strong> for patient <strong>{bill.patientName}</strong>.
-          Verify stock and confirm dispensation.
-        </CardDescription>
-      </CardHeader>
-      <CardContent>
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead>Item</TableHead>
-              <TableHead>Required Qty</TableHead>
-              <TableHead>Available Qty</TableHead>
-              <TableHead>Status</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {bill.items.map((billItem) => {
-              const inventoryItem = dispensaryItems.find((item) => item.id === billItem.itemId);
-              const availableQty = inventoryItem?.quantity || 0;
-              const hasSufficientStock = availableQty >= billItem.quantity;
-
-              return (
-                <TableRow key={billItem.itemId}>
-                  <TableCell className="font-medium">
-                    {inventoryItem?.name || billItem.itemId}
-                  </TableCell>
-                  <TableCell>{billItem.quantity}</TableCell>
-                  <TableCell>{availableQty}</TableCell>
-                  <TableCell>
-                    {hasSufficientStock ? (
-                      <Badge variant="secondary">Available</Badge>
-                    ) : (
-                      <Badge variant="destructive" className="flex items-center gap-1">
-                        <AlertCircle className="h-3 w-3" />
-                        Insufficient
-                      </Badge>
-                    )}
+    <>
+      <Card>
+        <CardHeader>
+          <CardTitle>Pending Dispensations</CardTitle>
+          <CardDescription>
+            Bills awaiting dispensation from the billing department.
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Bill ID</TableHead>
+                <TableHead>Patient Name</TableHead>
+                <TableHead>Items</TableHead>
+                <TableHead className="text-right">Action</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {pendingDispensations.length === 0 ? (
+                <TableRow>
+                  <TableCell colSpan={4} className="h-24 text-center">
+                    No pending dispensations.
                   </TableCell>
                 </TableRow>
-              );
-            })}
-          </TableBody>
-        </Table>
-      </CardContent>
-      <CardFooter className="flex justify-end">
-        <Button onClick={handleDispense}>Confirm & Dispense All</Button>
-      </CardFooter>
-    </Card>
+              ) : (
+                pendingDispensations.map((bill) => (
+                  <TableRow key={bill.id}>
+                    <TableCell className="font-medium">{bill.id}</TableCell>
+                    <TableCell>{bill.patientName}</TableCell>
+                    <TableCell>{bill.items.length}</TableCell>
+                    <TableCell className="text-right">
+                      <Button variant="outline" onClick={() => handleOpenDispenseDialog(bill)}>
+                        View Bill
+                      </Button>
+                    </TableCell>
+                  </TableRow>
+                ))
+              )}
+            </TableBody>
+          </Table>
+        </CardContent>
+      </Card>
+
+      {selectedBill && (
+        <Dialog open={isDispenseDialogOpen} onOpenChange={setIsDispenseDialogOpen}>
+          <DialogContent className="sm:max-w-2xl">
+            <DialogHeader>
+              <DialogTitle>Dispense Medication</DialogTitle>
+              <DialogDescription>
+                Dispensing items for Bill <strong>{selectedBill.id}</strong> for patient <strong>{selectedBill.patientName}</strong>.
+                Verify stock and confirm dispensation.
+              </DialogDescription>
+            </DialogHeader>
+            <Table>
+                <TableHeader>
+                    <TableRow>
+                    <TableHead>Item</TableHead>
+                    <TableHead>Required Qty</TableHead>
+                    <TableHead>Available Qty</TableHead>
+                    <TableHead>Status</TableHead>
+                    </TableRow>
+                </TableHeader>
+                <TableBody>
+                    {selectedBill.items.map((billItem) => {
+                    const inventoryItem = dispensaryItems.find((item) => item.id === billItem.itemId);
+                    const availableQty = inventoryItem?.quantity || 0;
+                    const hasSufficientStock = availableQty >= billItem.quantity;
+
+                    return (
+                        <TableRow key={billItem.itemId}>
+                        <TableCell className="font-medium">
+                            {inventoryItem?.name || billItem.itemId}
+                        </TableCell>
+                        <TableCell>{billItem.quantity}</TableCell>
+                        <TableCell>{availableQty}</TableCell>
+                        <TableCell>
+                            {hasSufficientStock ? (
+                            <Badge variant="secondary">Available</Badge>
+                            ) : (
+                            <Badge variant="destructive" className="flex items-center gap-1">
+                                <AlertCircle className="h-3 w-3" />
+                                Insufficient
+                            </Badge>
+                            )}
+                        </TableCell>
+                        </TableRow>
+                    );
+                    })}
+                </TableBody>
+            </Table>
+            <DialogFooter>
+                <DialogClose asChild>
+                    <Button variant="outline">Cancel</Button>
+                </DialogClose>
+                <Button onClick={handleDispense}>Confirm & Dispense All</Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+      )}
+    </>
   );
 }

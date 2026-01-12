@@ -49,10 +49,10 @@ export interface InternalOrder {
 
 export interface BillItem {
   itemId: string;
+  itemName: string;
   quantity: number;
   unitPrice: number;
   total: number;
-  itemName?: string;
 }
 
 export interface PaymentDetails {

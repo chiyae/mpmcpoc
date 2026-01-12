@@ -153,6 +153,33 @@ export const predefinedServices: Service[] = [
     { id: 'PROC-INJ', name: 'Injection Administration', fee: 15 },
 ];
 
+export const pendingDispensations: Bill[] = [
+    {
+      id: 'BILL-2024-07-30-001',
+      date: new Date().toISOString(),
+      patientName: 'John Doe',
+      billType: 'OPD',
+      prescriptionNumber: 'PN-12345',
+      items: [
+        { itemId: 'PAR500', itemName: 'Paracetamol 500mg', quantity: 20, unitPrice: 0.1, total: 2.0 },
+        { itemId: 'IBU200', itemName: 'Ibuprofen 200mg', quantity: 15, unitPrice: 0.15, total: 2.25 },
+      ],
+      grandTotal: 4.25,
+      paymentDetails: { method: 'Cash', amountTendered: 5.00, change: 0.75, status: 'Paid' },
+    },
+    {
+        id: 'BILL-2024-07-30-002',
+        date: new Date().toISOString(),
+        patientName: 'Jane Smith',
+        billType: 'Walk-in',
+        items: [
+          { itemId: 'VITC1000', itemName: 'Vitamin C 1000mg', quantity: 10, unitPrice: 0.2, total: 2.0 },
+        ],
+        grandTotal: 2.00,
+        paymentDetails: { method: 'Mobile Money', amountTendered: 2.00, change: 0, status: 'Paid' },
+    }
+  ];
+
 // Mock LPOs
 export const lpos: Lpo[] = [];
 

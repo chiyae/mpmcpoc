@@ -20,8 +20,8 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { useToast } from '@/hooks/use-toast';
-import { dispensaryItems, predefinedServices, bills } from '@/lib/data';
-import type { Bill, BillItem, PaymentMethod, BillType } from '@/lib/types';
+import { dispensaryItems, predefinedServices, bills, pendingDispensations } from '@/lib/data';
+import type { Bill, BillItem, PaymentMethod, BillType, Service } from '@/lib/types';
 import { PlusCircle, Trash2 } from 'lucide-react';
 import { Label } from '@/components/ui/label';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
@@ -156,7 +156,13 @@ export default function PatientBillingPage() {
         }
     };
 
-    bills.unshift(newBill); // Add to the beginning of the central bills array
+    // Add to the main bills history
+    bills.unshift(newBill); 
+
+    // If it was paid, add it to the dispensary queue
+    if (newBill.paymentDetails.status === 'Paid') {
+        pendingDispensations.unshift(newBill);
+    }
 
     toast({
         title: "Bill Finalized",

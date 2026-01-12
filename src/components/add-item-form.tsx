@@ -82,6 +82,12 @@ export function AddItemForm({ onAddItem }: AddItemFormProps) {
       reorderLevel: 0,
       unitCost: 0,
       sellingPrice: 0,
+      strengthValue: '' as any, // Use empty string for controlled component
+      strengthUnit: "",
+      concentrationValue: '' as any, // Use empty string for controlled component
+      concentrationUnit: "",
+      packageSizeValue: '' as any, // Use empty string for controlled component
+      packageSizeUnit: "",
     },
   })
 

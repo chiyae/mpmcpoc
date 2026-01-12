@@ -2,33 +2,34 @@ rules_version = '2';
 
 service cloud.firestore {
   match /databases/{database}/documents {
-
-    // Helper function to check if the requesting user has the 'admin' role.
-    // It does this by reading the 'role' field from the user's own document.
+    
+    // Helper function to check if the requesting user's Auth token has an 'admin' custom claim.
+    // This is the correct way to handle role-based access without circular reads.
     function isAdmin() {
-      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin';
+      return request.auth.token.role == 'admin';
     }
 
     match /users/{userId} {
       // READ (get a single document)
-      // Allow if the user is requesting their own document OR if the user is an admin.
+      // Allow a user to read their own document, or allow an admin to read any user document.
       allow get: if request.auth != null && (request.auth.uid == userId || isAdmin());
       
-      // LIST (query a collection)
-      // Allow only if the user is an admin.
+      // LIST (query the collection)
+      // Allow an admin to list all users. This is what `useCollection` needs.
+      // Non-admins cannot list all users.
       allow list: if request.auth != null && isAdmin();
 
       // UPDATE
-      // Allow if the user is updating their own document OR if the user is an admin.
+      // Allow a user to update their own document, or allow an admin to update any user document.
       allow update: if request.auth != null && (request.auth.uid == userId || isAdmin());
       
       // CREATE
       // Allow any authenticated user to create their OWN document upon sign-up.
-      // An admin creating another user's doc is also implicitly covered by the isAdmin check in the frontend logic.
+      // An admin can also create users (covered by the AddUserForm logic on the client).
       allow create: if request.auth != null;
 
       // DELETE
-      // Allow only if the user is an admin.
+      // Allow only an admin to delete a user document.
       allow delete: if request.auth != null && isAdmin();
     }
   }

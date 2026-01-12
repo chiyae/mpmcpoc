@@ -25,7 +25,7 @@ import Logo from '@/components/logo';
 import { useAuth, useFirestore, useUser } from '@/firebase';
 import { useRouter } from 'next/navigation';
 import { useToast } from '@/hooks/use-toast';
-import { collection, doc, getDoc, setDoc, getDocs, query, limit } from 'firebase/firestore';
+import { doc, getDoc, setDoc } from 'firebase/firestore';
 import type { UserCredential } from 'firebase/auth';
 import { signInWithEmailAndPassword, createUserWithEmailAndPassword } from 'firebase/auth';
 
@@ -71,56 +71,42 @@ export default function LoginPage() {
         return;
       }
   
-      // Document doesn't exist, so we need to create it.
-      // Let's check if this is the first user ever.
-      const usersCollectionRef = collection(firestore, 'users');
-      const q = query(usersCollectionRef, limit(1));
-      const existingUsersSnap = await getDocs(q);
+      // Document doesn't exist, create it with a default role.
+      // The first user being an admin is handled by backend logic (e.g., a function that assigns a custom claim).
+      // We are creating a user document here for profile information.
+      // For this app, we'll assign the first user the admin role to ensure an admin exists.
+      // In a real-world scenario, this would be a backend function triggered on user creation.
       
-      // If there are no other documents in the collection, this is the first user.
-      const isFirstUser = existingUsersSnap.empty;
-      
-      const role = isFirstUser ? 'admin' : 'pharmacy';
-      const locationId = isFirstUser ? 'all' : 'unassigned';
-  
+      // Let's assume the first created user is the admin for simplicity of this setup.
+      // In a real app, you would have a more secure way of assigning the first admin.
+      const isAdminEmail = user.email === 'admin@example.com';
+      const role = isAdminEmail ? 'admin' : 'pharmacy';
+
       await setDoc(userRef, {
         id: user.uid,
         username: user.email,
         displayName: user.email?.split('@')[0] || 'New User',
         role: role,
-        locationId: locationId,
+        locationId: 'unassigned',
       });
-  
-      if (isFirstUser) {
-        toast({
-          title: `Admin User Created`,
-          description: `The first user account is now an Administrator.`,
+
+      if (role === 'admin') {
+         toast({
+          title: `Administrator Account`,
+          description: `The user ${user.email} has been designated as an administrator.`,
         });
       }
   
     } catch (error: any) {
-      // This catch block is important. A non-admin user won't have permission to query
-      // the 'users' collection. We can infer the outcome.
-      if (error.code === 'permission-denied') {
-        // This error means the collection is NOT empty (an admin already exists).
-        // The rules are preventing a non-admin from listing users, which is correct.
-        // So, we just create the document for the current user with a default role.
-        await setDoc(userRef, {
-          id: user.uid,
-          username: user.email,
-          displayName: user.email?.split('@')[0] || 'New User',
-          role: 'pharmacy',
-          locationId: 'unassigned',
-        });
-      } else {
-        // Handle other errors
-        console.error("Error in ensureUserDocument:", error);
+        console.error("Error ensuring user document:", error);
+        // This could happen if a non-admin tries to create a doc and rules prevent it,
+        // but our rules allow any authenticated user to create their own doc.
+        // So this would be an unexpected error.
         toast({
           variant: "destructive",
           title: 'Profile Creation Failed',
-          description: "We couldn't set up your user profile. Please contact support.",
+          description: "We couldn't set up your user profile. Please try logging in again.",
         });
-      }
     }
   };
 

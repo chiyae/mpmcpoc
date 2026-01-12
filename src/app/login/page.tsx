@@ -25,7 +25,7 @@ import Logo from '@/components/logo';
 import { useAuth, useFirestore, useUser } from '@/firebase';
 import { useRouter } from 'next/navigation';
 import { useToast } from '@/hooks/use-toast';
-import { doc, getDoc, setDoc } from 'firebase/firestore';
+import { collection, doc, getDoc, getDocs, setDoc } from 'firebase/firestore';
 import type { UserCredential } from 'firebase/auth';
 import { signInWithEmailAndPassword, createUserWithEmailAndPassword } from 'firebase/auth';
 
@@ -59,24 +59,34 @@ export default function LoginPage() {
     }
   }, [user, isUserLoading, router]);
 
-  const ensureUserDocument = async (userCredential: UserCredential, role: 'admin' | 'user' = 'user') => {
+  const ensureUserDocument = async (userCredential: UserCredential) => {
     if (!firestore) return;
     const user = userCredential.user;
     const userRef = doc(firestore, 'users', user.uid);
     const userDoc = await getDoc(userRef);
 
+    // Check if the user document already exists.
     if (!userDoc.exists()) {
-      // If the user document doesn't exist, create it.
+      // Check if this is the first user in the system.
+      const usersCollectionRef = collection(firestore, 'users');
+      const allUsersSnapshot = await getDocs(usersCollectionRef);
+      const isFirstUser = allUsersSnapshot.empty;
+      
+      const role = isFirstUser ? 'admin' : 'user'; // Default first user to admin
+
       await setDoc(userRef, {
         id: user.uid,
         username: user.email,
         displayName: user.email?.split('@')[0] || 'New User',
         role: role,
-        locationId: role === 'admin' ? 'all' : 'unassigned', // Default first user to admin
+        locationId: role === 'admin' ? 'all' : 'unassigned', 
       });
+
+      // Note: In a real app, a backend function would listen to this user creation
+      // and set the custom claim `role` on the user's auth token.
       toast({
         title: `User profile created`,
-        description: `Your ${role} user profile has been set up in the database.`,
+        description: `Your ${role} user profile has been set up.`,
       });
     }
   };
@@ -91,8 +101,7 @@ export default function LoginPage() {
     try {
       // First, try to sign in
       const userCredential = await signInWithEmailAndPassword(auth, values.email, values.password);
-      // On successful sign-in, ensure their doc exists. This is key for the first admin.
-      await ensureUserDocument(userCredential, 'admin'); 
+      await ensureUserDocument(userCredential); 
       toast({
         title: 'Sign in successful',
         description: 'Redirecting to your dashboard...',
@@ -100,14 +109,10 @@ export default function LoginPage() {
       router.push('/');
     } catch (error: any) {
       if (error.code === 'auth/user-not-found' || error.code === 'auth/invalid-credential') {
-        // If sign-in fails because user doesn't exist, try to sign them up
+        // If user doesn't exist, create account
         try {
           const userCredential = await createUserWithEmailAndPassword(auth, values.email, values.password);
-          // After sign-up, create their user doc. The first user becomes admin.
-          const userCount = (await getDoc(collection(firestore, 'users'))).size;
-          const role = userCount === 0 ? 'admin' : 'user';
-
-          await ensureUserDocument(userCredential, role);
+          await ensureUserDocument(userCredential);
           toast({
             title: 'Account created successfully',
             description: 'Signing you in and redirecting...',

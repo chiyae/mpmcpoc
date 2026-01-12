@@ -10,10 +10,6 @@ rules_version = '2';
  * and their role ('admin', 'cashier', 'pharmacy'), which are stored in their user profile document
  * and mirrored as a Firebase Auth Custom Claim for secure rule evaluation.
  *
- * @section Data Structure
- * The database is organized with top-level collections for global data (`/items`, `/locations`)
- * and user profiles (`/users`). Location-specific data is nested within the relevant `/locations/{locationId}` document tree.
- *
  * @section Key Security Decisions
  * - Role-Based Access via Custom Claims: Critical rules use `request.auth.token.role` to avoid
  *   costly and insecure database reads within rules. This is the source of truth for a user's role.

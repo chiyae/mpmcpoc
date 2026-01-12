@@ -25,6 +25,13 @@ interface ClinicSettings {
     currency: string;
 }
 
+const defaultSettings: ClinicSettings = {
+    clinicName: 'MediTrack Pro Clinic',
+    clinicAddress: '123 Health St, Wellness City',
+    clinicPhone: '+1-555-123-4567',
+    currency: 'USD',
+};
+
 export default function GeneralSettingsPage() {
   const { toast } = useToast();
   const firestore = useFirestore();
@@ -39,7 +46,7 @@ export default function GeneralSettingsPage() {
     () => (firestore ? doc(firestore, 'settings', 'clinic') : null),
     [firestore]
   );
-  const { data: settingsData, isLoading } = useDoc<ClinicSettings>(settingsDocRef);
+  const { data: settingsData, isLoading, error } = useDoc<ClinicSettings>(settingsDocRef);
 
   // Form state
   const [clinicName, setClinicName] = React.useState('');
@@ -47,14 +54,28 @@ export default function GeneralSettingsPage() {
   const [clinicPhone, setClinicPhone] = React.useState('');
   const [currency, setCurrency] = React.useState('USD');
 
+  // Effect to seed the database with initial data if none exists
+  React.useEffect(() => {
+    if (!isLoading && !settingsData && settingsDocRef) {
+        setDoc(settingsDocRef, defaultSettings, { merge: true }).then(() => {
+            toast({
+                title: "Initial Settings Created",
+                description: "Default clinic settings have been saved.",
+            });
+        }).catch(err => {
+            console.error("Failed to create initial settings:", err);
+        });
+    }
+  }, [isLoading, settingsData, settingsDocRef, toast]);
+
+
   // React.useEffect to update form state when data loads from Firestore
   React.useEffect(() => {
-    if (settingsData) {
-      setClinicName(settingsData.clinicName || '');
-      setClinicAddress(settingsData.clinicAddress || '');
-      setClinicPhone(settingsData.clinicPhone || '');
-      setCurrency(settingsData.currency || 'USD');
-    }
+    const dataToDisplay = settingsData || defaultSettings;
+    setClinicName(dataToDisplay.clinicName || '');
+    setClinicAddress(dataToDisplay.clinicAddress || '');
+    setClinicPhone(dataToDisplay.clinicPhone || '');
+    setCurrency(dataToDisplay.currency || 'USD');
   }, [settingsData]);
 
 
@@ -100,6 +121,15 @@ export default function GeneralSettingsPage() {
         });
     }
   };
+
+  if (error) {
+    return (
+      <div className="w-full space-y-6 text-center">
+        <h1 className="text-2xl font-bold text-destructive">Permission Denied</h1>
+        <p className="text-muted-foreground">You do not have permission to view or edit general settings.</p>
+      </div>
+    );
+  }
 
   if (isLoading || !isClient) {
     return (
@@ -222,3 +252,5 @@ export default function GeneralSettingsPage() {
     </div>
   );
 }
+
+    

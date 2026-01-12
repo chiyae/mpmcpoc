@@ -4,7 +4,8 @@ service cloud.firestore {
   match /databases/{database}/documents {
     
     function isAdmin() {
-      return request.auth.token.role == 'admin';
+      // An admin's role is stored in their user document in Firestore.
+      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin';
     }
 
     match /users/{userId} {
@@ -18,6 +19,10 @@ service cloud.firestore {
     }
 
     match /vendors/{vendorId} {
+      allow read, write: if request.auth != null;
+    }
+
+    match /services/{serviceId} {
       allow read, write: if request.auth != null;
     }
   }

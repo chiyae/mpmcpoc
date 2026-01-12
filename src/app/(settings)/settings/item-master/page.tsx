@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import * as React from 'react';
@@ -184,6 +185,13 @@ export default function ItemMasterPage() {
       accessorKey: 'itemName',
       header: 'Item Name',
       cell: ({ row }) => <div className="font-medium">{formatItemName(row.original)}</div>,
+    },
+    {
+      accessorKey: 'formulation',
+      header: 'Formulation',
+      cell: ({ row }) => (
+        <div className="capitalize">{row.getValue('formulation')}</div>
+      ),
     },
     {
       accessorKey: 'category',
@@ -424,3 +432,5 @@ export default function ItemMasterPage() {
     </div>
   );
 }
+
+    

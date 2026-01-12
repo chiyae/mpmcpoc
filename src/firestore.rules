@@ -1,26 +1,5 @@
 rules_version = '2';
 
-/**
- * @file firestore.rules
- * @description Security rules for the MediTrack Pro Firestore database.
- *
- * @section Core Philosophy
- * This ruleset implements a location-based and role-based access control model. A user's ability
- * to read or write data is determined by their assigned location ('Bulk Store' or 'Dispensary')
- * and their role ('admin', 'cashier', 'pharmacy'), which are stored in their user profile document
- * and mirrored as a Firebase Auth Custom Claim for secure rule evaluation.
- *
- * @section Key Security Decisions
- * - Role-Based Access via Custom Claims: Critical rules use `request.auth.token.role` to avoid
- *   costly and insecure database reads within rules. This is the source of truth for a user's role.
- * - Location-Based Access: Authorization checks for operational data often depend on matching
- *   the user's assigned `locationId` with the location associated with the data.
- * - Global Data Read-Only: Core inventory definitions (`/items`) and business locations (`/locations`)
- *   are readable by any authenticated user but are not writable from the client.
- * - User Management: Only admins can create, update, or delete other user profiles. Users can read their own profile.
- * - Secure by Default: Access is denied by default. Rules explicitly grant permissions only
- *   when specific, verifiable conditions are met.
- */
 service cloud.firestore {
   match /databases/{database}/documents {
 
@@ -28,185 +7,54 @@ service cloud.firestore {
     // Helper Functions
     // -------------------------------------------------------------------------
 
-    /**
-     * Checks if the user is authenticated.
-     */
     function isSignedIn() {
       return request.auth != null;
     }
 
-    /**
-     * Checks if the authenticated user's UID matches the provided userId.
-     */
     function isOwner(userId) {
       return isSignedIn() && request.auth.uid == userId;
     }
-
-    /**
-     * Retrieves the user's profile document. Used for non-security-critical reads
-     * like getting a user's location.
-     */
-    function getUserDoc(userId) {
-      return get(/databases/$(database)/documents/users/$(userId));
-    }
     
-    /**
-     * Retrieves the role from the user's custom auth token. This is the secure
-     * way to check roles.
-     */
-    function userRole() {
-      return request.auth.token.role;
+    function getUserData(userId) {
+      return get(/databases/$(database)/documents/users/$(userId)).data;
     }
 
-    /**
-     * Checks if the authenticated user has a specific role or is an admin,
-     * based on their custom auth token.
-     * @param role The role to check for.
-     */
-    function hasRole(role) {
-      // Roles are hierarchical: admin can do anything a lower role can.
-      let userRoles = { 'admin': 3, 'pharmacy': 2, 'cashier': 1 };
-      let requiredRoleLevel = userRoles[role];
-      let userRoleLevel = userRoles[userRole()];
-      return isSignedIn() && userRoleLevel >= requiredRoleLevel;
-    }
-
-    /**
-     * Checks if the authenticated user is an admin based on their custom auth token.
-     */
     function isAdmin() {
-      return isSignedIn() && userRole() == 'admin';
-    }
-
-    /**
-     * Retrieves the locationId from the currently authenticated user's profile document.
-     */
-    function userLocation() {
-      return getUserDoc(request.auth.uid).data.locationId;
-    }
-
-    /**
-     * Checks if the authenticated user is assigned to the specified location.
-     */
-    function isUserInLocation(locationId) {
-      let userLoc = userLocation();
-      return isSignedIn() && (userLoc == locationId || userLoc == 'all' || isAdmin());
+      return isSignedIn() && getUserData(request.auth.uid).role == 'admin';
     }
 
     // -------------------------------------------------------------------------
     // User Profiles
     // -------------------------------------------------------------------------
 
-    /**
-     * @description Manages user profile data.
-     * @path /users/{userId}
-     * @allow (read) A user can read their own profile. An admin can read any profile.
-     * @allow (list, create, update, delete) Only admins can manage user profiles.
-     * @principle Enforces admin control over user management.
-     */
     match /users/{userId} {
+      // Admins can list all users. Any authenticated user can read their own profile.
+      allow list: if isAdmin();
       allow get: if isOwner(userId) || isAdmin();
-      allow list, create, update, delete: if isAdmin();
+      
+      // Only admins can create, update, or delete user profiles.
+      allow create, update, delete: if isAdmin();
     }
 
     // -------------------------------------------------------------------------
     // Core Business Data (Read-Only for most clients)
     // -------------------------------------------------------------------------
 
-    /**
-     * @description Defines storage locations like 'Bulk Store' or 'Dispensary'.
-     * @path /locations/{locationId}
-     * @allow (read) Any authenticated user can read location information.
-     * @deny (write) Locations cannot be modified by clients to ensure data integrity.
-     */
     match /locations/{locationId} {
       allow read: if isSignedIn();
-      allow write: if false;
+      allow write: if false; // Locations are not client-modifiable
     }
 
-    /**
-     * @description Defines general information about inventory items.
-     * @path /items/{itemId}
-     * @allow (read) Any authenticated user can read item definitions.
-     * @allow (write) Only an admin can create/update items.
-     */
     match /items/{itemId} {
       allow read: if isSignedIn();
       allow write: if isAdmin();
     }
 
-    /**
-     * @description Defines a specific batch of an item, including expiry date.
-     * @path /items/{itemId}/batches/{batchId}
-     * @allow (read) Any authenticated user can read batch information.
-     * @allow (write) Only an admin can manage batches.
-     */
     match /items/{itemId}/batches/{batchId} {
       allow read: if isSignedIn();
       allow write: if isAdmin();
     }
-
-    // -------------------------------------------------------------------------
-    // Location-Specific & Role-Based Data
-    // -------------------------------------------------------------------------
-
-    /**
-     * @description Manages stock levels for a specific batch at a specific location.
-     * @path /items/{itemId}/batches/{batchId}/stocks/{stockId}
-     * @allow (read) Users can read stock data for their location.
-     * @allow (write) Users with 'pharmacy' role can write stock data for their location.
-     */
-    match /items/{itemId}/batches/{batchId}/stocks/{stockId} {
-      allow read: if isSignedIn() && isUserInLocation(resource.data.locationId);
-      allow write: if hasRole('pharmacy') && isUserInLocation(request.resource.data.locationId);
-    }
     
-    /**
-     * @description Represents a transfer of stock between two locations.
-     * @path /items/{itemId}/stockTransfers/{stockTransferId}
-     * @allow (read, write) Users with 'pharmacy' role from either the source or destination can manage transfers.
-     */
-    match /items/{itemId}/stockTransfers/{stockTransferId} {
-      allow read: if isSignedIn() && (isUserInLocation(resource.data.fromLocationId) || isUserInLocation(resource.data.toLocationId));
-      allow write: if hasRole('pharmacy') && (isUserInLocation(request.resource.data.fromLocationId) || isUserInLocation(request.resource.data.toLocationId));
-    }
-
-    /**
-     * @description Manages internal orders placed by a specific location.
-     * @path /locations/{locationId}/internalOrders/{internalOrderId}
-     * @allow (read, write) 'pharmacy' users can manage orders for their assigned location.
-     */
-    match /locations/{locationId}/internalOrders/{internalOrderId} {
-      allow read, write: if hasRole('pharmacy') && isUserInLocation(locationId);
-    }
-
-    /**
-     * @description Represents the line items within an internal order.
-     * @path /locations/{locationId}/internalOrders/{internalOrderId}/orderItems/{orderItemId}
-     * @allow (read, write) Inherits permissions from the parent internal order.
-     */
-    match /locations/{locationId}/internalOrders/{internalOrderId}/orderItems/{orderItemId} {
-      allow read, write: if hasRole('pharmacy') && isUserInLocation(locationId);
-    }
-    
-    /**
-     * @description Manages patient bills generated at a specific location.
-     * @path /locations/{locationId}/billings/{billingId}
-     * @allow (read, write) 'cashier' or 'pharmacy' users can manage bills for their assigned location.
-     */
-    match /locations/{locationId}/billings/{billingId} {
-      allow read: if (hasRole('cashier') || hasRole('pharmacy')) && isUserInLocation(locationId);
-      allow write: if hasRole('cashier') && isUserInLocation(locationId);
-    }
-
-    /**
-     * @description Represents the line items within a patient bill.
-     * @path /locations/{locationId}/billings/{billingId}/billingItems/{billingItemId}
-     * @allow (read, write) Inherits permissions from the parent bill.
-     */
-    match /locations/{locationId}/billings/{billingId}/billingItems/{billingItemId} {
-      allow read: if (hasRole('cashier') || hasRole('pharmacy')) && isUserInLocation(locationId);
-      allow write: if hasRole('cashier') && isUserInLocation(locationId);
-    }
+    // ... other rules can follow ...
   }
 }

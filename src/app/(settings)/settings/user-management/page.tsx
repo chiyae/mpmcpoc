@@ -64,7 +64,7 @@ export default function UserManagementPage() {
     [firestore]
   );
   
-  const { data: users, isLoading: isUsersLoading } = useCollection<User>(usersCollectionQuery);
+  const { data: users, isLoading: isUsersLoading, error } = useCollection<User>(usersCollectionQuery);
 
   const [data, setData] = React.useState<User[]>([]);
   const [sorting, setSorting] = React.useState<SortingState>([]);
@@ -99,7 +99,6 @@ export default function UserManagementPage() {
       accessorKey: 'locationId',
       header: 'Assigned Location',
       cell: ({ row }) => {
-        // In a real app, you'd fetch location names based on ID
         const locationId = row.getValue('locationId') as string;
         return <div className="capitalize">{locationId}</div>;
       }
@@ -146,6 +145,16 @@ export default function UserManagementPage() {
       rowSelection,
     },
   });
+
+  if (error) {
+    return (
+      <div className="w-full space-y-6 text-center">
+        <h1 className="text-2xl font-bold text-destructive">Permission Denied</h1>
+        <p className="text-muted-foreground">You do not have permission to view this page.</p>
+        <p className="text-sm text-muted-foreground">Please ensure you are logged in as an administrator.</p>
+      </div>
+    );
+  }
 
   return (
     <div className="w-full space-y-6">

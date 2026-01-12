@@ -65,30 +65,33 @@ export default function LoginPage() {
     const userRef = doc(firestore, 'users', user.uid);
     const userDoc = await getDoc(userRef);
 
-    // Check if the user document already exists. If so, do nothing.
-    if (!userDoc.exists()) {
-      // Check if this is the first user in the system.
-      const usersCollectionRef = collection(firestore, 'users');
-      const allUsersSnapshot = await getDocs(usersCollectionRef);
-      // The snapshot will include the user we are about to create if this is a fresh registration,
-      // so we check if it's empty or contains just our new user.
-      const isFirstUser = allUsersSnapshot.empty;
-      
-      const role = isFirstUser ? 'admin' : 'pharmacy'; // Default first user to admin, others to pharmacy for now
-
-      await setDoc(userRef, {
-        id: user.uid,
-        username: user.email,
-        displayName: user.email?.split('@')[0] || 'New User',
-        role: role,
-        locationId: role === 'admin' ? 'all' : 'unassigned', 
-      });
-      
-      toast({
-        title: `User profile created`,
-        description: `Your new '${role}' user profile has been set up.`,
-      });
+    if (userDoc.exists()) {
+      return; // Document already exists, do nothing.
     }
+
+    // Document doesn't exist, so we create it.
+    // Check if this is the first user in the system.
+    const usersCollectionRef = collection(firestore, 'users');
+    const allUsersSnapshot = await getDocs(usersCollectionRef);
+    
+    // If the snapshot is empty, this is the very first user document being created.
+    const isFirstUser = allUsersSnapshot.empty;
+    
+    const role = isFirstUser ? 'admin' : 'pharmacy';
+    const locationId = isFirstUser ? 'all' : 'unassigned';
+
+    await setDoc(userRef, {
+      id: user.uid,
+      username: user.email,
+      displayName: user.email?.split('@')[0] || 'New User',
+      role: role,
+      locationId: locationId,
+    });
+    
+    toast({
+      title: `User profile created`,
+      description: `Your new '${role}' user profile has been set up.`,
+    });
   };
 
   async function onSubmit(values: z.infer<typeof formSchema>) {
@@ -99,10 +102,8 @@ export default function LoginPage() {
     setIsSubmitting(true);
 
     try {
-      // First, try to sign in
       const userCredential = await signInWithEmailAndPassword(auth, values.email, values.password);
-      // After any successful sign-in, ensure their firestore doc exists.
-      await ensureUserDocument(userCredential); 
+      await ensureUserDocument(userCredential);
       toast({
         title: 'Sign in successful',
         description: 'Redirecting to your dashboard...',
@@ -110,11 +111,9 @@ export default function LoginPage() {
       router.push('/');
     } catch (error: any) {
       if (error.code === 'auth/user-not-found' || error.code === 'auth/invalid-credential') {
-        // If user doesn't exist or credential is bad on first try, attempt to create a new account.
-        // This is the "sign up or sign in" logic.
         try {
-          const userCredential = await createUserWithEmailAndPassword(auth, values.email, values.password);
-          await ensureUserDocument(userCredential);
+          const newUserCredential = await createUserWithEmailAndPassword(auth, values.email, values.password);
+          await ensureUserDocument(newUserCredential);
           toast({
             title: 'Account created successfully',
             description: 'Signing you in and redirecting...',
@@ -124,11 +123,10 @@ export default function LoginPage() {
           toast({
             variant: 'destructive',
             title: 'Sign Up Failed',
-            description: signUpError.message || 'Could not create an account. The email may be in use with a different password.',
+            description: signUpError.message || 'Could not create an account.',
           });
         }
       } else {
-        // Handle other sign-in errors
         toast({
           variant: 'destructive',
           title: 'Sign In Failed',

@@ -25,7 +25,7 @@ import Logo from '@/components/logo';
 import { useAuth, useFirestore, useUser } from '@/firebase';
 import { useRouter } from 'next/navigation';
 import { useToast } from '@/hooks/use-toast';
-import { createUserWithEmailAndPassword, signInWithEmailAndPassword, User } from 'firebase/auth';
+import { createUserWithEmailAndPassword, signInWithEmailAndPassword, User as FirebaseAuthUser } from 'firebase/auth';
 import { Skeleton } from '@/components/ui/skeleton';
 import { doc, getDoc, setDoc, writeBatch } from 'firebase/firestore';
 
@@ -58,16 +58,16 @@ export default function LoginPage() {
     }
   }, [user, isUserLoading, router]);
 
-  async function handleUserDocCreation(signedInUser: User) {
+  async function handleUserDocCreation(signedInUser: FirebaseAuthUser) {
     if (!firestore) return;
     
-    const batch = writeBatch(firestore);
     const userDocRef = doc(firestore, 'users', signedInUser.uid);
     const userDocSnap = await getDoc(userDocRef);
 
     if (!userDocSnap.exists()) {
+      const batch = writeBatch(firestore);
       const isFirstAdmin = signedInUser.email === 'admin@example.com';
-      const userRole = isFirstAdmin ? 'admin' : 'pharmacy'; // Default new sign-ups to a non-admin role
+      const userRole = isFirstAdmin ? 'admin' : 'pharmacy';
 
       // 1. Create the user profile document
       batch.set(userDocRef, {
@@ -75,7 +75,7 @@ export default function LoginPage() {
         username: signedInUser.email,
         displayName: signedInUser.email?.split('@')[0] || 'New User',
         role: userRole,
-        locationId: 'all', // Default location
+        locationId: 'all',
       });
 
       // 2. If it's the designated first admin, add them to the 'admins' collection
@@ -91,12 +91,13 @@ export default function LoginPage() {
           description: 'Your user profile has been created.',
         });
       } catch (error: any) {
+        console.error("Failed to create user document:", error);
         toast({
           variant: 'destructive',
           title: 'Profile Creation Failed',
-          description: 'Could not create your user profile. You may not have permissions.',
+          description: error.message || 'Could not create your user profile on the server.',
         });
-        auth?.signOut(); // Log out the user if profile creation fails
+        auth?.signOut();
       }
     }
   }
@@ -118,7 +119,6 @@ export default function LoginPage() {
       });
     } catch (error: any) {
       if (error.code === 'auth/user-not-found' || error.code === 'auth/invalid-credential') {
-        // Allow self-registration by creating a new user if sign-in fails
         try {
           const newUserCredential = await createUserWithEmailAndPassword(auth, values.email, values.password);
           await handleUserDocCreation(newUserCredential.user);

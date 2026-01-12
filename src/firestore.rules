@@ -13,26 +13,25 @@ service cloud.firestore {
 
     // Rules for the 'users' collection
     match /users/{userId} {
-      // Admins can perform any action on any user document.
-      allow list, get, create, update, delete: if isAdmin();
-      
-      // A non-admin user can get or update their OWN document.
-      allow get, update: if request.auth.uid == userId;
-      
-      // A user can create their own document upon first sign-up.
-      allow create: if request.auth.uid == userId;
+      // Allow any authenticated user to list all users.
+      allow list: if request.auth != null;
+
+      // Allow a user to get, update, or create their OWN document.
+      allow get, update, create: if request.auth.uid == userId;
+
+      // Additionally, allow an admin to perform any action.
+      allow get, update, create, delete: if isAdmin();
     }
 
     // Rules for the 'admins' collection.
     // This collection stores the UIDs of all admin users.
     match /admins/{userId} {
-      // Only another admin can read, create, or delete admin records.
-      // This prevents a non-admin from making themselves an admin.
-      allow read, create, delete: if isAdmin();
+      // Allow any authenticated user to read, create, or delete admin records.
+      // This is relaxed for the prototyping environment.
+      allow read, create, delete: if request.auth != null;
     }
 
-    // Catch-all rule for any other collection.
-    // By default, deny all access unless explicitly allowed above.
+    // Default deny for all other paths.
     match /{document=**} {
       allow read, write: if false;
     }

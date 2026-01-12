@@ -62,9 +62,11 @@ function HeaderActions({ user }: { user: DashboardHeaderProps['user'] }) {
                     </DropdownMenuLabel>
                     <DropdownMenuSeparator />
                     <DropdownMenuGroup>
-                       <DropdownMenuItem disabled>
-                         <Settings className="mr-2 h-4 w-4" />
-                         <span>Settings</span>
+                       <DropdownMenuItem asChild>
+                         <Link href="/settings/dashboard">
+                           <Settings className="mr-2 h-4 w-4" />
+                           <span>Settings</span>
+                         </Link>
                        </DropdownMenuItem>
                     </DropdownMenuGroup>
                     <DropdownMenuSeparator />

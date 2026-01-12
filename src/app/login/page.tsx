@@ -69,20 +69,23 @@ export default function LoginPage() {
       const userCredential = await signInWithEmailAndPassword(auth, values.email, values.password);
       const signedInUser = userCredential.user;
 
+      // Ensure the user document exists. This is crucial for the admin to be visible in the user list.
       const userDocRef = doc(firestore, 'users', signedInUser.uid);
       const userDocSnap = await getDoc(userDocRef);
 
       if (!userDocSnap.exists()) {
+        // This will create a document for the initial admin or any other user.
+        // The role is critical for the initial admin.
         await setDoc(userDocRef, {
           id: signedInUser.uid,
           username: signedInUser.email,
-          displayName: signedInUser.email?.split('@')[0] || 'Admin',
-          role: 'admin',
+          displayName: signedInUser.email?.split('@')[0] || 'User',
+          role: signedInUser.email === 'admin@example.com' ? 'admin' : 'pharmacy',
           locationId: 'all',
         });
          toast({
-          title: 'Admin profile created',
-          description: 'First-time admin sign-in. Profile has been set up.',
+          title: 'First-time sign-in',
+          description: 'Your user profile has been created.',
         });
       } else {
         toast({
@@ -127,7 +130,7 @@ export default function LoginPage() {
           <div className="mb-4 flex justify-center">
             <Logo />
           </div>
-          <CardTitle className="text-2xl">Admin Sign In</CardTitle>
+          <CardTitle className="text-2xl">Sign In</CardTitle>
           <CardDescription>
             Enter your credentials to access the system.
           </CardDescription>

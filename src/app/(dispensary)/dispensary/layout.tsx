@@ -14,7 +14,6 @@ import {
 import { Home, Package, Truck, LineChart, Settings, LogOut, Pill, ClipboardList } from "lucide-react";
 import Logo from "@/components/logo";
 import DashboardHeader from "@/components/dashboard-header";
-import LogoutButton from "@/components/logout-button";
 
 
 export default function DispensaryLayout({ children }: { children: ReactNode }) {
@@ -63,7 +62,7 @@ export default function DispensaryLayout({ children }: { children: ReactNode }) 
               </SidebarMenuButton>
             </SidebarMenuItem>
             <SidebarMenuItem>
-              <SidebarMenuButton asChild tooltip="Internal Orders">
+              <SidebarMenuButton asChild tooltip="Internal Orders" disabled>
                 <Link href="#">
                   <Truck />
                   <span>Internal Orders</span>
@@ -71,7 +70,7 @@ export default function DispensaryLayout({ children }: { children: ReactNode }) 
               </SidebarMenuButton>
             </SidebarMenuItem>
             <SidebarMenuItem>
-              <SidebarMenuButton asChild tooltip="Reports">
+              <SidebarMenuButton asChild tooltip="Reports" disabled>
                 <Link href="#">
                   <LineChart />
                   <span>Reports</span>
@@ -80,20 +79,8 @@ export default function DispensaryLayout({ children }: { children: ReactNode }) 
             </SidebarMenuItem>
           </SidebarMenu>
         </SidebarContent>
-        <SidebarFooter>
-          <SidebarMenu>
-            <SidebarMenuItem>
-              <SidebarMenuButton asChild tooltip="Settings">
-                <Link href="#">
-                  <Settings />
-                  <span>Settings</span>
-                </Link>
-              </SidebarMenuButton>
-            </SidebarMenuItem>
-            <SidebarMenuItem>
-              <LogoutButton />
-            </SidebarMenuItem>
-          </SidebarMenu>
+         <SidebarFooter>
+          {/* Footer items can be added here if needed in the future */}
         </SidebarFooter>
       </Sidebar>
       <SidebarInset className="flex flex-col">

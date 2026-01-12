@@ -63,7 +63,7 @@ export default function BulkStoreLayout({ children }: { children: ReactNode }) {
               </SidebarMenuButton>
             </SidebarMenuItem>
             <SidebarMenuItem>
-              <SidebarMenuButton asChild tooltip="Reports">
+              <SidebarMenuButton asChild tooltip="Reports" disabled>
                 <Link href="#">
                   <LineChart />
                   <span>Reports</span>
@@ -73,19 +73,7 @@ export default function BulkStoreLayout({ children }: { children: ReactNode }) {
           </SidebarMenu>
         </SidebarContent>
         <SidebarFooter>
-          <SidebarMenu>
-            <SidebarMenuItem>
-              <SidebarMenuButton asChild tooltip="Settings">
-                <Link href="#">
-                  <Settings />
-                  <span>Settings</span>
-                </Link>
-              </SidebarMenuButton>
-            </SidebarMenuItem>
-            <SidebarMenuItem>
-              <LogoutButton />
-            </SidebarMenuItem>
-          </SidebarMenu>
+          {/* Footer items can be added here if needed in the future */}
         </SidebarFooter>
       </Sidebar>
       <SidebarInset className="flex flex-col">

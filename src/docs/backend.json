@@ -9,15 +9,48 @@
       "properties": {
         "id": {
           "type": "string",
-          "description": "Unique identifier for the Item entity."
+          "description": "Unique identifier for the Item entity, same as itemCode."
         },
         "itemCode": {
           "type": "string",
-          "description": "Unique code for the item."
+          "description": "Auto-generated unique code for the item."
         },
-        "itemName": {
+        "genericName": {
           "type": "string",
-          "description": "Name of the item."
+          "description": "The generic or chemical name of the item."
+        },
+        "brandName": {
+          "type": "string",
+          "description": "The trade or brand name of the item (optional)."
+        },
+        "formulation": {
+          "type": "string",
+          "description": "The physical form of the item.",
+          "enum": ["Tablet", "Capsule", "Syrup", "Injection", "Cream", "Lotion", "Medical Supply", "Consumable"]
+        },
+        "strengthValue": {
+          "type": "number",
+          "description": "The numerical value of the item's strength (e.g., 500 for 500mg)."
+        },
+        "strengthUnit": {
+          "type": "string",
+          "description": "The unit for the item's strength (e.g., 'mg', '%')."
+        },
+        "concentrationValue": {
+            "type": "number",
+            "description": "The numerical value of the liquid's concentration numerator (e.g., 250 for 250mg/5ml)."
+        },
+        "concentrationUnit": {
+            "type": "string",
+            "description": "The unit for the liquid's concentration (e.g., 'mg/ml', 'mg/5ml')."
+        },
+        "packageSizeValue": {
+          "type": "number",
+          "description": "The numerical value of the item's package size (e.g., 100 for 100ml)."
+        },
+        "packageSizeUnit": {
+          "type": "string",
+          "description": "The unit for the item's package size (e.g., 'ml', 'g', 'tablets')."
         },
         "category": {
           "type": "string",
@@ -25,7 +58,7 @@
         },
         "unitOfMeasure": {
           "type": "string",
-          "description": "Unit of measure for the item (e.g., tablets, bottles, boxes)."
+          "description": "The base unit for transactions (e.g., tablet, bottle, box)."
         },
         "reorderLevel": {
           "type": "number",
@@ -43,7 +76,8 @@
       "required": [
         "id",
         "itemCode",
-        "itemName",
+        "genericName",
+        "formulation",
         "category",
         "unitOfMeasure",
         "reorderLevel",
@@ -706,8 +740,6 @@
         }
       }
     ],
-    "reasoning": "The Firestore structure is designed to support the MediTrack Pro application, focusing on inventory management and billing for a clinic with a Bulk Store and a Dispensary. The primary goal is to create a scalable and secure database that avoids complex authorization logic. We will use path-based ownership for user-specific data and denormalization for collaborative data to ensure atomic operations and straightforward security rules.\n\n1.  **Items Collection:** Stores general item information. No location-specific details.\n2.  **Locations Collection:** Stores location details. Used for filtering data relevant to a specific location.\n3.  **Users Collection:** Stores user information, including the location they are assigned to.\n4.  **Vendors Collection:** A new top-level collection to store all supplier information.\n5.  **Services Collection:** A new top-level collection to store billable services.\n6.  **Settings Collection:** A new top-level collection for singleton documents containing application-wide settings.\n7.  **Batches Subcollection:** Each Item document contains a 'batches' subcollection. Stores batch details for that item.\n8.  **Stocks Subcollection:** Each Batch document contains a 'stocks' subcollection. Stores stock levels for that batch at specific locations. This denormalizes location information to allow QAPs, enabling rules to check if the user’s location matches the location of the stock.\n9.  **InternalOrders Subcollection:** Each Location document contains an 'internalOrders' subcollection. Stores internal orders requested by that location.\n10.  **OrderItems Subcollection:** Each InternalOrder document contains an 'orderItems' subcollection. Stores items included in that order.\n11. **Billings Subcollection:** Each Location document contains a 'billings' subcollection. Stores billing records for that location.\n12. **BillingItems Subcollection:** Each Billing document contains a 'billingItems' subcollection. Stores items included in that bill.\n13. **StockTransfers Subcollection:** Each Item document contains a 'stockTransfers' subcollection. Stores stock transfer records for that item.\n\n**Authorization Independence:** Denormalization is used to ensure authorization independence. For example, the `stocks` subcollection denormalizes location information from the `Location` document. This removes the need for `get()` calls to parent documents in security rules.\n\n**QAPs Support:** The structure supports QAPs by using structural segregation. Each collection serves a specific purpose and has homogeneous security requirements. Path-based ownership (`/users/{userId}/...`) ensures that only the user can access their specific data. By incorporating location-based access at the `stock` level, data is accessible for each user."
+    "reasoning": "The Firestore structure is designed to support the MediTrack Pro application, focusing on inventory management and billing for a clinic with a Bulk Store and a Dispensary. The primary goal is to create a scalable and secure database that avoids complex authorization logic. We will use path-based ownership for user-specific data and denormalization for collaborative data to ensure atomic operations and straightforward security rules.\n\n1.  **Items Collection:** Stores general item information. No location-specific details.\n2.  **Locations Collection:** Stores location details. Used for filtering data relevant to a specific location.\n3.  **Users Collection:** Stores user information, including the location they are assigned to.\n4.  **Vendors Collection:** A new top-level collection to store all supplier information.\n5.  **Services Collection:** A new top-level collection to store billable services.\n6.  **Settings Collection:** A new top-level collection for singleton documents containing application-wide settings.\n7.  **Batches Subcollection:** Each Item document contains a 'batches' subcollection. Stores batch details for that item.\n8.  **Stocks Subcollection:** Each Batch document contains a 'stocks' subcollection. Stores stock levels for that batch at specific locations. This denormalizes location information to allow QAPs, enabling rules to check if the user’s location matches the location of the stock.\n9.  **InternalOrders Subcollection:** Each Location document contains an 'internalOrders' subcollection. Stores internal orders requested by that location.\n10.  **OrderItems Subcollection:** Each InternalOrder document contains an 'orderItems' subcollection. Stores items included in that order.\n11. **Billings Subcollection:** Each Location document contains a 'billings' subcollection. Stores billing records for that location.\n12. **BillingItems Subcollection:** Each Billing document contains a 'billingItems' subcollection. Stores items included in that bill.\n13. **StockTransfers Subcollection:** Each Item document contains a 'stockTransfers' subcollection. Stores stock transfer records for that item.\n\n**Authorization Independence:** Denormalization is used to ensure authorization independence. For example, the `stocks` subcollection denormalizes location information from the `Location` document. This removes the need for `get()` calls to parent documents in security rules.\n\n**QAPs Support:** The structure supports QAPs by using structural segregation. Each collection serves a specific purpose and has homogeneous security requirements. Path-based ownership (`/users/{userId}/...`) ensures that only the user can access their specific data. By-incorporating location-based access at the `stock` level, data is accessible for each user."
   }
 }
-
-    

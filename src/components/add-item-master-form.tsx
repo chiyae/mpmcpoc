@@ -1,7 +1,8 @@
+
 "use client"
 
 import { zodResolver } from "@hookform/resolvers/zod"
-import { useForm } from "react-hook-form"
+import { useForm, useWatch } from "react-hook-form"
 import { z } from "zod"
 import { Button } from "@/components/ui/button"
 import {
@@ -21,28 +22,60 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
-import type { Item } from "@/lib/types"
+import type { Item, Formulation } from "@/lib/types"
 
 const formSchema = z.object({
-  itemName: z.string().min(2, { message: "Item name must be at least 2 characters." }),
-  itemCode: z.string().min(2, { message: "Item code must be at least 2 characters." }).refine(s => !s.includes('/'), "Item code cannot contain '/'"),
+  genericName: z.string().min(2, "Generic name is required."),
+  brandName: z.string().optional(),
+  formulation: z.enum(["Tablet", "Capsule", "Syrup", "Injection", "Cream", "Lotion", "Medical Supply", "Consumable"]),
+  strengthValue: z.coerce.number().optional(),
+  strengthUnit: z.string().optional(),
+  concentrationValue: z.coerce.number().optional(),
+  concentrationUnit: z.string().optional(),
+  packageSizeValue: z.coerce.number().optional(),
+  packageSizeUnit: z.string().optional(),
   category: z.enum(["Medicine", "Medical Supply", "Consumable"]),
-  unitOfMeasure: z.string().min(1, { message: "Unit of measure is required." }),
-  reorderLevel: z.coerce.number().int().nonnegative({ message: "Reorder level must be a non-negative number." }),
-  unitCost: z.coerce.number().nonnegative({ message: "Unit cost must be a non-negative number." }),
-  sellingPrice: z.coerce.number().nonnegative({ message: "Selling price must be a non-negative number." }),
-})
+  unitOfMeasure: z.string().min(1, "Unit of measure is required."),
+  reorderLevel: z.coerce.number().int().nonnegative(),
+  unitCost: z.coerce.number().nonnegative(),
+  sellingPrice: z.coerce.number().nonnegative(),
+}).refine(data => {
+    if (["Tablet", "Capsule"].includes(data.formulation)) {
+        return !!data.strengthValue && !!data.strengthUnit;
+    }
+    return true;
+}, {
+    message: "Strength and unit are required for Tablets/Capsules.",
+    path: ["strengthValue"],
+}).refine(data => {
+    if (["Syrup", "Injection"].includes(data.formulation)) {
+        return !!data.concentrationValue && !!data.concentrationUnit && !!data.packageSizeValue && !!data.packageSizeUnit;
+    }
+    return true;
+}, {
+    message: "Concentration and package size are required for Syrups/Injections.",
+    path: ["concentrationValue"],
+}).refine(data => {
+    if (["Cream", "Lotion"].includes(data.formulation)) {
+        return !!data.strengthValue && !!data.strengthUnit && !!data.packageSizeValue && !!data.packageSizeUnit;
+    }
+    return true;
+}, {
+    message: "Strength and package size are required for Creams/Lotions.",
+    path: ["strengthValue"],
+});
 
-type AddItemMasterFormProps = {
-  onAddItem: (item: Omit<Item, 'id'>) => Promise<void>;
+
+type AddItemFormProps = {
+  onAddItem: (item: Omit<Item, 'id' | 'itemCode'>) => Promise<void>;
 }
 
-export function AddItemMasterForm({ onAddItem }: AddItemMasterFormProps) {
+export function AddItemForm({ onAddItem }: AddItemFormProps) {
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
     defaultValues: {
-      itemName: "",
-      itemCode: "",
+      genericName: "",
+      brandName: "",
       unitOfMeasure: "",
       reorderLevel: 0,
       unitCost: 0,
@@ -50,10 +83,19 @@ export function AddItemMasterForm({ onAddItem }: AddItemMasterFormProps) {
     },
   })
 
+  const formulation = useWatch({
+    control: form.control,
+    name: "formulation",
+  });
+
   async function onSubmit(values: z.infer<typeof formSchema>) {
     await onAddItem(values);
     form.reset();
   }
+
+  const isSolid = formulation === 'Tablet' || formulation === 'Capsule';
+  const isLiquid = formulation === 'Syrup' || formulation === 'Injection';
+  const isTopical = formulation === 'Cream' || formulation === 'Lotion';
 
   return (
     <Form {...form}>
@@ -61,12 +103,12 @@ export function AddItemMasterForm({ onAddItem }: AddItemMasterFormProps) {
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <FormField
             control={form.control}
-            name="itemName"
+            name="genericName"
             render={({ field }) => (
               <FormItem>
-                <FormLabel>Item Name</FormLabel>
+                <FormLabel>Generic Name</FormLabel>
                 <FormControl>
-                  <Input placeholder="e.g. Paracetamol 500mg" {...field} />
+                  <Input placeholder="e.g. Paracetamol" {...field} />
                 </FormControl>
                 <FormMessage />
               </FormItem>
@@ -74,14 +116,13 @@ export function AddItemMasterForm({ onAddItem }: AddItemMasterFormProps) {
           />
           <FormField
             control={form.control}
-            name="itemCode"
+            name="brandName"
             render={({ field }) => (
               <FormItem>
-                <FormLabel>Item Code (SKU)</FormLabel>
+                <FormLabel>Brand Name (Optional)</FormLabel>
                 <FormControl>
-                  <Input placeholder="e.g. PAR500" {...field} />
+                  <Input placeholder="e.g. Panadol" {...field} />
                 </FormControl>
-                <FormDescription>This must be a unique code and cannot contain '/'.</FormDescription>
                 <FormMessage />
               </FormItem>
             )}
@@ -89,37 +130,149 @@ export function AddItemMasterForm({ onAddItem }: AddItemMasterFormProps) {
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <FormField
-            control={form.control}
-            name="category"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>Category</FormLabel>
-                <Select onValueChange={field.onChange} defaultValue={field.value}>
-                  <FormControl>
-                    <SelectTrigger>
-                      <SelectValue placeholder="Select a category" />
-                    </SelectTrigger>
-                  </FormControl>
-                  <SelectContent>
-                    <SelectItem value="Medicine">Medicine</SelectItem>
-                    <SelectItem value="Medical Supply">Medical Supply</SelectItem>
-                    <SelectItem value="Consumable">Consumable</SelectItem>
-                  </SelectContent>
-                </Select>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
-          <FormField
+            <FormField
+                control={form.control}
+                name="formulation"
+                render={({ field }) => (
+                <FormItem>
+                    <FormLabel>Formulation</FormLabel>
+                    <Select onValueChange={field.onChange} defaultValue={field.value}>
+                    <FormControl>
+                        <SelectTrigger>
+                        <SelectValue placeholder="Select a formulation" />
+                        </SelectTrigger>
+                    </FormControl>
+                    <SelectContent>
+                        <SelectItem value="Tablet">Tablet</SelectItem>
+                        <SelectItem value="Capsule">Capsule</SelectItem>
+                        <SelectItem value="Syrup">Syrup</SelectItem>
+                        <SelectItem value="Injection">Injection</SelectItem>
+                        <SelectItem value="Cream">Cream</SelectItem>
+                        <SelectItem value="Lotion">Lotion</SelectItem>
+                        <SelectItem value="Medical Supply">Medical Supply</SelectItem>
+                        <SelectItem value="Consumable">Consumable</SelectItem>
+                    </SelectContent>
+                    </Select>
+                    <FormMessage />
+                </FormItem>
+                )}
+            />
+             <FormField
+                control={form.control}
+                name="category"
+                render={({ field }) => (
+                <FormItem>
+                    <FormLabel>Category</FormLabel>
+                    <Select onValueChange={field.onChange} defaultValue={field.value}>
+                    <FormControl>
+                        <SelectTrigger>
+                        <SelectValue placeholder="Select a category" />
+                        </SelectTrigger>
+                    </FormControl>
+                    <SelectContent>
+                        <SelectItem value="Medicine">Medicine</SelectItem>
+                        <SelectItem value="Medical Supply">Medical Supply</SelectItem>
+                        <SelectItem value="Consumable">Consumable</SelectItem>
+                    </SelectContent>
+                    </Select>
+                    <FormMessage />
+                </FormItem>
+                )}
+            />
+        </div>
+
+        {(isSolid || isTopical) && (
+            <div className="grid grid-cols-2 gap-4">
+                <FormField
+                    control={form.control}
+                    name="strengthValue"
+                    render={({ field }) => (
+                    <FormItem>
+                        <FormLabel>Strength</FormLabel>
+                        <FormControl><Input type="number" placeholder="500" {...field} /></FormControl>
+                        <FormMessage />
+                    </FormItem>
+                    )}
+                />
+                <FormField
+                    control={form.control}
+                    name="strengthUnit"
+                    render={({ field }) => (
+                    <FormItem>
+                        <FormLabel>Unit</FormLabel>
+                        <FormControl><Input placeholder="mg" {...field} /></FormControl>
+                        <FormMessage />
+                    </FormItem>
+                    )}
+                />
+            </div>
+        )}
+
+        {isLiquid && (
+            <div className="grid grid-cols-2 gap-4">
+                 <FormField
+                    control={form.control}
+                    name="concentrationValue"
+                    render={({ field }) => (
+                    <FormItem>
+                        <FormLabel>Concentration</FormLabel>
+                        <FormControl><Input type="number" placeholder="250" {...field} /></FormControl>
+                        <FormMessage />
+                    </FormItem>
+                    )}
+                />
+                 <FormField
+                    control={form.control}
+                    name="concentrationUnit"
+                    render={({ field }) => (
+                    <FormItem>
+                        <FormLabel>Unit</FormLabel>
+                        <FormControl><Input placeholder="mg/5ml" {...field} /></FormControl>
+                        <FormMessage />
+                    </FormItem>
+                    )}
+                />
+            </div>
+        )}
+
+        {(isLiquid || isTopical) && (
+             <div className="grid grid-cols-2 gap-4">
+                <FormField
+                    control={form.control}
+                    name="packageSizeValue"
+                    render={({ field }) => (
+                    <FormItem>
+                        <FormLabel>Package Size</FormLabel>
+                        <FormControl><Input type="number" placeholder="100" {...field} /></FormControl>
+                        <FormMessage />
+                    </FormItem>
+                    )}
+                />
+                <FormField
+                    control={form.control}
+                    name="packageSizeUnit"
+                    render={({ field }) => (
+                    <FormItem>
+                        <FormLabel>Unit</FormLabel>
+                        <FormControl><Input placeholder="ml" {...field} /></FormControl>
+                        <FormMessage />
+                    </FormItem>
+                    )}
+                />
+            </div>
+        )}
+
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+           <FormField
             control={form.control}
             name="unitOfMeasure"
             render={({ field }) => (
               <FormItem>
                 <FormLabel>Unit of Measure</FormLabel>
                 <FormControl>
-                  <Input placeholder="e.g. tablets, boxes" {...field} />
+                  <Input placeholder="e.g. tablets, bottle" {...field} />
                 </FormControl>
+                 <FormDescription>The base unit for transactions.</FormDescription>
                 <FormMessage />
               </FormItem>
             )}

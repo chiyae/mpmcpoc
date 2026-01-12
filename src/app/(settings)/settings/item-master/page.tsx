@@ -50,9 +50,27 @@ import {
 } from '@/components/ui/dialog';
 import { useToast } from "@/hooks/use-toast";
 import { useCollection, useFirestore, useMemoFirebase } from '@/firebase';
-import { collection, addDoc, doc, setDoc } from 'firebase/firestore';
+import { collection, doc, setDoc } from 'firebase/firestore';
 import { Skeleton } from '@/components/ui/skeleton';
-import { AddItemMasterForm } from '@/components/add-item-master-form';
+import { AddItemForm } from '@/components/add-item-form';
+
+function formatItemName(item: Item) {
+    let name = item.genericName;
+    if (item.brandName) {
+      name += ` (${item.brandName})`;
+    }
+    if (item.strengthValue) {
+      name += ` ${item.strengthValue}${item.strengthUnit}`;
+    }
+    if (item.concentrationValue) {
+      name += ` ${item.concentrationValue}${item.concentrationUnit}`;
+    }
+    if (item.packageSizeValue) {
+      name += ` (${item.packageSizeValue}${item.packageSizeUnit})`;
+    }
+    return name;
+}
+
 
 export default function ItemMasterPage() {
   const { toast } = useToast();
@@ -83,15 +101,27 @@ export default function ItemMasterPage() {
     });
   }
 
-  const handleAddItem = async (itemData: Omit<Item, 'id'>) => {
+  const handleAddItem = async (itemData: Omit<Item, 'id' | 'itemCode'>) => {
     if (!firestore) return;
     try {
-      const itemRef = doc(firestore, 'items', itemData.itemCode);
-      await setDoc(itemRef, { ...itemData, id: itemData.itemCode });
+      // Auto-generate item code
+      const codePrefix = itemData.genericName.substring(0, 3).toUpperCase();
+      const codeSuffix = Math.floor(1000 + Math.random() * 9000);
+      const itemCode = `${codePrefix}${codeSuffix}`;
+      
+      const itemRef = doc(firestore, 'items', itemCode);
+
+      const finalData: Item = {
+        ...itemData,
+        id: itemCode,
+        itemCode: itemCode,
+      }
+      await setDoc(itemRef, finalData);
+
       setIsAddItemOpen(false);
       toast({
           title: "Item Added",
-          description: `Successfully added ${itemData.itemName}.`
+          description: `Successfully added ${formatItemName(finalData)}.`
       })
     } catch(error) {
         console.error("Error adding item:", error);
@@ -122,7 +152,7 @@ export default function ItemMasterPage() {
     {
       accessorKey: 'itemName',
       header: 'Item Name',
-      cell: ({ row }) => <div className="capitalize">{row.getValue('itemName')}</div>,
+      cell: ({ row }) => <div className="font-medium">{formatItemName(row.original)}</div>,
     },
     {
       accessorKey: 'category',
@@ -237,7 +267,7 @@ export default function ItemMasterPage() {
                           Define a new item that can be stocked in inventory.
                         </DialogDescription>
                       </DialogHeader>
-                      <AddItemMasterForm onAddItem={handleAddItem} />
+                      <AddItemForm onAddItem={handleAddItem} />
                     </DialogContent>
                   </Dialog>
                 )}

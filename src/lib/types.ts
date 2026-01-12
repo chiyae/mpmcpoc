@@ -1,6 +1,8 @@
 import { z } from 'zod';
 
 export type ItemCategory = 'Medicine' | 'Medical Supply' | 'Consumable';
+export type Formulation = "Tablet" | "Capsule" | "Syrup" | "Injection" | "Cream" | "Lotion" | "Medical Supply" | "Consumable";
+
 export type Location = 'Bulk Store' | 'Dispensary';
 export type OrderStatus = 'Pending' | 'Approved' | 'Issued' | 'Rejected';
 export type LpoStatus = 'Draft' | 'Sent' | 'Completed' | 'Rejected';
@@ -11,15 +13,24 @@ export type UserRole = 'admin' | 'cashier' | 'pharmacy';
 
 
 export interface Item {
-  id: string; // unique item code
+  id: string; // unique item code, auto-generated
   itemCode: string;
-  itemName: string;
+  genericName: string;
+  brandName?: string;
+  formulation: Formulation;
+  strengthValue?: number;
+  strengthUnit?: string;
+  concentrationValue?: number;
+  concentrationUnit?: string;
+  packageSizeValue?: number;
+  packageSizeUnit?: string;
   category: ItemCategory;
   unitOfMeasure: string;
   reorderLevel: number;
   unitCost: number;
   sellingPrice: number;
   // Deprecated fields from mock data - will be handled in subcollections
+  itemName?: string;
   batchNumber?: string;
   expiryDate?: string; // ISO date string
   quantity?: number;
@@ -41,6 +52,7 @@ export interface Vendor {
   contactPerson?: string;
   email: string;
   phone?: string;
+  supplies?: string[]; // Array of item IDs
 }
 
 export interface InternalOrderItem {
@@ -128,7 +140,7 @@ const LowStockItemSchema = z.object({
   })).describe('Last 30 days of usage history.'),
 });
 
-const VendorSchema = z.object({
+const VendorForLpoSchema = z.object({
   id: z.string().describe('The unique vendor ID.'),
   name: z.string().describe('The name of the vendor.'),
   supplies: z.array(z.string()).describe('An array of item IDs that this vendor supplies.'),
@@ -136,7 +148,7 @@ const VendorSchema = z.object({
 
 export const GenerateLpoInputSchema = z.object({
   lowStockItems: z.array(LowStockItemSchema).describe('A list of items that are below their reorder level.'),
-  vendors: z.array(VendorSchema).describe('A list of available vendors.'),
+  vendors: z.array(VendorForLpoSchema).describe('A list of available vendors.'),
 });
 export type GenerateLpoInput = z.infer<typeof GenerateLpoInputSchema>;
 
@@ -160,5 +172,3 @@ export type GenerateLpoOutput = z.infer<typeof GenerateLpoOutputSchema>;
 export interface Lpo extends GenerateLpoOutput {
   status: 'Pending' | 'Approved' | 'Rejected' | 'Completed';
 }
-
-    

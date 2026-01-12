@@ -1,0 +1,666 @@
+
+{
+  "entities": {
+    "Item": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "Item",
+      "type": "object",
+      "description": "Represents an inventory item with its details and stock information.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the Item entity."
+        },
+        "itemCode": {
+          "type": "string",
+          "description": "Unique code for the item."
+        },
+        "itemName": {
+          "type": "string",
+          "description": "Name of the item."
+        },
+        "category": {
+          "type": "string",
+          "description": "Category of the item (Medicine, Medical Supply, Consumable)."
+        },
+        "unitOfMeasure": {
+          "type": "string",
+          "description": "Unit of measure for the item (e.g., tablets, bottles, boxes)."
+        },
+        "reorderLevel": {
+          "type": "number",
+          "description": "Reorder level for the item."
+        },
+        "unitCost": {
+          "type": "number",
+          "description": "Unit cost of the item."
+        },
+        "sellingPrice": {
+          "type": "number",
+          "description": "Selling price of the item."
+        }
+      },
+      "required": [
+        "id",
+        "itemCode",
+        "itemName",
+        "category",
+        "unitOfMeasure",
+        "reorderLevel",
+        "unitCost",
+        "sellingPrice"
+      ]
+    },
+    "Batch": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "Batch",
+      "type": "object",
+      "description": "Represents a specific batch of an item with its batch number and expiry date.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the Batch entity."
+        },
+        "itemId": {
+          "type": "string",
+          "description": "Reference to Item. (Relationship: Item 1:N Batch)"
+        },
+        "batchNumber": {
+          "type": "string",
+          "description": "Batch number for the item."
+        },
+        "expiryDate": {
+          "type": "string",
+          "description": "Expiry date of the batch.",
+          "format": "date-time"
+        }
+      },
+      "required": [
+        "id",
+        "itemId",
+        "batchNumber",
+        "expiryDate"
+      ]
+    },
+    "Stock": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "Stock",
+      "type": "object",
+      "description": "Represents the stock level of an item batch at a specific location.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the Stock entity."
+        },
+        "batchId": {
+          "type": "string",
+          "description": "Reference to Batch. (Relationship: Batch 1:N Stock)"
+        },
+        "locationId": {
+          "type": "string",
+          "description": "Reference to Location. (Relationship: Location 1:N Stock)"
+        },
+        "currentStockQuantity": {
+          "type": "number",
+          "description": "Current stock quantity of the item at the location."
+        }
+      },
+      "required": [
+        "id",
+        "batchId",
+        "locationId",
+        "currentStockQuantity"
+      ]
+    },
+    "Location": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "Location",
+      "type": "object",
+      "description": "Represents a storage location (Bulk Store or Dispensary).",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the Location entity."
+        },
+        "locationName": {
+          "type": "string",
+          "description": "Name of the location (Bulk Store or Dispensary)."
+        }
+      },
+      "required": [
+        "id",
+        "locationName"
+      ]
+    },
+    "InternalOrder": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "InternalOrder",
+      "type": "object",
+      "description": "Represents an internal order from the Dispensary to the Bulk Store.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the InternalOrder entity."
+        },
+        "date": {
+          "type": "string",
+          "description": "Date the order was placed.",
+          "format": "date-time"
+        },
+        "status": {
+          "type": "string",
+          "description": "Status of the order (Pending, Approved, Issued)."
+        },
+        "requestingLocationId": {
+          "type": "string",
+          "description": "Reference to Location. Location placing the order. (Relationship: Location 1:N InternalOrder)"
+        }
+      },
+      "required": [
+        "id",
+        "date",
+        "status",
+        "requestingLocationId"
+      ]
+    },
+    "OrderItem": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "OrderItem",
+      "type": "object",
+      "description": "Represents an item and quantity requested in an internal order.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the OrderItem entity."
+        },
+        "internalOrderId": {
+          "type": "string",
+          "description": "Reference to InternalOrder. (Relationship: InternalOrder 1:N OrderItem)"
+        },
+        "itemId": {
+          "type": "string",
+          "description": "Reference to Item. (Relationship: Item 1:N OrderItem)"
+        },
+        "quantityRequested": {
+          "type": "number",
+          "description": "Quantity of the item requested."
+        },
+        "batchId": {
+          "type": "string",
+          "description": "Reference to Batch. Batch for requested item (Relationship: Batch 1:N OrderItem)"
+        }
+      },
+      "required": [
+        "id",
+        "internalOrderId",
+        "itemId",
+        "quantityRequested",
+        "batchId"
+      ]
+    },
+    "Billing": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "Billing",
+      "type": "object",
+      "description": "Represents a patient bill for dispensed items.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the Billing entity."
+        },
+        "billNumber": {
+          "type": "string",
+          "description": "Bill number."
+        },
+        "patientName": {
+          "type": "string",
+          "description": "Patient's name."
+        },
+        "receiptNumber": {
+          "type": "string",
+          "description": "Receipt number (Optional)."
+        },
+        "consultationFee": {
+          "type": "number",
+          "description": "Consultation fee (Optional)."
+        },
+        "labFee": {
+          "type": "number",
+          "description": "Lab fee (Optional)."
+        },
+        "date": {
+          "type": "string",
+          "description": "Date of the bill.",
+          "format": "date-time"
+        },
+        "dispensingLocationId": {
+          "type": "string",
+          "description": "Reference to Location. The Location where dispensing occurred. (Relationship: Location 1:N Billing)"
+        }
+      },
+      "required": [
+        "id",
+        "billNumber",
+        "patientName",
+        "date",
+        "dispensingLocationId"
+      ]
+    },
+    "BillingItem": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "BillingItem",
+      "type": "object",
+      "description": "Represents an item and quantity dispensed in a bill.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the BillingItem entity."
+        },
+        "billingId": {
+          "type": "string",
+          "description": "Reference to Billing. (Relationship: Billing 1:N BillingItem)"
+        },
+        "itemId": {
+          "type": "string",
+          "description": "Reference to Item. (Relationship: Item 1:N BillingItem)"
+        },
+        "quantity": {
+          "type": "number",
+          "description": "Quantity of the item dispensed."
+        },
+        "unitPrice": {
+          "type": "number",
+          "description": "Unit price of the item."
+        },
+        "batchId": {
+          "type": "string",
+          "description": "Reference to Batch. Batch of dispensed item (Relationship: Batch 1:N BillingItem)"
+        }
+      },
+      "required": [
+        "id",
+        "billingId",
+        "itemId",
+        "quantity",
+        "unitPrice",
+        "batchId"
+      ]
+    },
+    "User": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "User",
+      "type": "object",
+      "description": "Represents a user of the system.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the User entity."
+        },
+        "username": {
+          "type": "string",
+          "description": "Username for login."
+        },
+        "displayName": {
+          "type": "string",
+          "description": "User's display name."
+        },
+        "role": {
+          "type": "string",
+          "description": "User role (admin, cashier, pharmacy).",
+          "enum": ["admin", "cashier", "pharmacy"]
+        },
+        "locationId": {
+          "type": "string",
+          "description": "Reference to Location. Location this user is assigned to. (Relationship: Location 1:N User)"
+        }
+      },
+      "required": [
+        "id",
+        "username",
+        "displayName",
+        "role",
+        "locationId"
+      ]
+    },
+    "Vendor": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "Vendor",
+      "type": "object",
+      "description": "Represents a supplier or vendor.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the Vendor entity."
+        },
+        "name": {
+          "type": "string",
+          "description": "Name of the vendor."
+        },
+        "contactPerson": {
+          "type": "string",
+          "description": "Primary contact person."
+        },
+        "email": {
+          "type": "string",
+          "description": "Contact email.",
+          "format": "email"
+        },
+        "phone": {
+          "type": "string",
+          "description": "Contact phone number."
+        }
+      },
+      "required": ["id", "name", "email"]
+    },
+    "StockTransfer": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "StockTransfer",
+      "type": "object",
+      "description": "Represents a transfer of stock between locations.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the StockTransfer entity."
+        },
+        "itemId": {
+          "type": "string",
+          "description": "Reference to Item. (Relationship: Item 1:N StockTransfer)"
+        },
+        "fromLocationId": {
+          "type": "string",
+          "description": "Reference to Location. Location stock is transferred from. (Relationship: Location 1:N StockTransfer as From Location)"
+        },
+        "toLocationId": {
+          "type": "string",
+          "description": "Reference to Location. Location stock is transferred to. (Relationship: Location 1:N StockTransfer as To Location)"
+        },
+        "quantityTransferred": {
+          "type": "number",
+          "description": "Quantity of stock transferred."
+        },
+        "date": {
+          "type": "string",
+          "description": "Date and time of the stock transfer.",
+          "format": "date-time"
+        },
+        "batchId": {
+          "type": "string",
+          "description": "Reference to Batch. Batch of transferred item (Relationship: Batch 1:N StockTransfer)"
+        }
+      },
+      "required": [
+        "id",
+        "itemId",
+        "fromLocationId",
+        "toLocationId",
+        "quantityTransferred",
+        "date",
+        "batchId"
+      ]
+    },
+    "Service": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "Service",
+      "type": "object",
+      "description": "Represents a billable clinic service, like a consultation or procedure.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the Service entity."
+        },
+        "name": {
+          "type": "string",
+          "description": "Name of the service."
+        },
+        "fee": {
+          "type": "number",
+          "description": "The fee for the service."
+        }
+      },
+      "required": ["id", "name", "fee"]
+    }
+  },
+  "auth": {
+    "providers": [
+      "password",
+      "anonymous"
+    ]
+  },
+  "firestore": {
+    "structure": [
+      {
+        "path": "/items/{itemId}",
+        "definition": {
+          "entityName": "Item",
+          "schema": {
+            "$ref": "#/backend/entities/Item"
+          },
+          "description": "Stores general item information. Includes item code, name, category, unit of measure, reorder level, unit cost, and selling price.",
+          "params": [
+            {
+              "name": "itemId",
+              "description": "Unique identifier for the item."
+            }
+          ]
+        }
+      },
+      {
+        "path": "/items/{itemId}/batches/{batchId}",
+        "definition": {
+          "entityName": "Batch",
+          "schema": {
+            "$ref": "#/backend/entities/Batch"
+          },
+          "description": "Stores batch details for each item. Includes batch number and expiry date.",
+          "params": [
+            {
+              "name": "itemId",
+              "description": "Unique identifier for the item."
+            },
+            {
+              "name": "batchId",
+              "description": "Unique identifier for the batch."
+            }
+          ]
+        }
+      },
+      {
+        "path": "/items/{itemId}/batches/{batchId}/stocks/{stockId}",
+        "definition": {
+          "entityName": "Stock",
+          "schema": {
+            "$ref": "#/backend/entities/Stock"
+          },
+          "description": "Stores stock levels for each batch at specific locations. Includes current stock quantity and denormalized locationId for authorization independence.",
+          "params": [
+            {
+              "name": "itemId",
+              "description": "Unique identifier for the item."
+            },
+            {
+              "name": "batchId",
+              "description": "Unique identifier for the batch."
+            },
+            {
+              "name": "stockId",
+              "description": "Unique identifier for the stock."
+            }
+          ]
+        }
+      },
+      {
+        "path": "/locations/{locationId}",
+        "definition": {
+          "entityName": "Location",
+          "schema": {
+            "$ref": "#/backend/entities/Location"
+          },
+          "description": "Stores location details, including location name (Bulk Store or Dispensary).",
+          "params": [
+            {
+              "name": "locationId",
+              "description": "Unique identifier for the location."
+            }
+          ]
+        }
+      },
+      {
+        "path": "/locations/{locationId}/internalOrders/{internalOrderId}",
+        "definition": {
+          "entityName": "InternalOrder",
+          "schema": {
+            "$ref": "#/backend/entities/InternalOrder"
+          },
+          "description": "Stores internal orders requested by each location. Includes order date, status, and requestingLocationId.",
+          "params": [
+            {
+              "name": "locationId",
+              "description": "Unique identifier for the location."
+            },
+            {
+              "name": "internalOrderId",
+              "description": "Unique identifier for the internal order."
+            }
+          ]
+        }
+      },
+      {
+        "path": "/locations/{locationId}/internalOrders/{internalOrderId}/orderItems/{orderItemId}",
+        "definition": {
+          "entityName": "OrderItem",
+          "schema": {
+            "$ref": "#/backend/entities/OrderItem"
+          },
+          "description": "Stores items included in each internal order. Includes itemId, quantity requested, and batchId.",
+          "params": [
+            {
+              "name": "locationId",
+              "description": "Unique identifier for the location."
+            },
+            {
+              "name": "internalOrderId",
+              "description": "Unique identifier for the internal order."
+            },
+            {
+              "name": "orderItemId",
+              "description": "Unique identifier for the order item."
+            }
+          ]
+        }
+      },
+      {
+        "path": "/locations/{locationId}/billings/{billingId}",
+        "definition": {
+          "entityName": "Billing",
+          "schema": {
+            "$ref": "#/backend/entities/Billing"
+          },
+          "description": "Stores billing records for each location. Includes bill number, patient name, date, and dispensingLocationId.",
+          "params": [
+            {
+              "name": "locationId",
+              "description": "Unique identifier for the location."
+            },
+            {
+              "name": "billingId",
+              "description": "Unique identifier for the billing record."
+            }
+          ]
+        }
+      },
+      {
+        "path": "/locations/{locationId}/billings/{billingId}/billingItems/{billingItemId}",
+        "definition": {
+          "entityName": "BillingItem",
+          "schema": {
+            "$ref": "#/backend/entities/BillingItem"
+          },
+          "description": "Stores items included in each bill. Includes itemId, quantity, unit price and batchId.",
+          "params": [
+            {
+              "name": "locationId",
+              "description": "Unique identifier for the location."
+            },
+            {
+              "name": "billingId",
+              "description": "Unique identifier for the billing record."
+            },
+            {
+              "name": "billingItemId",
+              "description": "Unique identifier for the billing item."
+            }
+          ]
+        }
+      },
+      {
+        "path": "/users/{userId}",
+        "definition": {
+          "entityName": "User",
+          "schema": {
+            "$ref": "#/backend/entities/User"
+          },
+          "description": "Stores user information, including username, user type, and locationId.",
+          "params": [
+            {
+              "name": "userId",
+              "description": "Unique identifier for the user."
+            }
+          ]
+        }
+      },
+      {
+        "path": "/vendors/{vendorId}",
+        "definition": {
+          "entityName": "Vendor",
+          "schema": {
+            "$ref": "#/backend/entities/Vendor"
+          },
+          "description": "Stores vendor information.",
+          "params": [
+            {
+              "name": "vendorId",
+              "description": "Unique identifier for the vendor."
+            }
+          ]
+        }
+      },
+      {
+        "path": "/items/{itemId}/stockTransfers/{stockTransferId}",
+        "definition": {
+          "entityName": "StockTransfer",
+          "schema": {
+            "$ref": "#/backend/entities/StockTransfer"
+          },
+          "description": "Stores stock transfer records for each item. Includes fromLocationId, toLocationId, quantity transferred, date, and batchId.",
+          "params": [
+            {
+              "name": "itemId",
+              "description": "Unique identifier for the item."
+            },
+            {
+              "name": "stockTransferId",
+              "description": "Unique identifier for the stock transfer."
+            }
+          ]
+        }
+      },
+      {
+        "path": "/services/{serviceId}",
+        "definition": {
+          "entityName": "Service",
+          "schema": {
+            "$ref": "#/backend/entities/Service"
+          },
+          "description": "Stores billable clinic services.",
+          "params": [
+            {
+              "name": "serviceId",
+              "description": "Unique identifier for the service."
+            }
+          ]
+        }
+      }
+    ],
+    "reasoning": "The Firestore structure is designed to support the MediTrack Pro application, focusing on inventory management and billing for a clinic with a Bulk Store and a Dispensary. The primary goal is to create a scalable and secure database that avoids complex authorization logic. We will use path-based ownership for user-specific data and denormalization for collaborative data to ensure atomic operations and straightforward security rules.\n\n1.  **Items Collection:** Stores general item information. No location-specific details.\n2.  **Locations Collection:** Stores location details. Used for filtering data relevant to a specific location.\n3.  **Users Collection:** Stores user information, including the location they are assigned to.\n4.  **Vendors Collection:** A new top-level collection to store all supplier information.\n5.  **Services Collection:** A new top-level collection to store billable services.\n6.  **Batches Subcollection:** Each Item document contains a 'batches' subcollection. Stores batch details for that item.\n7.  **Stocks Subcollection:** Each Batch document contains a 'stocks' subcollection. Stores stock levels for that batch at specific locations. This denormalizes location information to allow QAPs, enabling rules to check if the user’s location matches the location of the stock.\n8.  **InternalOrders Subcollection:** Each Location document contains an 'internalOrders' subcollection. Stores internal orders requested by that location.\n9.  **OrderItems Subcollection:** Each InternalOrder document contains an 'orderItems' subcollection. Stores items included in that order.\n10. **Billings Subcollection:** Each Location document contains a 'billings' subcollection. Stores billing records for that location.\n11. **BillingItems Subcollection:** Each Billing document contains a 'billingItems' subcollection. Stores items included in that bill.\n12. **StockTransfers Subcollection:** Each Item document contains a 'stockTransfers' subcollection. Stores stock transfer records for that item.\n\n**Authorization Independence:** Denormalization is used to ensure authorization independence. For example, the `stocks` subcollection denormalizes location information from the `Location` document. This removes the need for `get()` calls to parent documents in security rules.\n\n**QAPs Support:** The structure supports QAPs by using structural segregation. Each collection serves a specific purpose and has homogeneous security requirements. Path-based ownership (`/users/{userId}/...`) ensures that only the user can access their specific data. By incorporating location-based access at the `stock` level, data is accessible for each user."
+  }
+}

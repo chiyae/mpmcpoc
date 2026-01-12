@@ -5,7 +5,7 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { Users, Truck, Package, Settings, Home } from "lucide-react";
+import { Users, Truck, Package, Settings, HandHeart } from "lucide-react";
 import Link from "next/link";
 
 const settingsLinks = [
@@ -26,6 +26,12 @@ const settingsLinks = [
         icon: Package,
         title: 'Item Master Data',
         description: 'Define and manage all inventory item definitions.'
+    },
+    {
+        href: '/settings/service-management',
+        icon: HandHeart,
+        title: 'Service Management',
+        description: 'Define billable services like consultation fees.'
     },
     {
         href: '#',

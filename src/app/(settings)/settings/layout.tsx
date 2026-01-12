@@ -12,7 +12,7 @@ import {
   SidebarFooter,
   SidebarInset,
 } from "@/components/ui/sidebar";
-import { Home, Users, Package, Truck, Settings } from "lucide-react";
+import { Home, Users, Package, Truck, Settings, HandHeart } from "lucide-react";
 import Logo from "@/components/logo";
 import DashboardHeader from "@/components/dashboard-header";
 
@@ -58,6 +58,14 @@ export default function SettingsLayout({ children }: { children: ReactNode }) {
                 <Link href="/settings/item-master">
                   <Package />
                   <span>Item Master</span>
+                </Link>
+              </SidebarMenuButton>
+            </SidebarMenuItem>
+            <SidebarMenuItem>
+              <SidebarMenuButton asChild tooltip="Services">
+                <Link href="/settings/service-management">
+                  <HandHeart />
+                  <span>Services</span>
                 </Link>
               </SidebarMenuButton>
             </SidebarMenuItem>

@@ -69,20 +69,16 @@ export default function LoginPage() {
       const userCredential = await signInWithEmailAndPassword(auth, values.email, values.password);
       const signedInUser = userCredential.user;
 
-      // After sign-in, check if a user document exists. If not, create one.
-      // This is crucial for the first admin user.
       const userDocRef = doc(firestore, 'users', signedInUser.uid);
       const userDocSnap = await getDoc(userDocRef);
 
       if (!userDocSnap.exists()) {
-        // This is likely the first sign-in for the admin user.
-        // We create their document here.
         await setDoc(userDocRef, {
           id: signedInUser.uid,
           username: signedInUser.email,
-          displayName: signedInUser.email?.split('@')[0] || 'Admin', // Default display name
-          role: 'admin', // Assign admin role
-          locationId: 'all', // Default location
+          displayName: signedInUser.email?.split('@')[0] || 'Admin',
+          role: 'admin',
+          locationId: 'all',
         });
          toast({
           title: 'Admin profile created',
@@ -95,7 +91,6 @@ export default function LoginPage() {
         });
       }
 
-      // The useEffect will handle the redirect to '/'
     } catch (error: any) {
       let errorMessage = "An unexpected error occurred during sign-in.";
       if (error.code === 'auth/user-not-found' || error.code === 'auth/invalid-credential') {
@@ -132,9 +127,9 @@ export default function LoginPage() {
           <div className="mb-4 flex justify-center">
             <Logo />
           </div>
-          <CardTitle className="text-2xl">Welcome Back</CardTitle>
+          <CardTitle className="text-2xl">Admin Sign In</CardTitle>
           <CardDescription>
-            Enter your admin credentials to access the system.
+            Enter your credentials to access the system.
           </CardDescription>
         </CardHeader>
         <CardContent>

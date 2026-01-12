@@ -3,21 +3,16 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
     
-    // Helper function to check if the requesting user is an admin by reading their custom claim.
     function isAdmin() {
       return request.auth.token.role == 'admin';
     }
 
     match /users/{userId} {
-      // READ (get, list)
-      // Allow an admin to list all users or get any single user document.
       allow list: if isAdmin();
-      allow get: if request.auth != null && (request.auth.uid == userId || isAdmin());
-
-      // WRITE (create, update, delete)
-      // Allow ONLY an admin to create, update, or delete any user document.
-      // Normal users cannot create their own document; an admin must do it.
-      allow write: if isAdmin();
+      allow get: if isAdmin() || request.auth.uid == userId;
+      allow create: if isAdmin();
+      allow update: if isAdmin() || (request.auth.uid == userId && !("role" in request.resource.data));
+      allow delete: if isAdmin();
     }
   }
 }

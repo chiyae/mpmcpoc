@@ -54,6 +54,7 @@ import { collection, doc, setDoc } from 'firebase/firestore';
 import { Skeleton } from '@/components/ui/skeleton';
 import { AddItemForm } from '@/components/add-item-form';
 import { useSettings } from '@/context/settings-provider';
+import { EditItemForm } from '@/components/edit-item-form';
 
 function formatItemName(item: Item) {
     let name = item.genericName;
@@ -88,7 +89,10 @@ export default function ItemMasterPage() {
   const [columnFilters, setColumnFilters] = React.useState<ColumnFiltersState>([]);
   const [columnVisibility, setColumnVisibility] = React.useState<VisibilityState>({});
   const [rowSelection, setRowSelection] = React.useState({});
+  
   const [isAddItemOpen, setIsAddItemOpen] = React.useState(false);
+  const [isEditItemOpen, setIsEditItemOpen] = React.useState(false);
+  const [selectedItem, setSelectedItem] = React.useState<Item | null>(null);
 
   const [isClient, setIsClient] = React.useState(false);
   React.useEffect(() => {
@@ -101,6 +105,11 @@ export default function ItemMasterPage() {
       title: "Copied to Clipboard",
       description: `Item Code: ${itemId}`,
     });
+  }
+
+  const handleOpenEditDialog = (item: Item) => {
+    setSelectedItem(item);
+    setIsEditItemOpen(true);
   }
 
   const handleAddItem = async (itemData: Omit<Item, 'id' | 'itemCode'>) => {
@@ -134,6 +143,26 @@ export default function ItemMasterPage() {
         })
     }
   }
+
+  const handleUpdateItem = async (itemId: string, itemData: Omit<Item, 'id' | 'itemCode'>) => {
+    if (!firestore) return;
+    try {
+      const itemRef = doc(firestore, 'items', itemId);
+      await setDoc(itemRef, itemData, { merge: true });
+      setIsEditItemOpen(false);
+      toast({
+          title: "Item Updated",
+          description: `Successfully updated ${formatItemName(itemData as Item)}.`
+      })
+    } catch(error) {
+        console.error("Error updating item:", error);
+        toast({
+            variant: "destructive",
+            title: "Error",
+            description: "Failed to update item. Please try again."
+        })
+    }
+  };
 
   const columns: ColumnDef<Item>[] = [
     {
@@ -195,11 +224,11 @@ export default function ItemMasterPage() {
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">
               <DropdownMenuLabel>Actions</DropdownMenuLabel>
-              <DropdownMenuItem onClick={() => handleCopyItemId(item.id)}>
-                Copy item ID
+              <DropdownMenuItem onClick={() => handleCopyItemId(item.itemCode)}>
+                Copy item Code
               </DropdownMenuItem>
               <DropdownMenuSeparator />
-              <DropdownMenuItem>
+              <DropdownMenuItem onClick={() => handleOpenEditDialog(item)}>
                 Edit item
               </DropdownMenuItem>
             </DropdownMenuContent>
@@ -376,6 +405,22 @@ export default function ItemMasterPage() {
             </Button>
             </div>
       </div>
+      {selectedItem && (
+        <Dialog open={isEditItemOpen} onOpenChange={setIsEditItemOpen}>
+            <DialogContent className="sm:max-w-[625px]">
+                <DialogHeader>
+                <DialogTitle>Edit Item: {formatItemName(selectedItem)}</DialogTitle>
+                <DialogDescription>
+                    Update the details for this item. The item code cannot be changed.
+                </DialogDescription>
+                </DialogHeader>
+                <EditItemForm
+                    item={selectedItem}
+                    onUpdateItem={handleUpdateItem}
+                />
+            </DialogContent>
+        </Dialog>
+      )}
     </div>
   );
 }

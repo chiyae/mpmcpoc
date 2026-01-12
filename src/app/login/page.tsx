@@ -69,22 +69,21 @@ export default function LoginPage() {
       const userCredential = await signInWithEmailAndPassword(auth, values.email, values.password);
       const signedInUser = userCredential.user;
 
-      // Ensure the user document exists. This is crucial for the admin to be visible in the user list.
       const userDocRef = doc(firestore, 'users', signedInUser.uid);
       const userDocSnap = await getDoc(userDocRef);
 
       if (!userDocSnap.exists()) {
-        // This will create a document for the initial admin or any other user.
-        // The role is critical for the initial admin.
         await setDoc(userDocRef, {
           id: signedInUser.uid,
           username: signedInUser.email,
-          displayName: signedInUser.email?.split('@')[0] || 'User',
-          role: signedInUser.email === 'admin@example.com' ? 'admin' : 'pharmacy',
+          displayName: signedInUser.email?.split('@')[0] || 'New User',
+          // The default role for a self-registered user.
+          // An admin can change this later in the user management page.
+          role: 'pharmacy', 
           locationId: 'all',
         });
          toast({
-          title: 'First-time sign-in',
+          title: 'Welcome!',
           description: 'Your user profile has been created.',
         });
       } else {

@@ -10,8 +10,7 @@ import {
   CardHeader,
   CardTitle,
 } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
-import type { Vendor, Item } from '@/lib/types';
+import type { Vendor } from '@/lib/types';
 import { useCollection, useFirestore, useMemoFirebase } from '@/firebase';
 import { collection, addDoc } from 'firebase/firestore';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -44,15 +43,14 @@ export default function SupplierManagementPage() {
   );
   const { data: vendors, isLoading: areVendorsLoading } = useCollection<Vendor>(vendorsCollectionQuery);
   
-  const itemsCollectionQuery = useMemoFirebase(
-    () => (firestore ? collection(firestore, 'items') : null),
-    [firestore]
-  );
-  const { data: allItems, isLoading: areItemsLoading } = useCollection<Item>(itemsCollectionQuery);
-
   const [isAddVendorOpen, setIsAddVendorOpen] = React.useState(false);
+  const [isClient, setIsClient] = React.useState(false);
+
+  React.useEffect(() => {
+    setIsClient(true);
+  }, []);
   
-  const isLoading = areVendorsLoading || areItemsLoading;
+  const isLoading = areVendorsLoading;
 
   const handleVendorAdded = async (vendorData: Omit<Vendor, 'id'>) => {
     if (!firestore) return;
@@ -82,20 +80,22 @@ export default function SupplierManagementPage() {
               Add, view, and manage suppliers and the items they provide.
             </p>
         </header>
-        <Dialog open={isAddVendorOpen} onOpenChange={setIsAddVendorOpen}>
-            <DialogTrigger asChild>
-                <Button>Add New Vendor</Button>
-            </DialogTrigger>
-            <DialogContent className="sm:max-w-2xl">
-                <DialogHeader>
-                    <DialogTitle>Add New Supplier</DialogTitle>
-                    <DialogDescription>
-                        Fill out the form below to add a new vendor.
-                    </DialogDescription>
-                </DialogHeader>
-                <AddVendorForm onVendorAdded={handleVendorAdded} />
-            </DialogContent>
-        </Dialog>
+        {isClient && (
+          <Dialog open={isAddVendorOpen} onOpenChange={setIsAddVendorOpen}>
+              <DialogTrigger asChild>
+                  <Button>Add New Vendor</Button>
+              </DialogTrigger>
+              <DialogContent className="sm:max-w-2xl">
+                  <DialogHeader>
+                      <DialogTitle>Add New Supplier</DialogTitle>
+                      <DialogDescription>
+                          Fill out the form below to add a new vendor.
+                      </DialogDescription>
+                  </DialogHeader>
+                  <AddVendorForm onVendorAdded={handleVendorAdded} />
+              </DialogContent>
+          </Dialog>
+        )}
       </div>
 
       <Card>
@@ -144,5 +144,3 @@ export default function SupplierManagementPage() {
     </div>
   );
 }
-
-    

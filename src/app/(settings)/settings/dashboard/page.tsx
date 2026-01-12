@@ -10,13 +10,13 @@ import Link from "next/link";
 
 const settingsLinks = [
     {
-        href: '#',
+        href: '/settings/user-management',
         icon: Users,
         title: 'User Management',
         description: 'Add, remove, or edit users and their roles.'
     },
     {
-        href: '#',
+        href: '/settings/supplier-management',
         icon: Truck,
         title: 'Supplier Management',
         description: 'Manage vendors and the items they supply.'

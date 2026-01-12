@@ -47,14 +47,14 @@ export default function SettingsLayout({ children }: { children: ReactNode }) {
             </SidebarMenuItem>
              <SidebarMenuItem>
               <SidebarMenuButton asChild tooltip="Suppliers">
-                <Link href="#">
+                <Link href="/settings/supplier-management">
                   <Truck />
                   <span>Suppliers</span>
                 </Link>
               </SidebarMenuButton>
             </SidebarMenuItem>
             <SidebarMenuItem>
-              <SidebarMenuButton asChild tooltip="Item Master">
+              <SidebarMenuButton asChild tooltip="Item Master" disabled>
                 <Link href="#">
                   <Package />
                   <span>Item Master</span>
@@ -62,7 +62,7 @@ export default function SettingsLayout({ children }: { children: ReactNode }) {
               </SidebarMenuButton>
             </SidebarMenuItem>
             <SidebarMenuItem>
-              <SidebarMenuButton asChild tooltip="General Settings">
+              <SidebarMenuButton asChild tooltip="General Settings" disabled>
                 <Link href="#">
                   <Settings />
                   <span>General Settings</span>

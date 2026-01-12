@@ -10,9 +10,10 @@ service cloud.firestore {
     }
 
     match /users/{userId} {
-      allow list, delete: if isAdmin();
-      allow get: if request.auth.uid == userId; // Allow user to read their own document
-      allow update, create: if request.auth.uid == userId;
+      // A user can always read their own document. This is required for isAdmin() to work.
+      allow get: if request.auth.uid == userId;
+      // Admins can perform any action on any user document.
+      allow list, update, create, delete: if isAdmin();
     }
 
     match /items/{itemId} {

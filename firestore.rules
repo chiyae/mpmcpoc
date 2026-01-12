@@ -1,3 +1,4 @@
+
 rules_version = '2';
 
 service cloud.firestore {
@@ -43,17 +44,17 @@ service cloud.firestore {
        ============================ */
 
     match /items/{itemId} {
-      allow read: if isAuthenticated();          // Empty-safe
+      allow read: if isAuthenticated();
       allow write: if isAdmin();
     }
 
     match /vendors/{vendorId} {
-      allow read: if isAuthenticated();          // Empty-safe
+      allow read: if isAuthenticated();
       allow write: if isAdmin();
     }
 
     match /services/{serviceId} {
-      allow read: if isAuthenticated();          // Empty-safe
+      allow read: if isAuthenticated();
       allow write: if isAdmin();
     }
 
@@ -78,32 +79,29 @@ service cloud.firestore {
     }
 
     /* ============================
-       BILLINGS (EMPTY SAFE)
+       BILLINGS (ROLE-BASED)
        ============================ */
 
     match /billings/{billingId} {
-      // Allow empty reads so UI can load
-      allow list, read: if isAuthenticated();
-
-      // Writes remain role-restricted
+      allow list, read: if isCashier() || isAdmin();
       allow create, update, delete: if isCashier() || isAdmin();
     }
 
     /* ============================
-       STOCKS (EMPTY SAFE)
+       STOCKS (ROLE-BASED)
        ============================ */
 
     match /stocks/{stockId} {
-      allow list, read: if isAuthenticated();
+      allow list, read: if isPharmacy() || isAdmin();
       allow write: if isPharmacy() || isAdmin();
     }
 
     /* ============================
-       INTERNAL ORDERS (EMPTY SAFE)
+       INTERNAL ORDERS (ROLE-BASED)
        ============================ */
 
     match /internalOrders/{orderId} {
-      allow list, read: if isAuthenticated();
+      allow list, read: if isPharmacy() || isAdmin();
       allow create: if isPharmacy() || isAdmin();
       allow update, delete: if isAdmin();
     }

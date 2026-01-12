@@ -38,46 +38,31 @@ service cloud.firestore {
     }
 
     /**
-     * Checks if the authenticated user's UID matches the provided userId.
+     * Retrieves the user's profile document data.
      */
-    function isOwner(userId) {
-      return isSignedIn() && request.auth.uid == userId;
-    }
-
-    /**
-     * Retrieves the user's profile document.
-     */
-    function getUserDoc(userId) {
-      return get(/databases/$(database)/documents/users/$(userId));
+    function getUserData(userId) {
+      return get(/databases/$(database)/documents/users/$(userId)).data;
     }
     
     /**
-     * Retrieves the role from the currently authenticated user's profile document.
-     */
-    function userRole() {
-      return getUserDoc(request.auth.uid).data.role;
-    }
-
-    /**
-     * Checks if the authenticated user has a specific role or is an admin.
-     * @param role The role to check for.
+     * Checks if the authenticated user has a specific role.
      */
     function hasRole(role) {
-      return isSignedIn() && (userRole() == role || userRole() == 'admin');
+      return isSignedIn() && getUserData(request.auth.uid).role == role;
     }
 
     /**
      * Checks if the authenticated user is an admin.
      */
     function isAdmin() {
-      return isSignedIn() && userRole() == 'admin';
+      return hasRole('admin');
     }
 
     /**
      * Retrieves the locationId from the currently authenticated user's profile document.
      */
     function userLocation() {
-      return getUserDoc(request.auth.uid).data.locationId;
+      return getUserData(request.auth.uid).locationId;
     }
 
     /**
@@ -95,12 +80,14 @@ service cloud.firestore {
      * @description Manages user profile data.
      * @path /users/{userId}
      * @allow (get) A user can read their own profile. An admin can read any profile.
+     * @allow (list) An admin can list all user profiles.
      * @allow (create, update, delete) Only admins can create, update, or delete user profiles.
      * @principle Enforces admin control over user management.
      */
     match /users/{userId} {
-      allow get: if isOwner(userId) || isAdmin();
-      allow list, create, update, delete: if isAdmin();
+      allow list: if isSignedIn() && getUserData(request.auth.uid).role == "admin";
+      allow get: if isSignedIn() && (request.auth.uid == userId || getUserData(request.auth.uid).role == "admin");
+      allow create, update, delete: if isAdmin();
     }
 
     // -------------------------------------------------------------------------

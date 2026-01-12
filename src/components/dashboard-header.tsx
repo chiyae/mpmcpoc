@@ -68,6 +68,18 @@ export default function DashboardHeader({ title, user }: DashboardHeaderProps) {
         setMounted(true);
     }, []);
 
+    if (!mounted) {
+        return (
+             <header className="sticky top-0 z-10 flex h-16 items-center gap-4 border-b bg-background/80 backdrop-blur-sm px-4 md:px-6">
+                <SidebarTrigger className="md:hidden" />
+                 <Link href="/" className="hidden md:block">
+                    <Logo />
+                </Link>
+                 <h1 className="text-lg font-semibold md:text-2xl">{title}</h1>
+             </header>
+        );
+    }
+
     return (
         <header className="sticky top-0 z-10 flex h-16 items-center gap-4 border-b bg-background/80 backdrop-blur-sm px-4 md:px-6">
             <SidebarTrigger className="md:hidden" />
@@ -77,7 +89,7 @@ export default function DashboardHeader({ title, user }: DashboardHeaderProps) {
 
             <h1 className="text-lg font-semibold md:text-2xl">{title}</h1>
 
-            {mounted && <HeaderActions user={user} />}
+            <HeaderActions user={user} />
         </header>
     )
 }

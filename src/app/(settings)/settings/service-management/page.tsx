@@ -42,9 +42,10 @@ import {
 } from '@/components/ui/dialog';
 import { useToast } from "@/hooks/use-toast";
 import { useCollection, useFirestore, useMemoFirebase } from '@/firebase';
-import { collection, addDoc, doc, setDoc } from 'firebase/firestore';
+import { collection, doc, setDoc } from 'firebase/firestore';
 import { Skeleton } from '@/components/ui/skeleton';
 import { AddServiceForm } from '@/components/add-service-form';
+import { EditServiceForm } from '@/components/edit-service-form';
 
 export default function ServiceManagementPage() {
   const { toast } = useToast();
@@ -58,6 +59,8 @@ export default function ServiceManagementPage() {
 
   const [sorting, setSorting] = React.useState<SortingState>([]);
   const [isAddServiceOpen, setIsAddServiceOpen] = React.useState(false);
+  const [isEditServiceOpen, setIsEditServiceOpen] = React.useState(false);
+  const [selectedService, setSelectedService] = React.useState<Service | null>(null);
 
   const handleAddService = async (serviceData: Omit<Service, 'id'>) => {
     if (!firestore) return;
@@ -79,6 +82,33 @@ export default function ServiceManagementPage() {
         })
     }
   }
+
+  const handleOpenEditDialog = (service: Service) => {
+    setSelectedService(service);
+    setIsEditServiceOpen(true);
+  }
+
+  const handleUpdateService = async (serviceId: string, serviceData: Omit<Service, 'id'>) => {
+    if (!firestore) return;
+    try {
+      const serviceRef = doc(firestore, 'services', serviceId);
+      // We use setDoc with merge:true to be safe, which acts like an upsert.
+      await setDoc(serviceRef, serviceData, { merge: true });
+      setIsEditServiceOpen(false);
+      toast({
+          title: "Service Updated",
+          description: `Successfully updated ${serviceData.name}.`
+      })
+    } catch(error) {
+        console.error("Error updating service:", error);
+        toast({
+            variant: "destructive",
+            title: "Error",
+            description: "Failed to update service. Please try again."
+        })
+    }
+  };
+
 
   const columns: ColumnDef<Service>[] = [
     {
@@ -124,7 +154,7 @@ export default function ServiceManagementPage() {
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end">
                 <DropdownMenuLabel>Actions</DropdownMenuLabel>
-                <DropdownMenuItem>
+                <DropdownMenuItem onClick={() => handleOpenEditDialog(service)}>
                   Edit service
                 </DropdownMenuItem>
               </DropdownMenuContent>
@@ -235,6 +265,23 @@ export default function ServiceManagementPage() {
             </TableBody>
             </Table>
         </div>
+
+        {selectedService && (
+            <Dialog open={isEditServiceOpen} onOpenChange={setIsEditServiceOpen}>
+                <DialogContent className="sm:max-w-[425px]">
+                <DialogHeader>
+                    <DialogTitle>Edit Service</DialogTitle>
+                    <DialogDescription>
+                        Update the details for {selectedService.name}.
+                    </DialogDescription>
+                </DialogHeader>
+                <EditServiceForm
+                    service={selectedService}
+                    onUpdateService={handleUpdateService}
+                />
+                </DialogContent>
+            </Dialog>
+        )}
     </div>
   );
 }

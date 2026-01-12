@@ -14,37 +14,119 @@ import {
 } from '@/components/ui/select';
 import { useToast } from '@/hooks/use-toast';
 import { Label } from '@/components/ui/label';
+import { useDoc, useFirestore, useMemoFirebase } from '@/firebase';
+import { doc, setDoc } from 'firebase/firestore';
+import { Skeleton } from '@/components/ui/skeleton';
+
+interface ClinicSettings {
+    clinicName: string;
+    clinicAddress: string;
+    clinicPhone: string;
+    currency: string;
+}
 
 export default function GeneralSettingsPage() {
   const { toast } = useToast();
+  const firestore = useFirestore();
 
-  // Mock state for clinic info
-  const [clinicName, setClinicName] = React.useState('MediTrack Pro Clinic');
-  const [clinicAddress, setClinicAddress] = React.useState('123 Health St, Wellness City');
-  const [clinicPhone, setClinicPhone] = React.useState('+1-202-555-0182');
+  const settingsDocRef = useMemoFirebase(
+    () => (firestore ? doc(firestore, 'settings', 'clinic') : null),
+    [firestore]
+  );
+  const { data: settingsData, isLoading } = useDoc<ClinicSettings>(settingsDocRef);
 
-  // Mock state for currency
+  // Form state
+  const [clinicName, setClinicName] = React.useState('');
+  const [clinicAddress, setClinicAddress] = React.useState('');
+  const [clinicPhone, setClinicPhone] = React.useState('');
   const [currency, setCurrency] = React.useState('USD');
 
-  const handleSaveClinicInfo = (e: React.FormEvent) => {
+  // React.useEffect to update form state when data loads from Firestore
+  React.useEffect(() => {
+    if (settingsData) {
+      setClinicName(settingsData.clinicName || '');
+      setClinicAddress(settingsData.clinicAddress || '');
+      setClinicPhone(settingsData.clinicPhone || '');
+      setCurrency(settingsData.currency || 'USD');
+    }
+  }, [settingsData]);
+
+
+  const handleSaveClinicInfo = async (e: React.FormEvent) => {
     e.preventDefault();
-    // In a real app, you would save this to Firestore
-    console.log({ clinicName, clinicAddress, clinicPhone });
-    toast({
-      title: "Clinic Information Updated",
-      description: "Your clinic's details have been saved.",
-    });
+    if (!settingsDocRef) return;
+    try {
+        await setDoc(settingsDocRef, {
+            clinicName,
+            clinicAddress,
+            clinicPhone
+        }, { merge: true });
+
+        toast({
+            title: "Clinic Information Updated",
+            description: "Your clinic's details have been saved.",
+        });
+    } catch (error) {
+        console.error("Failed to save clinic info:", error);
+        toast({
+            variant: "destructive",
+            title: "Error Saving",
+            description: "Could not save clinic information.",
+        });
+    }
   };
 
-  const handleSaveCurrency = (e: React.FormEvent) => {
+  const handleSaveCurrency = async (e: React.FormEvent) => {
     e.preventDefault();
-    // In a real app, you would save this to Firestore
-    console.log({ currency });
-    toast({
-      title: "Currency Settings Updated",
-      description: `The default currency has been set to ${currency}.`,
-    });
+    if (!settingsDocRef) return;
+     try {
+        await setDoc(settingsDocRef, { currency }, { merge: true });
+        toast({
+            title: "Currency Settings Updated",
+            description: `The default currency has been set to ${currency}.`,
+        });
+    } catch (error) {
+        console.error("Failed to save currency:", error);
+        toast({
+            variant: "destructive",
+            title: "Error Saving",
+            description: "Could not save currency settings.",
+        });
+    }
   };
+
+  if (isLoading) {
+    return (
+        <div className="space-y-8 max-w-4xl mx-auto">
+             <header className="space-y-1.5">
+                <h1 className="text-3xl font-bold tracking-tight">General Settings</h1>
+                <p className="text-muted-foreground">
+                    Manage general information and configurations for the application.
+                </p>
+            </header>
+            <Card>
+                <CardHeader><Skeleton className="h-6 w-48" /></CardHeader>
+                <CardContent className="space-y-4">
+                    <Skeleton className="h-10 w-full" />
+                    <Skeleton className="h-10 w-full" />
+                    <Skeleton className="h-10 w-full" />
+                </CardContent>
+                <CardFooter className="flex justify-end">
+                    <Skeleton className="h-10 w-24" />
+                </CardFooter>
+            </Card>
+            <Card>
+                <CardHeader><Skeleton className="h-6 w-48" /></CardHeader>
+                <CardContent className="space-y-4">
+                    <Skeleton className="h-10 w-1/2" />
+                </CardContent>
+                <CardFooter className="flex justify-end">
+                    <Skeleton className="h-10 w-24" />
+                </CardFooter>
+            </Card>
+        </div>
+    )
+  }
 
   return (
     <div className="space-y-8 max-w-4xl mx-auto">
@@ -132,3 +214,5 @@ export default function GeneralSettingsPage() {
     </div>
   );
 }
+
+    

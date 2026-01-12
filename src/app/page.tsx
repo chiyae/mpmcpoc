@@ -4,7 +4,7 @@ import { useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useUser } from '@/firebase';
 import { Skeleton } from '@/components/ui/skeleton';
-import { SidebarProvider, Sidebar, SidebarInset } from '@/components/ui/sidebar';
+import { SidebarProvider, SidebarInset } from '@/components/ui/sidebar';
 import Logo from '@/components/logo';
 import DashboardHeader from '@/components/dashboard-header';
 import MainMenu from '@/app/main-menu';
@@ -46,9 +46,6 @@ export default function Home() {
 
   return (
     <SidebarProvider>
-      <Sidebar>
-        {/* The main page doesn't have a persistent sidebar, so this is empty */}
-      </Sidebar>
       <SidebarInset className="flex flex-col min-h-screen bg-background">
         <DashboardHeader title="Main Menu" user={headerUser} />
         <MainMenu />

@@ -3,7 +3,7 @@ import { z } from 'zod';
 export type ItemCategory = 'Medicine' | 'Medical Supply' | 'Consumable';
 export type Location = 'Bulk Store' | 'Dispensary';
 export type OrderStatus = 'Pending' | 'Approved' | 'Issued' | 'Rejected';
-export type LpoStatus = 'Pending' | 'Approved' | 'Rejected' | 'Completed';
+export type LpoStatus = 'Draft' | 'Sent' | 'Completed' | 'Rejected';
 export type PaymentMethod = 'Cash' | 'Mobile Money' | 'Bank' | 'Invoice';
 export type PaymentStatus = 'Paid' | 'Unpaid';
 export type BillType = 'Walk-in' | 'OPD';
@@ -81,6 +81,31 @@ export interface Service {
     fee: number;
 }
 
+// Procurement Tool Types
+export interface ProcurementItemDetail extends Item {
+  vendorPrices: { vendorId: string; price: number }[];
+}
+
+export interface LocalPurchaseOrderItem {
+    itemId: string;
+    itemName: string;
+    quantity: number;
+    unitPrice: number;
+    total: number;
+}
+
+export interface LocalPurchaseOrder {
+    id: string;
+    lpoNumber: string;
+    vendorId: string;
+    vendorName: string;
+    date: string; // ISO String
+    items: LocalPurchaseOrderItem[];
+    grandTotal: number;
+    status: LpoStatus;
+}
+
+
 // AI LPO Generation Schemas
 const LowStockItemSchema = z.object({
   id: z.string().describe('The unique item code.'),
@@ -123,5 +148,5 @@ export type GenerateLpoOutput = z.infer<typeof GenerateLpoOutputSchema>;
 
 // Interface for saved LPOs, extending the AI output with a status
 export interface Lpo extends GenerateLpoOutput {
-  status: LpoStatus;
+  status: 'Pending' | 'Approved' | 'Rejected' | 'Completed';
 }

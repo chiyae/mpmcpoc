@@ -44,18 +44,18 @@ service cloud.firestore {
        ============================ */
 
     match /items/{itemId} {
-      allow read: if isAuthenticated();          // Empty-safe
-      allow write: if isAdmin();
+      allow read: if isAuthenticated();          // Empty-safe read for all users
+      allow write: if isAdmin();                 // Only admins can modify master item list
     }
 
     match /vendors/{vendorId} {
-      allow read: if isAuthenticated();          // Empty-safe
-      allow write: if isAdmin();
+      allow read: if isAuthenticated();          // Empty-safe read for all users
+      allow write: if isAdmin();                 // Only admins can modify vendors
     }
 
     match /services/{serviceId} {
-      allow read: if isAuthenticated();          // Empty-safe
-      allow write: if isAdmin();
+      allow read: if isAuthenticated();          // Empty-safe read for all users
+      allow write: if isAdmin();                 // Only admins can modify services
     }
 
     /* ============================
@@ -63,6 +63,7 @@ service cloud.firestore {
        ============================ */
 
     match /settings/{settingId} {
+      // Only admins can read or write settings
       allow read, write: if isAdmin();
     }
 
@@ -71,43 +72,49 @@ service cloud.firestore {
        ============================ */
 
     match /users/{userId} {
-      // User can always read own profile (even first login)
+      // A user can always read their own profile document
       allow get: if isAuthenticated() && request.auth.uid == userId;
 
-      // Admin capabilities
+      // Admins can manage all user documents
       allow list, create, update, delete: if isAdmin();
     }
 
     /* ============================
-       BILLINGS (EMPTY SAFE)
+       BILLINGS (ROLE-RESTRICTED)
        ============================ */
 
     match /billings/{billingId} {
-      // Allow empty reads so UI can load. List is now more restrictive.
+      // Only Cashiers and Admins can list or read bills
       allow list, read: if isCashier() || isAdmin();
 
-      // Writes remain role-restricted
+      // Only Cashiers and Admins can create or update bills
       allow create, update, delete: if isCashier() || isAdmin();
     }
 
     /* ============================
-       STOCKS (EMPTY SAFE)
+       STOCKS (ROLE-RESTRICTED)
        ============================ */
 
     match /stocks/{stockId} {
-      // Allow empty reads so UI can load. List is now more restrictive.
+      // Only Pharmacy users and Admins can list or read stock info
       allow list, read: if isPharmacy() || isAdmin();
+
+      // Only Pharmacy users and Admins can write to stock
       allow write: if isPharmacy() || isAdmin();
     }
 
     /* ============================
-       INTERNAL ORDERS (EMPTY SAFE)
+       INTERNAL ORDERS (ROLE-RESTRICTED)
        ============================ */
 
     match /internalOrders/{orderId} {
-      // Allow empty reads so UI can load. List is now more restrictive.
+      // Only Pharmacy users and Admins can list or read internal orders
       allow list, read: if isPharmacy() || isAdmin();
+
+      // Only Pharmacy users and Admins can create new orders
       allow create: if isPharmacy() || isAdmin();
+
+      // Only Admins can update or delete existing orders
       allow update, delete: if isAdmin();
     }
 

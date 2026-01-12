@@ -1,3 +1,4 @@
+
 'use client';
 
 import * as React from 'react';
@@ -19,8 +20,7 @@ import {
 } from '@/components/ui/table';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
-import { dispensaryItems as initialDispensaryItems } from '@/lib/data';
-import type { Item } from '@/lib/types';
+import type { Item, Stock } from '@/lib/types';
 import { useToast } from '@/hooks/use-toast';
 import {
   AlertDialog,
@@ -33,41 +33,65 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from '@/components/ui/alert-dialog';
+import { useCollection, useFirestore, useMemoFirebase } from '@/firebase';
+import { collection, query, where, writeBatch } from 'firebase/firestore';
+import { Skeleton } from '@/components/ui/skeleton';
 
 type StockTakeItem = {
-  id: string;
+  id: string; // Stock document ID
   name: string;
   systemQty: number;
   physicalQty: string; // Use string to handle empty input
 };
 
+function formatItemName(item: Item) {
+    let name = item.genericName;
+    if (item.brandName) name += ` (${item.brandName})`;
+    if (item.strengthValue) name += ` ${item.strengthValue}${item.strengthUnit}`;
+    return name;
+}
+
 export default function StockTakingPage() {
   const { toast } = useToast();
-  const [dispensaryItems, setDispensaryItems] = React.useState<Item[]>(initialDispensaryItems);
+  const firestore = useFirestore();
+
+  // --- Data Fetching ---
+  const itemsQuery = useMemoFirebase(() => firestore ? collection(firestore, 'items') : null, [firestore]);
+  const { data: allItems, isLoading: isLoadingItems } = useCollection<Item>(itemsQuery);
+
+  const stockQuery = useMemoFirebase(() => firestore ? query(collection(firestore, 'stocks'), where('locationId', '==', 'dispensary')) : null, [firestore]);
+  const { data: dispensaryStocks, isLoading: isLoadingStock } = useCollection<Stock>(stockQuery);
+
   const [stockTakeList, setStockTakeList] = React.useState<StockTakeItem[]>([]);
 
   React.useEffect(() => {
-    setStockTakeList(
-      dispensaryItems.map((item) => ({
-        id: item.id,
-        name: item.name,
-        systemQty: item.quantity,
-        physicalQty: '',
-      }))
-    );
-  }, [dispensaryItems]);
+    if (dispensaryStocks && allItems) {
+      const list = dispensaryStocks.map((stock) => {
+        const itemDetail = allItems.find(item => item.id === stock.itemId);
+        return {
+          id: stock.id,
+          name: itemDetail ? formatItemName(itemDetail) : 'Unknown Item',
+          systemQty: stock.currentStockQuantity,
+          physicalQty: '',
+        };
+      });
+      setStockTakeList(list);
+    }
+  }, [dispensaryStocks, allItems]);
 
-  const handlePhysicalQtyChange = (itemId: string, value: string) => {
+  const handlePhysicalQtyChange = (stockId: string, value: string) => {
     setStockTakeList((prevList) =>
       prevList.map((item) =>
-        item.id === itemId ? { ...item, physicalQty: value } : item
+        item.id === stockId ? { ...item, physicalQty: value } : item
       )
     );
   };
 
   const hasPendingChanges = stockTakeList.some(item => item.physicalQty !== '' && parseInt(item.physicalQty, 10) !== item.systemQty);
+  const isLoading = isLoadingItems || isLoadingStock;
 
-  const handleFinalizeStockTake = () => {
+  const handleFinalizeStockTake = async () => {
+    if (!firestore) return;
     const updates = stockTakeList.filter(item => item.physicalQty !== '' && parseInt(item.physicalQty, 10) >= 0);
     
     if (updates.length === 0) {
@@ -78,28 +102,26 @@ export default function StockTakingPage() {
         });
         return;
     }
-
-    // This is where you would typically send the updates to your backend.
-    // For now, we update the in-memory `dispensaryItems` array.
-    let updatedItems = [...dispensaryItems];
-    updates.forEach(update => {
-        const itemIndex = updatedItems.findIndex(item => item.id === update.id);
-        if (itemIndex !== -1) {
-            updatedItems[itemIndex] = {
-                ...updatedItems[itemIndex],
-                quantity: parseInt(update.physicalQty, 10),
-            };
-        }
-    });
-    setDispensaryItems(updatedItems);
     
-    toast({
-        title: "Stock Take Finalized",
-        description: "Inventory quantities have been updated successfully.",
+    const batch = writeBatch(firestore);
+    updates.forEach(update => {
+        const stockRef = collection(firestore, 'stocks').doc(update.id);
+        batch.update(stockRef, { currentStockQuantity: parseInt(update.physicalQty, 10) });
     });
 
-    // Reset physical counts after finalization
-    setStockTakeList(prev => prev.map(item => ({...item, physicalQty: ''})));
+    try {
+        await batch.commit();
+        toast({
+            title: "Stock Take Finalized",
+            description: "Inventory quantities have been updated successfully.",
+        });
+
+        // Reset physical counts after finalization
+        setStockTakeList(prev => prev.map(item => ({...item, physicalQty: ''})));
+    } catch(error) {
+        console.error("Stock take failed:", error);
+        toast({ variant: 'destructive', title: 'Update Failed', description: 'Could not update stock quantities.' });
+    }
   };
 
   return (
@@ -122,7 +144,10 @@ export default function StockTakingPage() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {stockTakeList.map((item) => {
+              {isLoading && Array.from({length: 5}).map((_,i) => (
+                <TableRow key={i}><TableCell colSpan={4}><Skeleton className='h-8 w-full'/></TableCell></TableRow>
+              ))}
+              {!isLoading && stockTakeList.map((item) => {
                 const physicalQty = item.physicalQty === '' ? null : parseInt(item.physicalQty, 10);
                 const variance = physicalQty === null ? null : physicalQty - item.systemQty;
 
@@ -158,7 +183,7 @@ export default function StockTakingPage() {
       <CardFooter className="flex justify-end">
         <AlertDialog>
           <AlertDialogTrigger asChild>
-            <Button disabled={!hasPendingChanges}>Finalize & Update Stock</Button>
+            <Button disabled={!hasPendingChanges || isLoading}>Finalize & Update Stock</Button>
           </AlertDialogTrigger>
           <AlertDialogContent>
             <AlertDialogHeader>

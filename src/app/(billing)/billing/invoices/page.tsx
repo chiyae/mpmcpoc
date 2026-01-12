@@ -35,7 +35,6 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
-import { bills as initialBills } from '@/lib/data';
 import type { Bill, PaymentStatus } from '@/lib/types';
 import { format } from 'date-fns';
 import {
@@ -50,11 +49,22 @@ import {
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { useToast } from '@/hooks/use-toast';
 import { useSettings } from '@/context/settings-provider';
+import { useCollection, useFirestore, useMemoFirebase } from '@/firebase';
+import { collection, doc, setDoc } from 'firebase/firestore';
+import { Skeleton } from '@/components/ui/skeleton';
 
 export default function InvoicesAndBillsPage() {
   const { toast } = useToast();
-  const { currency, formatCurrency } = useSettings();
-  const [bills, setBills] = React.useState<Bill[]>(initialBills);
+  const firestore = useFirestore();
+  const { formatCurrency } = useSettings();
+
+  const billsCollectionQuery = useMemoFirebase(
+    () => (firestore ? collection(firestore, 'billings') : null),
+    [firestore]
+  );
+  const { data: bills, isLoading: areBillsLoading } = useCollection<Bill>(billsCollectionQuery);
+
+
   const [sorting, setSorting] = React.useState<SortingState>([]);
   const [columnFilters, setColumnFilters] = React.useState<ColumnFiltersState>([]);
   const [columnVisibility, setColumnVisibility] = React.useState<VisibilityState>({});
@@ -68,6 +78,36 @@ export default function InvoicesAndBillsPage() {
     setIsViewBillOpen(true);
   };
   
+  const handleMarkAsPaid = async () => {
+    if (!selectedBill || !firestore) return;
+
+    const billRef = doc(firestore, 'billings', selectedBill.id);
+
+    try {
+        await setDoc(billRef, { 
+            paymentDetails: {
+                ...selectedBill.paymentDetails,
+                status: 'Paid',
+            }
+        }, { merge: true });
+        
+        toast({
+            title: "Bill Updated",
+            description: `Bill ${selectedBill.id} has been marked as paid.`
+        });
+        setIsViewBillOpen(false);
+
+    } catch (error) {
+        console.error("Error marking bill as paid:", error);
+        toast({
+            variant: 'destructive',
+            title: 'Update Failed',
+            description: 'Could not mark the bill as paid.'
+        });
+    }
+  }
+
+
   const columns: ColumnDef<Bill>[] = [
     {
       accessorKey: 'id',
@@ -125,7 +165,7 @@ export default function InvoicesAndBillsPage() {
   ];
 
   const table = useReactTable({
-    data: bills,
+    data: bills ?? [],
     columns,
     onSortingChange: setSorting,
     onColumnFiltersChange: setColumnFilters,
@@ -201,7 +241,14 @@ export default function InvoicesAndBillsPage() {
             ))}
           </TableHeader>
           <TableBody>
-            {table.getRowModel().rows?.length ? (
+            {areBillsLoading && Array.from({ length: 5 }).map((_, i) => (
+                <TableRow key={i}>
+                    <TableCell colSpan={columns.length}>
+                        <Skeleton className="h-8 w-full" />
+                    </TableCell>
+                </TableRow>
+            ))}
+            {!areBillsLoading && table.getRowModel().rows?.length ? (
               table.getRowModel().rows.map((row) => (
                 <TableRow
                   key={row.id}
@@ -217,7 +264,8 @@ export default function InvoicesAndBillsPage() {
                   ))}
                 </TableRow>
               ))
-            ) : (
+            ) : null}
+             {!areBillsLoading && !table.getRowModel().rows?.length ? (
               <TableRow>
                 <TableCell
                   colSpan={columns.length}
@@ -226,7 +274,7 @@ export default function InvoicesAndBillsPage() {
                   No bills found.
                 </TableCell>
               </TableRow>
-            )}
+            ) : null}
           </TableBody>
         </Table>
       </div>
@@ -275,7 +323,7 @@ export default function InvoicesAndBillsPage() {
                     <Button variant="outline">Close</Button>
                 </DialogClose>
                 {selectedBill.paymentDetails.status === 'Unpaid' && (
-                    <Button>Mark as Paid</Button>
+                    <Button onClick={handleMarkAsPaid}>Mark as Paid</Button>
                 )}
           </DialogFooter>
         </DialogContent>

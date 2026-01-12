@@ -1,3 +1,4 @@
+
 'use client';
 
 import * as React from 'react';
@@ -5,7 +6,6 @@ import {
   Card,
   CardContent,
   CardDescription,
-  CardFooter,
   CardHeader,
   CardTitle,
 } from '@/components/ui/card';
@@ -19,8 +19,7 @@ import {
 } from '@/components/ui/table';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
-import { dispensaryItems, pendingDispensations as initialPendingDispensations } from '@/lib/data';
-import type { Bill } from '@/lib/types';
+import type { Bill, Stock } from '@/lib/types';
 import { Badge } from '@/components/ui/badge';
 import { AlertCircle } from 'lucide-react';
 import {
@@ -32,10 +31,31 @@ import {
     DialogFooter,
     DialogClose,
   } from '@/components/ui/dialog';
+import { useCollection, useFirestore, useMemoFirebase } from '@/firebase';
+import { collection, doc, query, where, writeBatch } from 'firebase/firestore';
+import { Skeleton } from '@/components/ui/skeleton';
 
 export default function DispensePage() {
   const { toast } = useToast();
-  const [pendingDispensations, setPendingDispensations] = React.useState<Bill[]>(initialPendingDispensations);
+  const firestore = useFirestore();
+
+  // --- Data Fetching ---
+  const pendingBillsQuery = useMemoFirebase(
+    () => firestore 
+      ? query(collection(firestore, 'billings'), where('paymentDetails.status', '==', 'Paid'), where('isDispensed', '==', false))
+      : null,
+    [firestore]
+  );
+  const { data: pendingDispensations, isLoading: isLoadingBills } = useCollection<Bill>(pendingBillsQuery);
+  
+  const dispensaryStockQuery = useMemoFirebase(
+    () => firestore ? query(collection(firestore, 'stocks'), where('locationId', '==', 'dispensary')) : null,
+    [firestore]
+  );
+  const { data: dispensaryStocks, isLoading: isLoadingStock } = useCollection<Stock>(dispensaryStockQuery);
+
+
+  // --- State ---
   const [selectedBill, setSelectedBill] = React.useState<Bill | null>(null);
   const [isDispenseDialogOpen, setIsDispenseDialogOpen] = React.useState(false);
 
@@ -44,48 +64,57 @@ export default function DispensePage() {
     setIsDispenseDialogOpen(true);
   };
 
-  const handleDispense = () => {
-    if (!selectedBill) return;
+  const handleDispense = async () => {
+    if (!selectedBill || !dispensaryStocks || !firestore) return;
 
     let canDispense = true;
-    const stockUpdates: { itemId: string; newQuantity: number }[] = [];
+    const batch = writeBatch(firestore);
 
-    // Check stock availability first
-    selectedBill.items.forEach((billItem) => {
-      const inventoryItem = dispensaryItems.find((item) => item.id === billItem.itemId);
-      if (!inventoryItem || inventoryItem.quantity < billItem.quantity) {
+    // This is a simplified stock check. A real-world app would need to handle multiple batches.
+    for (const billItem of selectedBill.items) {
+      const stockItem = dispensaryStocks.find((s) => s.itemId === billItem.itemId);
+      if (!stockItem || stockItem.currentStockQuantity < billItem.quantity) {
         canDispense = false;
         toast({
           variant: 'destructive',
           title: 'Insufficient Stock',
-          description: `Not enough stock for ${inventoryItem?.name || billItem.itemId}.`,
+          description: `Not enough stock for ${billItem.itemName}. Available: ${stockItem?.currentStockQuantity || 0}, Required: ${billItem.quantity}.`,
         });
-      } else {
-        stockUpdates.push({
-            itemId: billItem.itemId,
-            newQuantity: inventoryItem.quantity - billItem.quantity
-        });
+        break; 
       }
-    });
+    }
 
     if (canDispense) {
-      // Apply stock updates (in-memory for now)
-      stockUpdates.forEach(update => {
-        const itemIndex = dispensaryItems.findIndex(item => item.id === update.itemId);
-        if (itemIndex !== -1) {
-            dispensaryItems[itemIndex].quantity = update.newQuantity;
+      // Deduct stock quantities
+      for (const billItem of selectedBill.items) {
+        const stockItem = dispensaryStocks.find((s) => s.itemId === billItem.itemId);
+        if (stockItem) {
+          const stockRef = doc(firestore, 'stocks', stockItem.id);
+          const newQuantity = stockItem.currentStockQuantity - billItem.quantity;
+          batch.update(stockRef, { currentStockQuantity: newQuantity });
         }
-      });
-      
-      // Remove the bill from the pending list
-      setPendingDispensations(prev => prev.filter(bill => bill.id !== selectedBill.id));
+      }
 
-      toast({
-        title: 'Items Dispensed',
-        description: `Stock has been updated for bill ${selectedBill.id}.`,
-      });
-      setIsDispenseDialogOpen(false);
-      setSelectedBill(null);
+      // Mark the bill as dispensed
+      const billRef = doc(firestore, 'billings', selectedBill.id);
+      batch.update(billRef, { isDispensed: true });
+
+      try {
+        await batch.commit();
+        toast({
+          title: 'Items Dispensed',
+          description: `Stock has been updated for bill ${selectedBill.id}.`,
+        });
+        setIsDispenseDialogOpen(false);
+        setSelectedBill(null);
+      } catch(error) {
+        console.error("Dispense failed:", error);
+        toast({
+            variant: 'destructive',
+            title: 'Dispense Failed',
+            description: 'Could not update stock and bill status.',
+        })
+      }
     }
   };
 
@@ -95,7 +124,7 @@ export default function DispensePage() {
         <CardHeader>
           <CardTitle>Pending Dispensations</CardTitle>
           <CardDescription>
-            Bills awaiting dispensation from the billing department.
+            Bills that have been paid and are awaiting collection.
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -109,14 +138,17 @@ export default function DispensePage() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {pendingDispensations.length === 0 ? (
+              {isLoadingBills && Array.from({length: 3}).map((_, i) => (
+                <TableRow key={i}><TableCell colSpan={4}><Skeleton className='h-8 w-full' /></TableCell></TableRow>
+              ))}
+              {!isLoadingBills && pendingDispensations?.length === 0 ? (
                 <TableRow>
                   <TableCell colSpan={4} className="h-24 text-center">
                     No pending dispensations.
                   </TableCell>
                 </TableRow>
               ) : (
-                pendingDispensations.map((bill) => (
+                pendingDispensations?.map((bill) => (
                   <TableRow key={bill.id}>
                     <TableCell className="font-medium">{bill.id}</TableCell>
                     <TableCell>{bill.patientName}</TableCell>
@@ -144,48 +176,50 @@ export default function DispensePage() {
                 Verify stock and confirm dispensation.
               </DialogDescription>
             </DialogHeader>
-            <Table>
-                <TableHeader>
-                    <TableRow>
-                    <TableHead>Item</TableHead>
-                    <TableHead>Required Qty</TableHead>
-                    <TableHead>Available Qty</TableHead>
-                    <TableHead>Status</TableHead>
-                    </TableRow>
-                </TableHeader>
-                <TableBody>
-                    {selectedBill.items.map((billItem) => {
-                    const inventoryItem = dispensaryItems.find((item) => item.id === billItem.itemId);
-                    const availableQty = inventoryItem?.quantity || 0;
-                    const hasSufficientStock = availableQty >= billItem.quantity;
-
-                    return (
-                        <TableRow key={billItem.itemId}>
-                        <TableCell className="font-medium">
-                            {inventoryItem?.name || billItem.itemId}
-                        </TableCell>
-                        <TableCell>{billItem.quantity}</TableCell>
-                        <TableCell>{availableQty}</TableCell>
-                        <TableCell>
-                            {hasSufficientStock ? (
-                            <Badge variant="secondary">Available</Badge>
-                            ) : (
-                            <Badge variant="destructive" className="flex items-center gap-1">
-                                <AlertCircle className="h-3 w-3" />
-                                Insufficient
-                            </Badge>
-                            )}
-                        </TableCell>
+            {isLoadingStock ? <Skeleton className='h-48 w-full' /> : (
+                <Table>
+                    <TableHeader>
+                        <TableRow>
+                        <TableHead>Item</TableHead>
+                        <TableHead>Required Qty</TableHead>
+                        <TableHead>Available Qty</TableHead>
+                        <TableHead>Status</TableHead>
                         </TableRow>
-                    );
-                    })}
-                </TableBody>
-            </Table>
+                    </TableHeader>
+                    <TableBody>
+                        {selectedBill.items.map((billItem) => {
+                        const stockItem = dispensaryStocks?.find((s) => s.itemId === billItem.itemId);
+                        const availableQty = stockItem?.currentStockQuantity || 0;
+                        const hasSufficientStock = availableQty >= billItem.quantity;
+
+                        return (
+                            <TableRow key={billItem.itemId}>
+                            <TableCell className="font-medium">
+                                {billItem.itemName}
+                            </TableCell>
+                            <TableCell>{billItem.quantity}</TableCell>
+                            <TableCell>{availableQty}</TableCell>
+                            <TableCell>
+                                {hasSufficientStock ? (
+                                <Badge variant="secondary">Available</Badge>
+                                ) : (
+                                <Badge variant="destructive" className="flex items-center gap-1">
+                                    <AlertCircle className="h-3 w-3" />
+                                    Insufficient
+                                </Badge>
+                                )}
+                            </TableCell>
+                            </TableRow>
+                        );
+                        })}
+                    </TableBody>
+                </Table>
+            )}
             <DialogFooter>
                 <DialogClose asChild>
                     <Button variant="outline">Cancel</Button>
                 </DialogClose>
-                <Button onClick={handleDispense}>Confirm & Dispense All</Button>
+                <Button onClick={handleDispense} disabled={isLoadingStock}>Confirm & Dispense All</Button>
             </DialogFooter>
           </DialogContent>
         </Dialog>

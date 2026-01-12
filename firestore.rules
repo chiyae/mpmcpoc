@@ -4,32 +4,70 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
     
+    function getUserData() {
+      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data;
+    }
+
     function isAdmin() {
-      // An admin's role is stored in their user document in Firestore.
-      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin';
+      return getUserData().role == 'admin';
+    }
+    
+    function isCashier() {
+      return getUserData().role == 'cashier';
     }
 
-    match /users/{userId} {
-      // A user can always read their own document. This is required for isAdmin() to work.
-      allow get: if request.auth.uid == userId;
-      // Admins can perform any other action on any user document.
-      allow list, create, update, delete: if isAdmin();
+    function isPharmacy() {
+      return getUserData().role == 'pharmacy';
+    }
+    
+    // Admins can do anything.
+    match /{path=**} {
+      allow read, write: if isAdmin();
     }
 
+    // All authenticated users can read basic data like items, vendors, and services.
     match /items/{itemId} {
-      allow read, write: if request.auth != null;
+      allow read: if request.auth != null;
+      allow write: if isAdmin(); // Only admins can modify the item master list.
     }
 
     match /vendors/{vendorId} {
-      allow read, write: if request.auth != null;
+      allow read: if request.auth != null;
+      allow write: if isAdmin();
     }
 
     match /services/{serviceId} {
-        allow read, write: if request.auth != null;
+        allow read: if request.auth != null;
+        allow write: if isAdmin();
+    }
+    
+    match /settings/clinic {
+      allow read: if request.auth != null;
+      allow write: if isAdmin();
     }
 
-    match /settings/{settingId} {
-      allow read, write: if isAdmin();
+    match /users/{userId} {
+      // A user can always read their own document.
+      allow get: if request.auth.uid == userId;
+      // Admins can list and edit any user.
+      allow list, update, create, delete: if isAdmin();
+    }
+
+    // Cashiers and admins can manage bills.
+    match /billings/{billingId} {
+      allow read, write: if isCashier() || isAdmin();
+    }
+    
+    // Pharmacy staff and admins can manage stock.
+    match /stocks/{stockId} {
+      allow read, write: if isPharmacy() || isAdmin();
+    }
+    
+    // Pharmacy staff can create internal orders, admins can manage them.
+    match /internalOrders/{orderId} {
+      allow read: if isPharmacy() || isAdmin();
+      allow create: if isPharmacy();
+      allow update, delete: if isAdmin();
     }
   }
 }

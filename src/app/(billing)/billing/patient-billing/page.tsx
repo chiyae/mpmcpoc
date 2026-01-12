@@ -21,16 +21,44 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { useToast } from '@/hooks/use-toast';
-import { dispensaryItems, predefinedServices, bills, pendingDispensations } from '@/lib/data';
-import type { Bill, BillItem, PaymentMethod, BillType, Service } from '@/lib/types';
+import type { Bill, BillItem, PaymentMethod, BillType, Service, Item } from '@/lib/types';
 import { PlusCircle, Trash2 } from 'lucide-react';
 import { Label } from '@/components/ui/label';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { useSettings } from '@/context/settings-provider';
+import { useCollection, useFirestore, useMemoFirebase } from '@/firebase';
+import { collection, doc, writeBatch } from 'firebase/firestore';
+
+function formatItemName(item: Item) {
+  let name = item.genericName;
+  if (item.brandName) name += ` (${item.brandName})`;
+  if (item.strengthValue) name += ` ${item.strengthValue}${item.strengthUnit}`;
+  return name;
+}
 
 export default function PatientBillingPage() {
   const { toast } = useToast();
-  const { currency, formatCurrency } = useSettings();
+  const firestore = useFirestore();
+  const { formatCurrency } = useSettings();
+
+  // --- Data Fetching ---
+  const itemsCollectionQuery = useMemoFirebase(
+    () => (firestore ? collection(firestore, 'items') : null),
+    [firestore]
+  );
+  const { data: allItems, isLoading: areItemsLoading } = useCollection<Item>(itemsCollectionQuery);
+
+  const servicesCollectionQuery = useMemoFirebase(
+    () => (firestore ? collection(firestore, 'services') : null),
+    [firestore]
+  );
+  const { data: allServices, isLoading: areServicesLoading } = useCollection<Service>(servicesCollectionQuery);
+  
+  // For now, we will assume we are always billing from the 'dispensary' location.
+  // In a multi-location setup, this would be dynamic based on the user's assigned location.
+  const billingLocationId = 'dispensary';
+
+  // --- Form State ---
   const [patientName, setPatientName] = React.useState('');
   const [billItems, setBillItems] = React.useState<BillItem[]>([]);
   const [billType, setBillType] = React.useState<BillType>('Walk-in');
@@ -44,12 +72,12 @@ export default function PatientBillingPage() {
   const [amountTendered, setAmountTendered] = React.useState('');
 
   const addMedicineToBill = () => {
-    if (!selectedMedicine || !medicineQuantity) {
+    if (!selectedMedicine || !medicineQuantity || !allItems) {
       toast({ variant: 'destructive', title: 'Error', description: 'Please select a medicine and quantity.' });
       return;
     }
 
-    const item = dispensaryItems.find((i) => i.id === selectedMedicine);
+    const item = allItems.find((i) => i.id === selectedMedicine);
     const quantity = parseInt(medicineQuantity, 10);
 
     if (!item) {
@@ -57,18 +85,12 @@ export default function PatientBillingPage() {
       return;
     }
 
-    if (quantity > item.quantity) {
-      toast({ variant: 'destructive', title: 'Insufficient Stock', description: `Only ${item.quantity} units of ${item.name} available.` });
-      return;
-    }
+    // Note: Stock checks will be handled properly in the dispensary module.
+    // This billing module just creates the bill.
     
     const existingItemIndex = billItems.findIndex(bi => bi.itemId === item.id);
     if(existingItemIndex > -1) {
         const newQuantity = billItems[existingItemIndex].quantity + quantity;
-        if (newQuantity > item.quantity) {
-            toast({ variant: 'destructive', title: 'Insufficient Stock', description: `Cannot add ${quantity} more units. Only ${item.quantity - billItems[existingItemIndex].quantity} more available.` });
-            return;
-        }
         const newBillItems = [...billItems];
         newBillItems[existingItemIndex] = {
             ...newBillItems[existingItemIndex],
@@ -80,7 +102,7 @@ export default function PatientBillingPage() {
     } else {
         const newBillItem: BillItem = {
           itemId: item.id,
-          itemName: item.name,
+          itemName: formatItemName(item),
           quantity,
           unitPrice: item.sellingPrice,
           total: quantity * item.sellingPrice,
@@ -92,19 +114,18 @@ export default function PatientBillingPage() {
   };
 
   const addServiceToBill = () => {
-    if (!selectedService) {
+    if (!selectedService || !allServices) {
         toast({ variant: 'destructive', title: 'Error', description: 'Please select a service.' });
         return;
     }
 
-    const service = predefinedServices.find(s => s.id === selectedService);
+    const service = allServices.find(s => s.id === selectedService);
 
     if (!service) {
         toast({ variant: 'destructive', title: 'Error', description: 'Service not found.' });
         return;
     }
 
-    // Prevent adding the same service multiple times
     if (billItems.some(item => item.itemId === service.id)) {
         toast({ variant: 'destructive', title: 'Service Already Added', description: `${service.name} is already on the bill.`});
         return;
@@ -137,14 +158,17 @@ export default function PatientBillingPage() {
     (paymentMethod === 'Invoice' || paymentMethod !== 'Cash' || (paymentMethod === 'Cash' && tenderedAmountValue >= grandTotal));
 
 
-  const handleFinalizeBill = () => {
-    if (!canFinalize) {
+  const handleFinalizeBill = async () => {
+    if (!canFinalize || !firestore) {
         toast({ variant: 'destructive', title: 'Error', description: 'Please fill all required fields and ensure tendered amount is sufficient.' });
         return;
     }
 
+    const billId = `BILL-${Date.now()}`;
+    const billRef = doc(firestore, 'billings', billId);
+
     const newBill: Bill = {
-        id: `BILL-${Date.now()}`,
+        id: billId,
         date: new Date().toISOString(),
         patientName,
         billType,
@@ -156,29 +180,32 @@ export default function PatientBillingPage() {
           amountTendered: paymentMethod === 'Cash' ? tenderedAmountValue : grandTotal,
           change,
           status: paymentMethod === 'Invoice' ? 'Unpaid' : 'Paid',
-        }
+        },
+        dispensingLocationId: billingLocationId,
     };
 
-    // Add to the main bills history
-    bills.unshift(newBill); 
+    try {
+        await writeBatch(firestore).set(billRef, newBill).commit();
+        toast({
+            title: "Bill Finalized",
+            description: `Bill for ${patientName} has been generated.`,
+        });
 
-    // If it was paid, add it to the dispensary queue
-    if (newBill.paymentDetails.status === 'Paid') {
-        pendingDispensations.unshift(newBill);
+        // Reset state
+        setPatientName('');
+        setBillItems([]);
+        setBillType('Walk-in');
+        setPrescriptionNumber('');
+        setPaymentMethod('Cash');
+        setAmountTendered('');
+    } catch(error) {
+        console.error("Error finalizing bill: ", error);
+        toast({
+            variant: 'destructive',
+            title: 'Failed to save bill',
+            description: 'Could not save the bill to the database.',
+        });
     }
-
-    toast({
-        title: "Bill Finalized",
-        description: `Bill for ${patientName} has been generated.`,
-    });
-
-    // Reset state
-    setPatientName('');
-    setBillItems([]);
-    setBillType('Walk-in');
-    setPrescriptionNumber('');
-    setPaymentMethod('Cash');
-    setAmountTendered('');
   };
 
   return (
@@ -237,18 +264,17 @@ export default function PatientBillingPage() {
           <CardTitle>Add Billable Items</CardTitle>
         </CardHeader>
         <CardContent className="space-y-6">
-            {/* Add Medicine */}
             <div className="space-y-2">
                 <h3 className="font-medium">Add Medicine</h3>
                 <div className="flex flex-col md:flex-row gap-2">
-                    <Select value={selectedMedicine} onValueChange={setSelectedMedicine}>
+                    <Select value={selectedMedicine} onValueChange={setSelectedMedicine} disabled={areItemsLoading}>
                         <SelectTrigger className="flex-1">
-                            <SelectValue placeholder="Select a medicine" />
+                            <SelectValue placeholder={areItemsLoading ? "Loading items..." : "Select a medicine"} />
                         </SelectTrigger>
                         <SelectContent>
-                            {dispensaryItems.map((item) => (
+                            {allItems?.map((item) => (
                                 <SelectItem key={item.id} value={item.id}>
-                                    {item.name} (In Stock: {item.quantity})
+                                    {formatItemName(item)}
                                 </SelectItem>
                             ))}
                         </SelectContent>
@@ -261,27 +287,26 @@ export default function PatientBillingPage() {
                         onChange={(e) => setMedicineQuantity(e.target.value)}
                         min="1"
                     />
-                    <Button onClick={addMedicineToBill}><PlusCircle className="mr-2 h-4 w-4" /> Add Item</Button>
+                    <Button onClick={addMedicineToBill} disabled={areItemsLoading}><PlusCircle className="mr-2 h-4 w-4" /> Add Item</Button>
                 </div>
             </div>
 
-            {/* Add Service */}
             <div className="space-y-2">
                  <h3 className="font-medium">Add Service</h3>
                 <div className="flex flex-col md:flex-row gap-2">
-                     <Select value={selectedService} onValueChange={setSelectedService}>
+                     <Select value={selectedService} onValueChange={setSelectedService} disabled={areServicesLoading}>
                         <SelectTrigger className="flex-1">
-                            <SelectValue placeholder="Select a service" />
+                            <SelectValue placeholder={areServicesLoading ? "Loading services..." : "Select a service"} />
                         </SelectTrigger>
                         <SelectContent>
-                            {predefinedServices.map((service) => (
+                            {allServices?.map((service) => (
                                 <SelectItem key={service.id} value={service.id}>
                                     {service.name} - {formatCurrency(service.fee)}
                                 </SelectItem>
                             ))}
                         </SelectContent>
                     </Select>
-                    <Button onClick={addServiceToBill}><PlusCircle className="mr-2 h-4 w-4" /> Add Service</Button>
+                    <Button onClick={addServiceToBill} disabled={areServicesLoading}><PlusCircle className="mr-2 h-4 w-4" /> Add Service</Button>
                 </div>
             </div>
         </CardContent>

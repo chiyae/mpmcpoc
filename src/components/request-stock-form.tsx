@@ -1,3 +1,4 @@
+
 "use client"
 
 import { zodResolver } from "@hookform/resolvers/zod"
@@ -9,14 +10,17 @@ import {
   FormControl,
   FormField,
   FormItem,
-  FormLabel,
   FormMessage,
 } from "@/components/ui/form"
 import { Input } from "@/components/ui/input"
-import type { InternalOrder, Item } from "@/lib/types"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "./ui/table"
 import { ScrollArea } from "./ui/scroll-area"
 import { DialogFooter } from "./ui/dialog"
+
+type ItemForRequest = {
+    id: string;
+    name: string;
+}
 
 const formSchema = z.object({
   items: z.array(z.object({
@@ -27,8 +31,8 @@ const formSchema = z.object({
 });
 
 type RequestStockFormProps = {
-  selectedItems: Item[];
-  onSubmit: (order: InternalOrder) => void;
+  selectedItems: ItemForRequest[];
+  onSubmit: (items: { itemId: string; quantity: number }[]) => void;
   onCancel: () => void;
 }
 
@@ -50,18 +54,7 @@ export function RequestStockForm({ selectedItems, onSubmit, onCancel }: RequestS
   });
 
   function handleFormSubmit(values: z.infer<typeof formSchema>) {
-    const newOrder: InternalOrder = {
-      id: `IO-${Date.now()}`,
-      date: new Date().toISOString(),
-      requestedItems: values.items.map(item => ({
-        itemId: item.itemId,
-        quantity: item.quantity,
-      })),
-      status: 'Pending',
-      from: 'Dispensary',
-      to: 'Bulk Store',
-    };
-    onSubmit(newOrder);
+    onSubmit(values.items);
   }
 
   return (

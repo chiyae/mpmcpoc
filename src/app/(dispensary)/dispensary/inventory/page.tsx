@@ -1,3 +1,4 @@
+
 'use client';
 
 import * as React from 'react';
@@ -36,35 +37,87 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
-import { dispensaryItems, internalOrders } from '@/lib/data';
-import type { InternalOrder, Item } from '@/lib/types';
+import type { InternalOrder, Item, Stock } from '@/lib/types';
 import { differenceInDays, parseISO } from 'date-fns';
 import { useToast } from "@/hooks/use-toast";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { RequestStockForm } from '@/components/request-stock-form';
 import { ClipboardList } from 'lucide-react';
 import Link from 'next/link';
+import { useCollection, useFirestore, useMemoFirebase } from '@/firebase';
+import { collection, doc, query, setDoc, where } from 'firebase/firestore';
+import { Skeleton } from '@/components/ui/skeleton';
+
+type DispensaryStockItem = Item & {
+  stockData: Stock;
+};
+
+function formatItemName(item: Item) {
+    let name = item.genericName;
+    if (item.brandName) name += ` (${item.brandName})`;
+    if (item.strengthValue) name += ` ${item.strengthValue}${item.strengthUnit}`;
+    return name;
+}
 
 export default function DispensaryInventoryPage() {
   const { toast } = useToast();
-  const [data, setData] = React.useState<Item[]>(dispensaryItems);
+  const firestore = useFirestore();
+
   const [sorting, setSorting] = React.useState<SortingState>([]);
   const [columnFilters, setColumnFilters] = React.useState<ColumnFiltersState>([]);
   const [columnVisibility, setColumnVisibility] = React.useState<VisibilityState>({});
   const [rowSelection, setRowSelection] = React.useState({});
   const [isRequestStockOpen, setIsRequestStockOpen] = React.useState(false);
 
-  const handleRequestStock = (newOrder: InternalOrder) => {
-    internalOrders.unshift(newOrder);
-    setIsRequestStockOpen(false);
-    table.resetRowSelection();
-    toast({
-      title: "Stock Request Submitted",
-      description: `Order #${newOrder.id} has been sent to the bulk store for processing.`,
-    });
+  // --- Data Fetching ---
+  const itemsQuery = useMemoFirebase(() => firestore ? collection(firestore, 'items') : null, [firestore]);
+  const { data: allItems, isLoading: isLoadingItems } = useCollection<Item>(itemsQuery);
+
+  const stockQuery = useMemoFirebase(() => firestore ? query(collection(firestore, 'stocks'), where('locationId', '==', 'dispensary')) : null, [firestore]);
+  const { data: dispensaryStocks, isLoading: isLoadingStock } = useCollection<Stock>(stockQuery);
+
+  const inventoryData: DispensaryStockItem[] = React.useMemo(() => {
+    if (!allItems || !dispensaryStocks) return [];
+    
+    return dispensaryStocks.map(stock => {
+      const itemInfo = allItems.find(item => item.id === stock.itemId);
+      return {
+        ...itemInfo, // Spread item details
+        stockData: stock, // Keep the original stock document
+      } as DispensaryStockItem;
+    }).filter(item => item.genericName); // Filter out items that couldn't be matched
+  }, [allItems, dispensaryStocks]);
+
+
+  const handleRequestStock = async (items: { itemId: string; quantity: number }[]) => {
+    if (!firestore) return;
+
+    const orderId = `IO-${Date.now()}`;
+    const internalOrderRef = doc(firestore, 'internalOrders', orderId);
+    
+    const newOrder: InternalOrder = {
+        id: orderId,
+        date: new Date().toISOString(),
+        requestingLocationId: 'dispensary',
+        status: 'Pending',
+        items,
+    }
+
+    try {
+        await setDoc(internalOrderRef, newOrder);
+        setIsRequestStockOpen(false);
+        table.resetRowSelection();
+        toast({
+          title: "Stock Request Submitted",
+          description: `Order #${newOrder.id} has been sent to the bulk store for processing.`,
+        });
+    } catch (error) {
+        console.error("Failed to submit stock request:", error);
+        toast({ variant: 'destructive', title: "Submission Failed", description: "Could not submit the stock request." });
+    }
   };
 
-  const columns: ColumnDef<Item>[] = [
+  const columns: ColumnDef<DispensaryStockItem>[] = [
     {
       id: 'select',
       header: ({ table }) => (
@@ -88,7 +141,7 @@ export default function DispensaryInventoryPage() {
       enableHiding: false,
     },
     {
-      accessorKey: 'name',
+      accessorKey: 'genericName',
       header: ({ column }) => {
         return (
           <Button
@@ -100,22 +153,23 @@ export default function DispensaryInventoryPage() {
           </Button>
         );
       },
-      cell: ({ row }) => <div className="capitalize">{row.getValue('name')}</div>,
+      cell: ({ row }) => <div className="capitalize">{formatItemName(row.original)}</div>,
     },
     {
       accessorKey: 'category',
       header: 'Category',
       cell: ({ row }) => (
-        <div className="capitalize">{row.getValue('category')}</div>
+        <div className="capitalize">{row.original.category}</div>
       ),
     },
     {
-      accessorKey: 'quantity',
+      accessorKey: 'currentStockQuantity',
       header: () => <div className="text-right">Quantity</div>,
+      accessorFn: row => row.stockData.currentStockQuantity,
       cell: ({ row }) => {
-        const quantity = parseFloat(row.getValue('quantity'));
+        const quantity = row.original.stockData.currentStockQuantity;
         const { reorderLevel } = row.original;
-        const isLowStock = quantity < reorderLevel;
+        const isLowStock = reorderLevel && quantity < reorderLevel;
   
         return (
           <div className="text-right font-medium">
@@ -133,10 +187,14 @@ export default function DispensaryInventoryPage() {
      {
       accessorKey: 'expiryDate',
       header: 'Expiry Date',
+      accessorFn: row => row.stockData.expiryDate,
       cell: ({ row }) => {
-        const expiryDate = parseISO(row.getValue('expiryDate'));
+        const expiryDateStr = row.original.stockData.expiryDate;
+        if (!expiryDateStr) return <Badge variant="outline">N/A</Badge>;
+
+        const expiryDate = parseISO(expiryDateStr);
         const daysToExpiry = differenceInDays(expiryDate, new Date());
-        let badgeVariant: 'default' | 'secondary' | 'destructive' = 'secondary';
+        let badgeVariant: 'default' | 'secondary' | 'destructive' | 'outline' = 'secondary';
   
         if (daysToExpiry < 0) {
           badgeVariant = 'destructive';
@@ -144,27 +202,14 @@ export default function DispensaryInventoryPage() {
           badgeVariant = 'destructive';
         }
   
-        return <Badge variant={badgeVariant}>{new Date(row.getValue('expiryDate')).toLocaleDateString()}</Badge>;
+        return <Badge variant={badgeVariant}>{new Date(expiryDate).toLocaleDateString()}</Badge>;
   
       },
     },
-    {
-        id: 'actions',
-        cell: ({ row }) => {
-          return (
-            <div className="text-right">
-                <Button variant="outline" size="sm" onClick={() => {
-                  row.toggleSelected(true);
-                  setIsRequestStockOpen(true);
-                }}>Request Stock</Button>
-            </div>
-          )
-        },
-      },
   ];
 
   const table = useReactTable({
-    data,
+    data: inventoryData,
     columns,
     onSortingChange: setSorting,
     onColumnFiltersChange: setColumnFilters,
@@ -183,16 +228,16 @@ export default function DispensaryInventoryPage() {
   });
 
   const selectedItems = table.getFilteredSelectedRowModel().rows.map(row => row.original);
-
+  const isLoading = isLoadingItems || isLoadingStock;
 
   return (
     <div className="w-full">
         <div className="flex items-center justify-between py-4">
             <Input
             placeholder="Filter items..."
-            value={(table.getColumn('name')?.getFilterValue() as string) ?? ''}
+            value={(table.getColumn('genericName')?.getFilterValue() as string) ?? ''}
             onChange={(event) =>
-                table.getColumn('name')?.setFilterValue(event.target.value)
+                table.getColumn('genericName')?.setFilterValue(event.target.value)
             }
             className="max-w-sm"
             />
@@ -205,7 +250,7 @@ export default function DispensaryInventoryPage() {
                 </Button>
                 <Dialog open={isRequestStockOpen} onOpenChange={setIsRequestStockOpen}>
                   <DialogTrigger asChild>
-                    <Button disabled={selectedItems.length === 0}>
+                    <Button disabled={selectedItems.length === 0} onClick={() => setIsRequestStockOpen(true)}>
                       Request New Stock Transfer ({selectedItems.length})
                     </Button>
                   </DialogTrigger>
@@ -217,7 +262,7 @@ export default function DispensaryInventoryPage() {
                       </DialogDescription>
                     </DialogHeader>
                     <RequestStockForm 
-                      selectedItems={selectedItems} 
+                      selectedItems={selectedItems.map(item => ({...item, name: formatItemName(item)}))} 
                       onSubmit={handleRequestStock} 
                       onCancel={() => setIsRequestStockOpen(false)}
                     />
@@ -272,7 +317,10 @@ export default function DispensaryInventoryPage() {
                 ))}
             </TableHeader>
             <TableBody>
-                {table.getRowModel().rows?.length ? (
+                {isLoading && Array.from({length: 5}).map((_, i) => (
+                    <TableRow key={i}><TableCell colSpan={columns.length}><Skeleton className='h-8 w-full' /></TableCell></TableRow>
+                ))}
+                {!isLoading && table.getRowModel().rows?.length ? (
                 table.getRowModel().rows.map((row) => (
                     <TableRow
                     key={row.id}
@@ -288,16 +336,17 @@ export default function DispensaryInventoryPage() {
                     ))}
                     </TableRow>
                 ))
-                ) : (
+                ) : null }
+                {!isLoading && !table.getRowModel().rows?.length ? (
                 <TableRow>
                     <TableCell
                     colSpan={columns.length}
                     className="h-24 text-center"
                     >
-                    No results.
+                    No items in dispensary inventory.
                     </TableCell>
                 </TableRow>
-                )}
+                ) : null}
             </TableBody>
             </Table>
         </div>

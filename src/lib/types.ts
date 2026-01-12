@@ -4,7 +4,7 @@ import { z } from 'zod';
 export type ItemCategory = 'Medicine' | 'Medical Supply' | 'Consumable';
 export type Formulation = "Tablet" | "Capsule" | "Syrup" | "Injection" | "Cream" | "Lotion" | "Medical Supply" | "Consumable";
 
-export type Location = 'Bulk Store' | 'Dispensary';
+export type Location = 'Bulk Store' | 'Dispensary' | 'Billing';
 export type OrderStatus = 'Pending' | 'Approved' | 'Issued' | 'Rejected';
 export type LpoStatus = 'Draft' | 'Sent' | 'Completed' | 'Rejected';
 export type PaymentMethod = 'Cash' | 'Mobile Money' | 'Bank' | 'Invoice';
@@ -30,21 +30,23 @@ export interface Item {
   reorderLevel: number;
   unitCost: number;
   sellingPrice: number;
-  // Deprecated fields from mock data - will be handled in subcollections
-  itemName?: string; // This will be dynamically generated for display
-  batchNumber?: string;
-  expiryDate?: string; // ISO date string
-  quantity?: number;
-  location?: Location;
-  usageHistory?: { date: string; quantity: number }[];
+}
+
+export interface Stock {
+    id: string;
+    itemId: string;
+    batchId: string;
+    locationId: string;
+    currentStockQuantity: number;
+    expiryDate: string; // ISO String
 }
 
 export interface User {
   id: string; // Firebase Auth UID
-  username: string;
+  username: string; // email
   displayName: string;
   role: UserRole;
-  locationId: string; // Reference to a location
+  locationId: string; // e.g. 'bulk-store', 'dispensary', 'billing'
 }
 
 export interface Vendor {
@@ -64,10 +66,9 @@ export interface InternalOrderItem {
 export interface InternalOrder {
   id: string; // Order ID
   date: string; // ISO date string
-  requestedItems: InternalOrderItem[];
+  requestingLocationId: string;
+  items: InternalOrderItem[];
   status: OrderStatus;
-  from: 'Dispensary';
-  to: 'Bulk Store';
 }
 
 export interface BillItem {
@@ -96,6 +97,8 @@ export interface Bill {
   items: BillItem[];
   grandTotal: number;
   paymentDetails: PaymentDetails;
+  dispensingLocationId: string;
+  isDispensed?: boolean; // New field
 }
 
 export interface Service {
@@ -173,5 +176,3 @@ export type GenerateLpoOutput = z.infer<typeof GenerateLpoOutputSchema>;
 export interface Lpo extends GenerateLpoOutput {
   status: 'Pending' | 'Approved' | 'Rejected' | 'Completed';
 }
-
-    

@@ -69,11 +69,16 @@ export default function LoginPage() {
         });
     } catch (error: any) {
         console.error(error);
+        let description = "An unexpected error occurred. Please try again.";
+        if (error.code === 'auth/user-not-found' || error.code === 'auth/wrong-password' || error.code === 'auth/invalid-credential') {
+          description = "Invalid email or password. Please try again.";
+        }
         toast({
             variant: "destructive",
             title: "Sign In Failed",
-            description: "Invalid email or password. Please try again.",
+            description: description,
         });
+    } finally {
         setIsSubmitting(false);
     }
   }
@@ -95,7 +100,7 @@ export default function LoginPage() {
           </div>
           <CardTitle className="text-2xl">Welcome Back</CardTitle>
           <CardDescription>
-            Enter your credentials to access your dashboard.
+            Enter your credentials to access your dashboard. Use <strong>admin@example.com</strong> and <strong>admin123</strong>.
           </CardDescription>
         </CardHeader>
         <CardContent>

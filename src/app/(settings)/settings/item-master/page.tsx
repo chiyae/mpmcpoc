@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import * as React from 'react';
@@ -264,7 +265,7 @@ export default function ItemMasterPage() {
                       <DialogHeader>
                         <DialogTitle>Add New Master Item</DialogTitle>
                         <DialogDescription>
-                          Define a new item that can be stocked in inventory.
+                          Define a new item that can be stocked in inventory. The item code will be generated automatically.
                         </DialogDescription>
                       </DialogHeader>
                       <AddItemForm onAddItem={handleAddItem} />
@@ -385,3 +386,5 @@ export default function ItemMasterPage() {
     </div>
   );
 }
+
+    

@@ -1,3 +1,4 @@
+
 import { z } from 'zod';
 
 export type ItemCategory = 'Medicine' | 'Medical Supply' | 'Consumable';
@@ -30,7 +31,7 @@ export interface Item {
   unitCost: number;
   sellingPrice: number;
   // Deprecated fields from mock data - will be handled in subcollections
-  itemName?: string;
+  itemName?: string; // This will be dynamically generated for display
   batchNumber?: string;
   expiryDate?: string; // ISO date string
   quantity?: number;
@@ -172,3 +173,5 @@ export type GenerateLpoOutput = z.infer<typeof GenerateLpoOutputSchema>;
 export interface Lpo extends GenerateLpoOutput {
   status: 'Pending' | 'Approved' | 'Rejected' | 'Completed';
 }
+
+    

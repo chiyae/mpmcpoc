@@ -1,7 +1,8 @@
+
 "use client"
 
 import { zodResolver } from "@hookform/resolvers/zod"
-import { useForm } from "react-hook-form"
+import { useForm, useWatch } from "react-hook-form"
 import { z } from "zod"
 import { Button } from "@/components/ui/button"
 import {
@@ -24,61 +25,77 @@ import {
 import type { Item } from "@/lib/types"
 
 const formSchema = z.object({
-  id: z.string().min(2, { message: "Item code must be at least 2 characters." }),
-  name: z.string().min(2, { message: "Item name must be at least 2 characters." }),
+  genericName: z.string().min(2, "Generic name is required."),
+  brandName: z.string().optional(),
+  formulation: z.enum(["Tablet", "Capsule", "Syrup", "Injection", "Cream", "Lotion", "Medical Supply", "Consumable"]),
+  strengthValue: z.coerce.number().optional(),
+  strengthUnit: z.string().optional(),
+  concentrationValue: z.coerce.number().optional(),
+  concentrationUnit: z.string().optional(),
+  packageSizeValue: z.coerce.number().optional(),
+  packageSizeUnit: z.string().optional(),
   category: z.enum(["Medicine", "Medical Supply", "Consumable"]),
-  unitOfMeasure: z.string().min(1, { message: "Unit of measure is required." }),
-  batchNumber: z.string().min(1, { message: "Batch number is required." }),
-  expiryDate: z.string().refine((val) => {
-    const regex = /^(0[1-9]|[12][0-9]|3[01])\/(0[1-9]|1[0-2])\/\d{4}$/;
-    if (!regex.test(val)) return false;
-    const [day, month, year] = val.split('/').map(Number);
-    const date = new Date(year, month - 1, day);
-    return date.getFullYear() === year && date.getMonth() === month - 1 && date.getDate() === day;
-  }, { message: "Invalid date format. Use DD/MM/YYYY." }).refine((val) => {
-    const [day, month, year] = val.split('/').map(Number);
-    const date = new Date(year, month - 1, day);
-    return date > new Date();
-  }, { message: "Expiry date must be in the future." }),
-  quantity: z.coerce.number().int().positive({ message: "Quantity must be a positive number." }),
-  reorderLevel: z.coerce.number().int().positive({ message: "Reorder level must be a positive number." }),
-  unitCost: z.coerce.number().positive({ message: "Unit cost must be a positive number." }),
-  sellingPrice: z.coerce.number().positive({ message: "Selling price must be a positive number." }),
-})
+  unitOfMeasure: z.string().min(1, "Unit of measure is required."),
+  reorderLevel: z.coerce.number().int().nonnegative(),
+  unitCost: z.coerce.number().nonnegative(),
+  sellingPrice: z.coerce.number().nonnegative(),
+}).refine(data => {
+    if (["Tablet", "Capsule"].includes(data.formulation)) {
+        return !!data.strengthValue && !!data.strengthUnit;
+    }
+    return true;
+}, {
+    message: "Strength and unit are required for Tablets/Capsules.",
+    path: ["strengthValue"],
+}).refine(data => {
+    if (["Syrup", "Injection", "Cream", "Lotion"].includes(data.formulation)) {
+        return !!data.packageSizeValue && !!data.packageSizeUnit;
+    }
+    return true;
+}, {
+    message: "Package size and unit are required for this formulation.",
+    path: ["packageSizeValue"],
+}).refine(data => {
+    if (["Syrup", "Injection"].includes(data.formulation)) {
+        return !!data.concentrationValue && !!data.concentrationUnit;
+    }
+    return true;
+}, {
+    message: "Concentration and unit are required for Syrups/Injections.",
+    path: ["concentrationValue"],
+});
+
 
 type AddItemFormProps = {
-  onAddItem: (item: Item) => void;
+  onAddItem: (item: Omit<Item, 'id' | 'itemCode'>) => Promise<void>;
 }
 
 export function AddItemForm({ onAddItem }: AddItemFormProps) {
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
     defaultValues: {
-      id: "",
-      name: "",
+      genericName: "",
+      brandName: "",
       unitOfMeasure: "",
-      batchNumber: "",
-      expiryDate: "",
-      quantity: 0,
       reorderLevel: 0,
       unitCost: 0,
       sellingPrice: 0,
     },
   })
 
-  function onSubmit(values: z.infer<typeof formSchema>) {
-    const [day, month, year] = values.expiryDate.split('/').map(Number);
-    const isoDate = new Date(year, month - 1, day).toISOString();
+  const formulation = useWatch({
+    control: form.control,
+    name: "formulation",
+  });
 
-    const newItem: Item = {
-      ...values,
-      expiryDate: isoDate,
-      location: "Bulk Store",
-      usageHistory: [],
-    };
-    onAddItem(newItem);
+  async function onSubmit(values: z.infer<typeof formSchema>) {
+    await onAddItem(values);
     form.reset();
   }
+
+  const isSolid = formulation === 'Tablet' || formulation === 'Capsule';
+  const isLiquid = formulation === 'Syrup' || formulation === 'Injection';
+  const isTopical = formulation === 'Cream' || formulation === 'Lotion';
 
   return (
     <Form {...form}>
@@ -86,12 +103,12 @@ export function AddItemForm({ onAddItem }: AddItemFormProps) {
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <FormField
             control={form.control}
-            name="name"
+            name="genericName"
             render={({ field }) => (
               <FormItem>
-                <FormLabel>Item Name</FormLabel>
+                <FormLabel>Generic Name</FormLabel>
                 <FormControl>
-                  <Input placeholder="e.g. Paracetamol 500mg" {...field} />
+                  <Input placeholder="e.g. Paracetamol" {...field} />
                 </FormControl>
                 <FormMessage />
               </FormItem>
@@ -99,12 +116,12 @@ export function AddItemForm({ onAddItem }: AddItemFormProps) {
           />
           <FormField
             control={form.control}
-            name="id"
+            name="brandName"
             render={({ field }) => (
               <FormItem>
-                <FormLabel>Item Code</FormLabel>
+                <FormLabel>Brand Name (Optional)</FormLabel>
                 <FormControl>
-                  <Input placeholder="e.g. PAR500" {...field} />
+                  <Input placeholder="e.g. Panadol" {...field} />
                 </FormControl>
                 <FormMessage />
               </FormItem>
@@ -113,87 +130,157 @@ export function AddItemForm({ onAddItem }: AddItemFormProps) {
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <FormField
-            control={form.control}
-            name="category"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>Category</FormLabel>
-                <Select onValueChange={field.onChange} defaultValue={field.value}>
-                  <FormControl>
-                    <SelectTrigger>
-                      <SelectValue placeholder="Select a category" />
-                    </SelectTrigger>
-                  </FormControl>
-                  <SelectContent>
-                    <SelectItem value="Medicine">Medicine</SelectItem>
-                    <SelectItem value="Medical Supply">Medical Supply</SelectItem>
-                    <SelectItem value="Consumable">Consumable</SelectItem>
-                  </SelectContent>
-                </Select>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
-          <FormField
+            <FormField
+                control={form.control}
+                name="formulation"
+                render={({ field }) => (
+                <FormItem>
+                    <FormLabel>Formulation</FormLabel>
+                    <Select onValueChange={field.onChange} defaultValue={field.value}>
+                    <FormControl>
+                        <SelectTrigger>
+                        <SelectValue placeholder="Select a formulation" />
+                        </SelectTrigger>
+                    </FormControl>
+                    <SelectContent>
+                        <SelectItem value="Tablet">Tablet</SelectItem>
+                        <SelectItem value="Capsule">Capsule</SelectItem>
+                        <SelectItem value="Syrup">Syrup</SelectItem>
+                        <SelectItem value="Injection">Injection</SelectItem>
+                        <SelectItem value="Cream">Cream</SelectItem>
+                        <SelectItem value="Lotion">Lotion</SelectItem>
+                        <SelectItem value="Medical Supply">Medical Supply</SelectItem>
+                        <SelectItem value="Consumable">Consumable</SelectItem>
+                    </SelectContent>
+                    </Select>
+                    <FormMessage />
+                </FormItem>
+                )}
+            />
+             <FormField
+                control={form.control}
+                name="category"
+                render={({ field }) => (
+                <FormItem>
+                    <FormLabel>Category</FormLabel>
+                    <Select onValueChange={field.onChange} defaultValue={field.value}>
+                    <FormControl>
+                        <SelectTrigger>
+                        <SelectValue placeholder="Select a category" />
+                        </SelectTrigger>
+                    </FormControl>
+                    <SelectContent>
+                        <SelectItem value="Medicine">Medicine</SelectItem>
+                        <SelectItem value="Medical Supply">Medical Supply</SelectItem>
+                        <SelectItem value="Consumable">Consumable</SelectItem>
+                    </SelectContent>
+                    </Select>
+                    <FormMessage />
+                </FormItem>
+                )}
+            />
+        </div>
+
+        {(isSolid || (isTopical && !isLiquid)) && (
+            <div className="grid grid-cols-2 gap-4">
+                <FormField
+                    control={form.control}
+                    name="strengthValue"
+                    render={({ field }) => (
+                    <FormItem>
+                        <FormLabel>Strength</FormLabel>
+                        <FormControl><Input type="number" placeholder="500" {...field} /></FormControl>
+                        <FormMessage />
+                    </FormItem>
+                    )}
+                />
+                <FormField
+                    control={form.control}
+                    name="strengthUnit"
+                    render={({ field }) => (
+                    <FormItem>
+                        <FormLabel>Unit</FormLabel>
+                        <FormControl><Input placeholder="mg" {...field} /></FormControl>
+                        <FormMessage />
+                    </FormItem>
+                    )}
+                />
+            </div>
+        )}
+
+        {isLiquid && (
+            <div className="grid grid-cols-2 gap-4">
+                 <FormField
+                    control={form.control}
+                    name="concentrationValue"
+                    render={({ field }) => (
+                    <FormItem>
+                        <FormLabel>Concentration</FormLabel>
+                        <FormControl><Input type="number" placeholder="250" {...field} /></FormControl>
+                        <FormMessage />
+                    </FormItem>
+                    )}
+                />
+                 <FormField
+                    control={form.control}
+                    name="concentrationUnit"
+                    render={({ field }) => (
+                    <FormItem>
+                        <FormLabel>Unit</FormLabel>
+                        <FormControl><Input placeholder="mg/5ml" {...field} /></FormControl>
+                        <FormMessage />
+                    </FormItem>
+                    )}
+                />
+            </div>
+        )}
+
+        {(isLiquid || isTopical) && (
+             <div className="grid grid-cols-2 gap-4">
+                <FormField
+                    control={form.control}
+                    name="packageSizeValue"
+                    render={({ field }) => (
+                    <FormItem>
+                        <FormLabel>Package Size</FormLabel>
+                        <FormControl><Input type="number" placeholder="100" {...field} /></FormControl>
+                        <FormMessage />
+                    </FormItem>
+                    )}
+                />
+                <FormField
+                    control={form.control}
+                    name="packageSizeUnit"
+                    render={({ field }) => (
+                    <FormItem>
+                        <FormLabel>Unit</FormLabel>
+                        <FormControl><Input placeholder="ml" {...field} /></FormControl>
+                        <FormMessage />
+                    </FormItem>
+                    )}
+                />
+            </div>
+        )}
+
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+           <FormField
             control={form.control}
             name="unitOfMeasure"
             render={({ field }) => (
               <FormItem>
                 <FormLabel>Unit of Measure</FormLabel>
                 <FormControl>
-                  <Input placeholder="e.g. tablets, boxes" {...field} />
+                  <Input placeholder="e.g. tablets, bottle" {...field} />
                 </FormControl>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
-        </div>
-
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <FormField
-            control={form.control}
-            name="batchNumber"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>Batch Number</FormLabel>
-                <FormControl>
-                  <Input placeholder="e.g. B12345" {...field} />
-                </FormControl>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
-          <FormField
-            control={form.control}
-            name="expiryDate"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>Expiry Date</FormLabel>
-                <FormControl>
-                  <Input placeholder="DD/MM/YYYY" {...field} />
-                </FormControl>
+                 <FormDescription>The base unit for transactions.</FormDescription>
                 <FormMessage />
               </FormItem>
             )}
           />
         </div>
         
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           <FormField
-            control={form.control}
-            name="quantity"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>Initial Quantity</FormLabel>
-                <FormControl>
-                  <Input type="number" {...field} />
-                </FormControl>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
-           <FormField
             control={form.control}
             name="reorderLevel"
             render={({ field }) => (
@@ -206,15 +293,12 @@ export function AddItemForm({ onAddItem }: AddItemFormProps) {
               </FormItem>
             )}
           />
-        </div>
-
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
            <FormField
             control={form.control}
             name="unitCost"
             render={({ field }) => (
               <FormItem>
-                <FormLabel>Unit Cost ($)</FormLabel>
+                <FormLabel>Unit Cost (USD)</FormLabel>
                 <FormControl>
                   <Input type="number" step="0.01" {...field} />
                 </FormControl>
@@ -227,7 +311,7 @@ export function AddItemForm({ onAddItem }: AddItemFormProps) {
             name="sellingPrice"
             render={({ field }) => (
               <FormItem>
-                <FormLabel>Selling Price ($)</FormLabel>
+                <FormLabel>Selling Price (USD)</FormLabel>
                 <FormControl>
                   <Input type="number" step="0.01" {...field} />
                 </FormControl>
@@ -238,9 +322,13 @@ export function AddItemForm({ onAddItem }: AddItemFormProps) {
         </div>
 
         <div className="flex justify-end pt-4">
-            <Button type="submit">Add Item</Button>
+            <Button type="submit" disabled={form.formState.isSubmitting}>
+              {form.formState.isSubmitting ? 'Adding...' : 'Add Item'}
+            </Button>
         </div>
       </form>
     </Form>
   )
 }
+
+    

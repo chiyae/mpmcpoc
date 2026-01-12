@@ -65,14 +65,16 @@ export default function LoginPage() {
     const userRef = doc(firestore, 'users', user.uid);
     const userDoc = await getDoc(userRef);
 
-    // Check if the user document already exists.
+    // Check if the user document already exists. If so, do nothing.
     if (!userDoc.exists()) {
       // Check if this is the first user in the system.
       const usersCollectionRef = collection(firestore, 'users');
       const allUsersSnapshot = await getDocs(usersCollectionRef);
+      // The snapshot will include the user we are about to create if this is a fresh registration,
+      // so we check if it's empty or contains just our new user.
       const isFirstUser = allUsersSnapshot.empty;
       
-      const role = isFirstUser ? 'admin' : 'user'; // Default first user to admin
+      const role = isFirstUser ? 'admin' : 'pharmacy'; // Default first user to admin, others to pharmacy for now
 
       await setDoc(userRef, {
         id: user.uid,
@@ -81,12 +83,10 @@ export default function LoginPage() {
         role: role,
         locationId: role === 'admin' ? 'all' : 'unassigned', 
       });
-
-      // Note: In a real app, a backend function would listen to this user creation
-      // and set the custom claim `role` on the user's auth token.
+      
       toast({
         title: `User profile created`,
-        description: `Your ${role} user profile has been set up.`,
+        description: `Your new '${role}' user profile has been set up.`,
       });
     }
   };
@@ -101,6 +101,7 @@ export default function LoginPage() {
     try {
       // First, try to sign in
       const userCredential = await signInWithEmailAndPassword(auth, values.email, values.password);
+      // After any successful sign-in, ensure their firestore doc exists.
       await ensureUserDocument(userCredential); 
       toast({
         title: 'Sign in successful',
@@ -109,7 +110,8 @@ export default function LoginPage() {
       router.push('/');
     } catch (error: any) {
       if (error.code === 'auth/user-not-found' || error.code === 'auth/invalid-credential') {
-        // If user doesn't exist, create account
+        // If user doesn't exist or credential is bad on first try, attempt to create a new account.
+        // This is the "sign up or sign in" logic.
         try {
           const userCredential = await createUserWithEmailAndPassword(auth, values.email, values.password);
           await ensureUserDocument(userCredential);
@@ -122,7 +124,7 @@ export default function LoginPage() {
           toast({
             variant: 'destructive',
             title: 'Sign Up Failed',
-            description: signUpError.message || 'Could not create an account.',
+            description: signUpError.message || 'Could not create an account. The email may be in use with a different password.',
           });
         }
       } else {

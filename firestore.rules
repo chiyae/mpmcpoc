@@ -1,194 +1,28 @@
 rules_version = '2';
 
-/**
- * @file firestore.rules
- * @description Security rules for the MediTrack Pro Firestore database.
- *
- * @section Core Philosophy
- * This ruleset implements a location-based and role-based access control model. A user's ability
- * to read or write data is determined by their assigned location ('Bulk Store' or 'Dispensary')
- * and their role ('admin', 'cashier', 'pharmacy'), which are stored in their user profile document.
- *
- * @section Data Structure
- * The database is organized with top-level collections for global data (`/items`, `/locations`)
- * and user profiles (`/users`). Location-specific data is nested within the relevant `/locations/{locationId}` document tree.
- *
- * @section Key Security Decisions
- * - Role-Based Access: Most write operations are restricted by user role.
- * - Location-Based Access: Authorization checks for operational data often depend on matching
- *   the user's assigned `locationId` with the location associated with the data.
- * - Global Data Read-Only: Core inventory definitions (`/items`) and business locations (`/locations`)
- *   are readable by any authenticated user but are not writable from the client.
- * - User Management: Only admins can create, update, or delete other user profiles. Users can read their own profile.
- * - Secure by Default: Access is denied by default. Rules explicitly grant permissions only
- *   when specific, verifiable conditions are met.
- */
 service cloud.firestore {
   match /databases/{database}/documents {
-
-    // -------------------------------------------------------------------------
-    // Helper Functions
-    // -------------------------------------------------------------------------
-
-    /**
-     * Checks if the user is authenticated.
-     */
-    function isSignedIn() {
-      return request.auth != null;
-    }
-
-    /**
-     * Retrieves the user's profile document data.
-     */
-    function getUserData(userId) {
-      return get(/databases/$(database)/documents/users/$(userId)).data;
+    
+    function isUser(userId) {
+      return request.auth != null && request.auth.uid == userId;
     }
     
-    /**
-     * Checks if the authenticated user has a specific role.
-     */
-    function hasRole(role) {
-      return isSignedIn() && getUserData(request.auth.uid).role == role;
-    }
-
-    /**
-     * Checks if the authenticated user is an admin.
-     */
     function isAdmin() {
-      return hasRole('admin');
+      // Check for the role in the user's own document
+      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin';
     }
 
-    /**
-     * Retrieves the locationId from the currently authenticated user's profile document.
-     */
-    function userLocation() {
-      return getUserData(request.auth.uid).locationId;
-    }
-
-    /**
-     * Checks if the authenticated user is assigned to the specified location.
-     */
-    function isUserInLocation(locationId) {
-      return isSignedIn() && (userLocation() == locationId || isAdmin());
-    }
-
-    // -------------------------------------------------------------------------
-    // User Profiles
-    // -------------------------------------------------------------------------
-
-    /**
-     * @description Manages user profile data.
-     * @path /users/{userId}
-     * @allow (get) A user can read their own profile. An admin can read any profile.
-     * @allow (list) An admin can list all user profiles.
-     * @allow (create, update, delete) Only admins can create, update, or delete user profiles.
-     * @principle Enforces admin control over user management.
-     */
     match /users/{userId} {
-      allow list: if isSignedIn() && getUserData(request.auth.uid).role == "admin";
-      allow get: if isSignedIn() && (request.auth.uid == userId || getUserData(request.auth.uid).role == "admin");
-      allow create, update, delete: if isAdmin();
-    }
-
-    // -------------------------------------------------------------------------
-    // Core Business Data (Read-Only for most clients)
-    // -------------------------------------------------------------------------
-
-    /**
-     * @description Defines storage locations like 'Bulk Store' or 'Dispensary'.
-     * @path /locations/{locationId}
-     * @allow (read) Any authenticated user can read location information.
-     * @deny (write) Locations cannot be modified by clients to ensure data integrity.
-     */
-    match /locations/{locationId} {
-      allow read: if isSignedIn();
-      allow write: if false;
-    }
-
-    /**
-     * @description Defines general information about inventory items.
-     * @path /items/{itemId}
-     * @allow (read) Any authenticated user can read item definitions.
-     * @deny (write) Items cannot be modified by clients.
-     */
-    match /items/{itemId} {
-      allow read: if isSignedIn();
-      allow write: if isAdmin(); // Only admin can create/update items
-    }
-
-    /**
-     * @description Defines a specific batch of an item, including expiry date.
-     * @path /items/{itemId}/batches/{batchId}
-     * @allow (read) Any authenticated user can read batch information.
-     * @deny (write) Batches cannot be modified by clients.
-     */
-    match /items/{itemId}/batches/{batchId} {
-      allow read: if isSignedIn();
-      allow write: if isAdmin(); // Only admin can manage batches
-    }
-
-    // -------------------------------------------------------------------------
-    // Location-Specific & Role-Based Data
-    // -------------------------------------------------------------------------
-
-    /**
-     * @description Manages stock levels for a specific batch at a specific location.
-     * @path /items/{itemId}/batches/{batchId}/stocks/{stockId}
-     * @allow (read) Users can read stock data for their location.
-     * @allow (write) Users with 'pharmacy' role can write stock data for their location.
-     */
-    match /items/{itemId}/batches/{batchId}/stocks/{stockId} {
-      allow read: if isSignedIn() && isUserInLocation(resource.data.locationId);
-      allow write: if hasRole('pharmacy') && isUserInLocation(request.resource.data.locationId);
-    }
-    
-    /**
-     * @description Represents a transfer of stock between two locations.
-     * @path /items/{itemId}/stockTransfers/{stockTransferId}
-     * @allow (read, write) Users with 'pharmacy' role from either the source or destination can manage transfers.
-     */
-    match /items/{itemId}/stockTransfers/{stockTransferId} {
-      allow read: if isSignedIn() && (isUserInLocation(resource.data.fromLocationId) || isUserInLocation(resource.data.toLocationId));
-      allow write: if hasRole('pharmacy') && (isUserInLocation(request.resource.data.fromLocationId) || isUserInLocation(request.resource.data.toLocationId));
-    }
-
-    /**
-     * @description Manages internal orders placed by a specific location.
-     * @path /locations/{locationId}/internalOrders/{internalOrderId}
-     * @allow (read, write) 'pharmacy' users can manage orders for their assigned location.
-     */
-    match /locations/{locationId}/internalOrders/{internalOrderId} {
-      allow read: if hasRole('pharmacy') && isUserInLocation(locationId);
-      allow write: if hasRole('pharmacy') && isUserInLocation(locationId);
-    }
-
-    /**
-     * @description Represents the line items within an internal order.
-     * @path /locations/{locationId}/internalOrders/{internalOrderId}/orderItems/{orderItemId}
-     * @allow (read, write) Inherits permissions from the parent internal order.
-     */
-    match /locations/{locationId}/internalOrders/{internalOrderId}/orderItems/{orderItemId} {
-      allow read, write: if hasRole('pharmacy') && isUserInLocation(locationId);
-    }
-    
-    /**
-     * @description Manages patient bills generated at a specific location.
-     * @path /locations/{locationId}/billings/{billingId}
-     * @allow (read, write) 'cashier' users can manage bills for their assigned location.
-     */
-    match /locations/{locationId}/billings/{billingId} {
-      allow read: if (hasRole('cashier') || hasRole('pharmacy')) && isUserInLocation(locationId);
-      allow write: if hasRole('cashier') && isUserInLocation(locationId);
-    }
-
-    /**
-     * @description Represents the line items within a patient bill.
-     * @path /locations/{locationId}/billings/{billingId}/billingItems/{billingItemId}
-     * @allow (read, write) Inherits permissions from the parent bill.
-     */
-    match /locations/{locationId}/billings/{billingId}/billingItems/{billingItemId} {
-      allow read: if (hasRole('cashier') || hasRole('pharmacy')) && isUserInLocation(locationId);
-      allow write: if hasRole('cashier') && isUserInLocation(locationId);
+      // Admins can list all users.
+      allow list: if isAdmin();
+      
+      // A user can get their own document, or an admin can get any document.
+      allow get: if isUser(userId) || isAdmin();
+      
+      // Admins can create, update, and delete any user.
+      // A user can update their own document.
+      allow create, delete: if isAdmin();
+      allow update: if isUser(userId) || isAdmin();
     }
   }
 }

@@ -75,11 +75,12 @@ export default function LoginPage() {
     const usersCollectionRef = collection(firestore, 'users');
     const allUsersSnapshot = await getDocs(usersCollectionRef);
     
-    // If the snapshot is empty after creating the auth user, this is the very first user document.
+    // The first user document to ever be created is the admin.
     const isFirstUser = allUsersSnapshot.empty;
     
     const role = isFirstUser ? 'admin' : 'pharmacy';
-    const locationId = 'unassigned';
+    // Assign a default location. Admins can change this later.
+    const locationId = isFirstUser ? 'all' : 'unassigned';
 
     await setDoc(userRef, {
       id: user.uid,

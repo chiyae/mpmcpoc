@@ -93,7 +93,7 @@ export default function SupplierManagementPage() {
                         Fill out the form below to add a new vendor.
                     </DialogDescription>
                 </DialogHeader>
-                <AddVendorForm onVendorAdded={handleVendorAdded} allItems={allItems || []} />
+                <AddVendorForm onVendorAdded={handleVendorAdded} />
             </DialogContent>
         </Dialog>
       </div>
@@ -111,14 +111,13 @@ export default function SupplierManagementPage() {
                 <TableRow>
                     <TableHead>Vendor Name</TableHead>
                     <TableHead>Contact</TableHead>
-                    <TableHead>Supplied Items</TableHead>
                     <TableHead>Actions</TableHead>
                 </TableRow>
             </TableHeader>
             <TableBody>
                 {isLoading && Array.from({ length: 3 }).map((_, i) => (
                     <TableRow key={i}>
-                        <TableCell colSpan={4}><Skeleton className="h-8 w-full" /></TableCell>
+                        <TableCell colSpan={3}><Skeleton className="h-8 w-full" /></TableCell>
                     </TableRow>
                 ))}
                 {!isLoading && vendors && vendors.map(vendor => (
@@ -129,9 +128,6 @@ export default function SupplierManagementPage() {
                                 <span className="text-sm">{vendor.email}</span>
                                 <span className="text-xs text-muted-foreground">{vendor.contactPerson} ({vendor.phone})</span>
                             </div>
-                        </TableCell>
-                        <TableCell>
-                            <Badge variant="secondary">{vendor.supplies.length} items</Badge>
                         </TableCell>
                         <TableCell>
                             <Button variant="ghost" size="sm">Edit</Button>
@@ -148,3 +144,5 @@ export default function SupplierManagementPage() {
     </div>
   );
 }
+
+    

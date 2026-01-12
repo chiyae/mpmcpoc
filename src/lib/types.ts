@@ -41,7 +41,6 @@ export interface Vendor {
   contactPerson?: string;
   email: string;
   phone?: string;
-  supplies: string[]; // Array of item IDs they supply
 }
 
 export interface InternalOrderItem {

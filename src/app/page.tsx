@@ -1,89 +1,38 @@
-import Link from "next/link";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
-import { Pill, Warehouse, DollarSign } from "lucide-react";
-import Logo from "@/components/logo";
+'use client';
+
+import { useEffect } from 'react';
+import { useRouter } from 'next/navigation';
+import { useUser } from '@/firebase';
+import { Skeleton } from '@/components/ui/skeleton';
 
 export default function Home() {
-  return (
-    <div className="flex flex-col items-center justify-center min-h-screen bg-background p-4">
-      <div className="text-center mb-12">
-        <Logo className="text-5xl font-bold justify-center mb-2" />
-        <p className="text-muted-foreground text-lg">
-          Your lightweight inventory management system for clinics.
-        </p>
-      </div>
+  const { user, isUserLoading } = useUser();
+  const router = useRouter();
 
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-8 max-w-6xl w-full">
-        <Link href="/bulk-store/dashboard">
-          <Card className="hover:border-primary transition-all duration-300 transform hover:scale-105 hover:shadow-xl">
-            <CardHeader className="items-center text-center">
-              <div className="p-4 bg-primary/10 rounded-full mb-4">
-                <Warehouse className="w-10 h-10 text-primary" />
-              </div>
-              <CardTitle className="text-2xl font-headline">
-                Bulk Store
-              </CardTitle>
-              <CardDescription>
-                Manage main inventory, stock transfers, and internal orders.
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="text-center text-primary font-semibold">
-                Enter Bulk Store
-              </div>
-            </CardContent>
-          </Card>
-        </Link>
-        <Link href="/dispensary/dashboard">
-          <Card className="hover:border-primary transition-all duration-300 transform hover:scale-105 hover:shadow-xl">
-            <CardHeader className="items-center text-center">
-              <div className="p-4 bg-accent/10 rounded-full mb-4">
-                <Pill className="w-10 h-10 text-accent-foreground" />
-              </div>
-              <CardTitle className="text-2xl font-headline">
-                Dispensary
-              </CardTitle>
-              <CardDescription>
-                Dispense items and manage local stock levels.
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="text-center text-primary font-semibold">
-                Enter Dispensary
-              </div>
-            </CardContent>
-          </Card>
-        </Link>
-        <Link href="/billing/dashboard">
-          <Card className="hover:border-primary transition-all duration-300 transform hover:scale-105 hover:shadow-xl">
-            <CardHeader className="items-center text-center">
-              <div className="p-4 bg-green-500/10 rounded-full mb-4">
-                <DollarSign className="w-10 h-10 text-green-500" />
-              </div>
-              <CardTitle className="text-2xl font-headline">
-                Billing
-              </CardTitle>
-              <CardDescription>
-                Handle patient billing, invoices, and payments.
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="text-center text-primary font-semibold">
-                Enter Billing
-              </div>
-            </CardContent>
-          </Card>
-        </Link>
+  useEffect(() => {
+    if (!isUserLoading) {
+      if (user) {
+        // In a real app with roles, you'd redirect based on user.role
+        // For now, we'll default to the bulk-store dashboard.
+        router.push('/bulk-store/dashboard');
+      } else {
+        router.push('/login');
+      }
+    }
+  }, [user, isUserLoading, router]);
+
+  // Display a loading state while checking for the user
+  return (
+     <div className="flex flex-col items-center justify-center min-h-screen bg-background p-4">
+      <div className="space-y-4">
+        <Skeleton className="h-12 w-64" />
+        <Skeleton className="h-8 w-80" />
+        <div className="flex justify-center gap-4 pt-8">
+            <Skeleton className="h-48 w-64" />
+            <Skeleton className="h-48 w-64" />
+            <Skeleton className="h-48 w-64" />
+        </div>
       </div>
-      <footer className="mt-16 text-center text-sm text-muted-foreground">
-        <p>&copy; {new Date().getFullYear()} MediTrack Pro. All Rights Reserved.</p>
-      </footer>
     </div>
   );
 }

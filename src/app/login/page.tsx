@@ -25,7 +25,7 @@ import Logo from '@/components/logo';
 import { useAuth, useFirestore, useUser } from '@/firebase';
 import { useRouter } from 'next/navigation';
 import { useToast } from '@/hooks/use-toast';
-import { signInWithEmailAndPassword } from 'firebase/auth';
+import { createUserWithEmailAndPassword, signInWithEmailAndPassword } from 'firebase/auth';
 import { Skeleton } from '@/components/ui/skeleton';
 import { doc, getDoc, setDoc } from 'firebase/firestore';
 
@@ -58,6 +58,36 @@ export default function LoginPage() {
     }
   }, [user, isUserLoading, router]);
 
+  async function handleUserCreation(signedInUser: any) {
+    if (!firestore) return;
+    const userDocRef = doc(firestore, 'users', signedInUser.uid);
+    const userDocSnap = await getDoc(userDocRef);
+
+    if (!userDocSnap.exists()) {
+      // For the very first user, assign 'admin' role. Otherwise, 'pharmacy'.
+      // This is a simplified bootstrap logic. A real app might have a different process.
+      const isFirstUser = signedInUser.email === 'admin@example.com';
+      const userRole = isFirstUser ? 'admin' : 'pharmacy';
+
+      await setDoc(userDocRef, {
+        id: signedInUser.uid,
+        username: signedInUser.email,
+        displayName: signedInUser.email?.split('@')[0] || 'New User',
+        role: userRole, 
+        locationId: isFirstUser ? 'all' : 'dispensary',
+      });
+      toast({
+        title: 'Welcome!',
+        description: 'Your user profile has been created.',
+      });
+    } else {
+       toast({
+        title: 'Sign in successful',
+        description: 'Redirecting to your dashboard...',
+      });
+    }
+  }
+
   async function onSubmit(values: z.infer<typeof formSchema>) {
     if (!auth || !firestore) {
       toast({ variant: 'destructive', title: 'Firebase not initialized.' });
@@ -66,45 +96,30 @@ export default function LoginPage() {
     setIsSubmitting(true);
 
     try {
+      // First, try to sign in the user.
       const userCredential = await signInWithEmailAndPassword(auth, values.email, values.password);
-      const signedInUser = userCredential.user;
-
-      const userDocRef = doc(firestore, 'users', signedInUser.uid);
-      const userDocSnap = await getDoc(userDocRef);
-
-      if (!userDocSnap.exists()) {
-        await setDoc(userDocRef, {
-          id: signedInUser.uid,
-          username: signedInUser.email,
-          displayName: signedInUser.email?.split('@')[0] || 'New User',
-          // The default role for a self-registered user.
-          // An admin can change this later in the user management page.
-          role: 'pharmacy', 
-          locationId: 'all',
-        });
-         toast({
-          title: 'Welcome!',
-          description: 'Your user profile has been created.',
-        });
-      } else {
-        toast({
-          title: 'Sign in successful',
-          description: 'Redirecting to your dashboard...',
-        });
-      }
-
+      await handleUserCreation(userCredential.user);
     } catch (error: any) {
-      let errorMessage = "An unexpected error occurred during sign-in.";
+      // If sign-in fails because the user doesn't exist, create a new account.
       if (error.code === 'auth/user-not-found' || error.code === 'auth/invalid-credential') {
-        errorMessage = "Invalid email or password. Please try again.";
+        try {
+          const newUserCredential = await createUserWithEmailAndPassword(auth, values.email, values.password);
+          await handleUserCreation(newUserCredential.user);
+        } catch (creationError: any) {
+          toast({
+            variant: 'destructive',
+            title: 'Sign Up Failed',
+            description: creationError.message || 'Could not create a new account.',
+          });
+        }
       } else {
-        errorMessage = error.message;
+        // Handle other sign-in errors.
+        toast({
+          variant: 'destructive',
+          title: 'Sign In Failed',
+          description: error.message || 'An unexpected error occurred.',
+        });
       }
-      toast({
-        variant: 'destructive',
-        title: 'Sign In Failed',
-        description: errorMessage,
-      });
     } finally {
       setIsSubmitting(false);
     }
@@ -129,9 +144,9 @@ export default function LoginPage() {
           <div className="mb-4 flex justify-center">
             <Logo />
           </div>
-          <CardTitle className="text-2xl">Sign In</CardTitle>
+          <CardTitle className="text-2xl">Sign In or Sign Up</CardTitle>
           <CardDescription>
-            Enter your credentials to access the system.
+            Enter your credentials to access the system. A new account will be created if one doesn't exist.
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -168,7 +183,7 @@ export default function LoginPage() {
                 )}
               />
               <Button type="submit" className="w-full" disabled={isSubmitting}>
-                {isSubmitting ? 'Signing In...' : 'Sign In'}
+                {isSubmitting ? 'Processing...' : 'Continue'}
               </Button>
             </form>
           </Form>

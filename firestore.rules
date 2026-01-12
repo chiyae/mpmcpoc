@@ -5,6 +5,7 @@ service cloud.firestore {
     
     function isAdmin() {
       // Check for an 'admin' role in the user's custom claims.
+      // This is the correct and secure way to check for admin privileges.
       return request.auth.token.role == 'admin';
     }
 
@@ -15,8 +16,8 @@ service cloud.firestore {
       // A non-admin user can get or update their OWN document.
       allow get, update: if request.auth.uid == userId;
       
-      // A user can create their own document.
-      // This is necessary for self-registration/first sign-in.
+      // A user can create their own document upon first sign-up.
+      // This rule enables self-registration.
       allow create: if request.auth.uid == userId;
     }
   }

@@ -194,26 +194,28 @@ export default function GeneralSettingsPage() {
             </CardDescription>
           </CardHeader>
           <CardContent>
-            <div className="space-y-2 max-w-xs">
-                <Label htmlFor="currency">Default Currency</Label>
-                <Select value={currency} onValueChange={setCurrency}>
-                    <SelectTrigger id="currency">
-                        <SelectValue placeholder="Select a currency" />
-                    </SelectTrigger>
-                    <SelectContent>
-                        <SelectItem value="USD">USD - United States Dollar</SelectItem>
-                        <SelectItem value="EUR">EUR - Euro</SelectItem>
-                        <SelectItem value="GBP">GBP - British Pound</SelectItem>
-                        <SelectItem value="KES">KES - Kenyan Shilling</SelectItem>
-                        <SelectItem value="GHS">GHS - Ghanaian Cedi</SelectItem>
-                        <SelectItem value="NGN">NGN - Nigerian Naira</SelectItem>
-                        <SelectItem value="MWK">MWK - Malawian Kwacha</SelectItem>
-                    </SelectContent>
-                </Select>
-            </div>
+             {isClient && (
+                <div className="space-y-2 max-w-xs">
+                    <Label htmlFor="currency">Default Currency</Label>
+                    <Select value={currency} onValueChange={setCurrency}>
+                        <SelectTrigger id="currency">
+                            <SelectValue placeholder="Select a currency" />
+                        </SelectTrigger>
+                        <SelectContent>
+                            <SelectItem value="USD">USD - United States Dollar</SelectItem>
+                            <SelectItem value="EUR">EUR - Euro</SelectItem>
+                            <SelectItem value="GBP">GBP - British Pound</SelectItem>
+                            <SelectItem value="KES">KES - Kenyan Shilling</SelectItem>
+                            <SelectItem value="GHS">GHS - Ghanaian Cedi</SelectItem>
+                            <SelectItem value="NGN">NGN - Nigerian Naira</SelectItem>
+                            <SelectItem value="MWK">MWK - Malawian Kwacha</SelectItem>
+                        </SelectContent>
+                    </Select>
+                </div>
+             )}
           </CardContent>
           <CardFooter className="flex justify-end">
-            <Button type="submit">Save Currency</Button>
+             {isClient && <Button type="submit">Save Currency</Button>}
           </CardFooter>
         </form>
       </Card>

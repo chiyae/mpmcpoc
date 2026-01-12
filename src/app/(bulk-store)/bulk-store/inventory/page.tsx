@@ -41,9 +41,8 @@ import {
 } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
 import { lpos } from '@/lib/data';
-import { vendors } from '@/lib/vendors';
-import type { Item, GenerateLpoOutput, Lpo } from '@/lib/types';
-import { differenceInDays, parseISO, format } from 'date-fns';
+import type { Item, GenerateLpoOutput, Lpo, Vendor } from '@/lib/types';
+import { format } from 'date-fns';
 import { AddItemForm } from '@/components/add-item-form';
 import {
   Dialog,
@@ -77,6 +76,13 @@ export default function BulkStoreInventoryPage() {
   
   const { data: bulkStoreItems, isLoading: isItemsLoading } = useCollection<Item>(itemsCollectionQuery);
 
+  const vendorsCollectionQuery = useMemoFirebase(
+    () => (firestore ? collection(firestore, 'vendors') : null),
+    [firestore]
+  );
+  const { data: vendors, isLoading: areVendorsLoading } = useCollection<Vendor>(vendorsCollectionQuery);
+
+
   const [data, setData] = React.useState<Item[]>([]);
   const [sorting, setSorting] = React.useState<SortingState>([]);
   const [columnFilters, setColumnFilters] = React.useState<ColumnFiltersState>(
@@ -95,7 +101,7 @@ export default function BulkStoreInventoryPage() {
   const [isGeneratingLpo, setIsGeneratingLpo] = React.useState(false);
   const [generatedLpo, setGeneratedLpo] = React.useState<GenerateLpoOutput | null>(null);
   
-  const isLoading = isUserLoading || isItemsLoading;
+  const isLoading = isUserLoading || isItemsLoading || areVendorsLoading;
 
   React.useEffect(() => {
     if (bulkStoreItems) {
@@ -110,7 +116,7 @@ export default function BulkStoreInventoryPage() {
 
     const lowStockItems = data.filter(item => (item.quantity ?? 0) < item.reorderLevel);
 
-    if (lowStockItems.length === 0) {
+    if (lowStockItems.length === 0 || !vendors || vendors.length === 0) {
         setIsGeneratingLpo(false);
         return;
     }
@@ -501,7 +507,7 @@ export default function BulkStoreInventoryPage() {
                     ? "The AI is analyzing your low-stock items and vendors to generate an optimized LPO..." 
                     : generatedLpo 
                         ? `LPO ${generatedLpo.lpoId} generated on ${format(new Date(generatedLpo.generatedDate), 'PPP')}. Review and confirm below.`
-                        : "No items are currently below their reorder level."
+                        : "No items are currently below their reorder level or no vendors are available."
                 }
             </DialogDescription>
           </DialogHeader>
@@ -513,7 +519,7 @@ export default function BulkStoreInventoryPage() {
                     <Skeleton className="h-12 w-full" />
                  </div>
             )}
-            {generatedLpo && (
+            {generatedLpo && vendors && (
             <div className="space-y-4">
                 <p className="text-sm text-muted-foreground">{generatedLpo.summary}</p>
                 <ScrollArea className="max-h-80">
@@ -545,7 +551,7 @@ export default function BulkStoreInventoryPage() {
             )}
            {!isGeneratingLpo && !generatedLpo && (
                 <p className="py-8 text-center text-muted-foreground">
-                    No items are currently below their reorder level.
+                    No items are currently below their reorder level or no vendors found.
                 </p>
            )}
           <DialogFooter>

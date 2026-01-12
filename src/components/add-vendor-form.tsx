@@ -16,7 +16,6 @@ import {
   FormMessage,
 } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
-import { useToast } from '@/hooks/use-toast';
 import type { Item, Vendor } from '@/lib/types';
 import { Popover, PopoverContent, PopoverTrigger } from './ui/popover';
 import { Check, ChevronsUpDown } from 'lucide-react';
@@ -34,12 +33,11 @@ const formSchema = z.object({
 });
 
 type AddVendorFormProps = {
-  onVendorAdded: (vendor: Vendor) => void;
+  onVendorAdded: (vendor: Omit<Vendor, 'id'>) => void;
   allItems: Item[];
 };
 
 export function AddVendorForm({ onVendorAdded, allItems }: AddVendorFormProps) {
-  const { toast } = useToast();
   const [isSubmitting, setIsSubmitting] = React.useState(false);
   
   const form = useForm<z.infer<typeof formSchema>>({
@@ -47,18 +45,15 @@ export function AddVendorForm({ onVendorAdded, allItems }: AddVendorFormProps) {
     defaultValues: {
       name: '',
       email: '',
+      contactPerson: '',
+      phone: '',
       supplies: [],
     },
   });
 
-  function onSubmit(values: z.infer<typeof formSchema>) {
+  async function onSubmit(values: z.infer<typeof formSchema>) {
     setIsSubmitting(true);
-    const newVendor: Vendor = {
-        id: `VEND-${Date.now()}`,
-        ...values,
-    };
-
-    onVendorAdded(newVendor);
+    await onVendorAdded(values);
     setIsSubmitting(false);
   }
 

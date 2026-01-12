@@ -11,9 +11,9 @@ import {
   CardTitle,
 } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import type { Vendor } from '@/lib/types';
-import { bulkStoreItems } from '@/lib/data';
-import { vendors as initialVendors } from '@/lib/vendors';
+import type { Vendor, Item } from '@/lib/types';
+import { useCollection, useFirestore, useMemoFirebase } from '@/firebase';
+import { collection, addDoc } from 'firebase/firestore';
 import { Skeleton } from '@/components/ui/skeleton';
 import {
     Table,
@@ -36,17 +36,41 @@ import { AddVendorForm } from '@/components/add-vendor-form';
 
 export default function SupplierManagementPage() {
   const { toast } = useToast();
-  const [vendors, setVendors] = React.useState<Vendor[]>(initialVendors);
-  const [isLoading, setIsLoading] = React.useState(false); // Can be tied to data fetching later
-  const [isAddVendorOpen, setIsAddVendorOpen] = React.useState(false);
+  const firestore = useFirestore();
 
-  const handleVendorAdded = (newVendor: Vendor) => {
-    setVendors(prev => [...prev, newVendor]);
-    setIsAddVendorOpen(false);
-    toast({
-        title: "Vendor Added",
-        description: `Successfully added ${newVendor.name}.`
-    })
+  const vendorsCollectionQuery = useMemoFirebase(
+    () => (firestore ? collection(firestore, 'vendors') : null),
+    [firestore]
+  );
+  const { data: vendors, isLoading: areVendorsLoading } = useCollection<Vendor>(vendorsCollectionQuery);
+  
+  const itemsCollectionQuery = useMemoFirebase(
+    () => (firestore ? collection(firestore, 'items') : null),
+    [firestore]
+  );
+  const { data: allItems, isLoading: areItemsLoading } = useCollection<Item>(itemsCollectionQuery);
+
+  const [isAddVendorOpen, setIsAddVendorOpen] = React.useState(false);
+  
+  const isLoading = areVendorsLoading || areItemsLoading;
+
+  const handleVendorAdded = async (vendorData: Omit<Vendor, 'id'>) => {
+    if (!firestore) return;
+    try {
+      await addDoc(collection(firestore, 'vendors'), vendorData);
+      setIsAddVendorOpen(false);
+      toast({
+          title: "Vendor Added",
+          description: `Successfully added ${vendorData.name}.`
+      })
+    } catch(error) {
+        console.error("Error adding vendor:", error);
+        toast({
+            variant: "destructive",
+            title: "Error",
+            description: "Failed to add vendor. Please try again."
+        })
+    }
   }
 
   return (
@@ -69,7 +93,7 @@ export default function SupplierManagementPage() {
                         Fill out the form below to add a new vendor.
                     </DialogDescription>
                 </DialogHeader>
-                <AddVendorForm onVendorAdded={handleVendorAdded} allItems={bulkStoreItems} />
+                <AddVendorForm onVendorAdded={handleVendorAdded} allItems={allItems || []} />
             </DialogContent>
         </Dialog>
       </div>
@@ -97,7 +121,7 @@ export default function SupplierManagementPage() {
                         <TableCell colSpan={4}><Skeleton className="h-8 w-full" /></TableCell>
                     </TableRow>
                 ))}
-                {!isLoading && vendors.map(vendor => (
+                {!isLoading && vendors && vendors.map(vendor => (
                     <TableRow key={vendor.id}>
                         <TableCell className="font-medium">{vendor.name}</TableCell>
                         <TableCell>
@@ -117,7 +141,7 @@ export default function SupplierManagementPage() {
             </TableBody>
           </Table>
           {!isLoading && (!vendors || vendors.length === 0) && (
-             <p className="py-12 text-center text-muted-foreground">No vendors found.</p>
+             <p className="py-12 text-center text-muted-foreground">No vendors found. Add one to get started.</p>
           )}
         </CardContent>
       </Card>

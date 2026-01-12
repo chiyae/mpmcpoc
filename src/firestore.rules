@@ -12,7 +12,7 @@ service cloud.firestore {
     match /users/{userId} {
       allow list, delete: if isAdmin();
       allow get: if request.auth.uid == userId; // Allow user to read their own document
-      allow update, create: if request.auth.uid == userId || isAdmin();
+      allow update, create: if request.auth.uid == userId;
     }
 
     match /items/{itemId} {

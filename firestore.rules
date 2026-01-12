@@ -2,32 +2,26 @@ rules_version = '2';
 
 service cloud.firestore {
   match /databases/{database}/documents {
-    
-    function isUser(userId) {
-      return request.auth != null && request.auth.uid == userId;
-    }
-    
-    function isAdmin() {
-      // Check for the role in the user's own document
-      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin';
-    }
 
     match /users/{userId} {
-      // Admins can list all users.
-      allow list: if isAdmin();
-      
-      // A user can get their own document, or an admin can get any document.
-      allow get: if isUser(userId) || isAdmin();
-      
-      // An authenticated user can create their OWN document.
-      // An admin can create any user document.
-      allow create: if isUser(userId) || isAdmin();
+      // Allow a user to get their own document.
+      // Allow a user with the 'admin' role to get any user document.
+      allow get: if request.auth.uid == userId ||
+                  get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin';
 
-      // A user can update their own document, or an admin can update any document.
-      allow update: if isUser(userId) || isAdmin();
-      
-      // Only an admin can delete a user document.
-      allow delete: if isAdmin();
+      // Allow a user with the 'admin' role to list all user documents.
+      allow list: if get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin';
+
+      // Allow any authenticated user to create their own user document.
+      // This is crucial for the sign-up process.
+      allow create: if request.auth.uid == userId;
+
+      // Allow a user to update their own document, or an admin to update any user document.
+      allow update: if request.auth.uid == userId ||
+                     get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin';
+
+      // Only allow an admin to delete a user document.
+      allow delete: if get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin';
     }
   }
 }

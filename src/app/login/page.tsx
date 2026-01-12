@@ -60,45 +60,49 @@ export default function LoginPage() {
     }
   }, [user, isUserLoading, router]);
 
-  const ensureUserDocument = async (userCredential: UserCredential, isNewUser: boolean) => {
+   const ensureUserDocument = async (userCredential: UserCredential) => {
     if (!firestore) return;
+
     const user = userCredential.user;
     const userRef = doc(firestore, 'users', user.uid);
-    
-    // For existing users, no action is needed.
-    if (!isNewUser) return;
-    
-    // For new users, create their document.
-    // We assume the first-ever user is the admin. In a real app, this might
-    // be handled by a backend function or an initial setup script.
-    // A simple check could be to see if there's only 1 auth user, but that's complex on client.
-    // We'll default the role and let an admin change it later.
+
+    const docSnap = await getDoc(userRef);
+    if (docSnap.exists()) {
+      // User document already exists, do nothing.
+      return;
+    }
+
+    // User document does not exist, create it.
+    // This happens on the first sign-in after a sign-up.
+    // The very first user account created in the app should be the admin.
     const isFirstUser = user.metadata.creationTime === user.metadata.lastSignInTime;
 
     const role = isFirstUser ? 'admin' : 'pharmacy';
     const locationId = isFirstUser ? 'all' : 'unassigned';
 
     try {
-        await setDoc(userRef, {
-            id: user.uid,
-            username: user.email,
-            displayName: user.email?.split('@')[0] || 'New User',
-            role: role,
-            locationId: locationId,
-        });
-
+      await setDoc(userRef, {
+        id: user.uid,
+        username: user.email,
+        displayName: user.email?.split('@')[0] || 'New User',
+        role: role,
+        locationId: locationId,
+      });
+      
+      if (isFirstUser) {
         toast({
-            title: `User profile created`,
-            description: `Your new '${role}' user profile has been set up.`,
+            title: `Admin User Created`,
+            description: `Your new 'admin' user profile has been set up.`,
         });
+      }
 
     } catch (error: any) {
-        console.error("Error creating user document:", error);
-        toast({
-            variant: "destructive",
-            title: 'Profile Creation Failed',
-            description: "Your account was created, but we couldn't set up your profile. Please contact support.",
-        });
+      console.error("Error creating user document:", error);
+      toast({
+        variant: "destructive",
+        title: 'Profile Creation Failed',
+        description: "Your account was created, but we couldn't set up your profile. Please contact support.",
+      });
     }
   };
 
@@ -113,7 +117,7 @@ export default function LoginPage() {
     try {
       // Try to sign in first
       const userCredential = await signInWithEmailAndPassword(auth, values.email, values.password);
-      // We don't call ensureUserDocument here for existing users, they should already have one.
+      await ensureUserDocument(userCredential);
       toast({
         title: 'Sign in successful',
         description: 'Redirecting to your dashboard...',
@@ -124,7 +128,7 @@ export default function LoginPage() {
         // If user not found, create a new account
         try {
           const newUserCredential = await createUserWithEmailAndPassword(auth, values.email, values.password);
-          await ensureUserDocument(newUserCredential, true); // Pass `true` for new user
+          await ensureUserDocument(newUserCredential);
           toast({
             title: 'Account created successfully',
             description: 'Signing you in and redirecting...',

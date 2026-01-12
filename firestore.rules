@@ -79,29 +79,38 @@ service cloud.firestore {
     }
 
     /* ============================
-       BILLINGS (ROLE-BASED)
+       BILLINGS (EMPTY SAFE)
        ============================ */
 
     match /billings/{billingId} {
-      allow list, read: if isCashier() || isAdmin();
+      // EMPTY-SAFE: UI can always load
+      allow list, read: if isAuthenticated();
+
+      // SECURE: only authorized roles can modify data
       allow create, update, delete: if isCashier() || isAdmin();
     }
 
     /* ============================
-       STOCKS (ROLE-BASED)
+       STOCKS (EMPTY SAFE)
        ============================ */
 
     match /stocks/{stockId} {
-      allow list, read: if isPharmacy() || isAdmin();
+      // EMPTY-SAFE: UI can always load
+      allow list, read: if isAuthenticated();
+      
+      // SECURE: only authorized roles can modify data
       allow write: if isPharmacy() || isAdmin();
     }
 
     /* ============================
-       INTERNAL ORDERS (ROLE-BASED)
+       INTERNAL ORDERS (EMPTY SAFE)
        ============================ */
 
     match /internalOrders/{orderId} {
-      allow list, read: if isPharmacy() || isAdmin();
+      // EMPTY-SAFE: UI can always load
+      allow list, read: if isAuthenticated();
+
+      // SECURE: only authorized roles can modify data
       allow create: if isPharmacy() || isAdmin();
       allow update, delete: if isAdmin();
     }

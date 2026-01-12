@@ -25,7 +25,7 @@ import Logo from '@/components/logo';
 import { useAuth, useFirestore, useUser } from '@/firebase';
 import { useRouter } from 'next/navigation';
 import { useToast } from '@/hooks/use-toast';
-import { createUserWithEmailAndPassword, signInWithEmailAndPassword } from 'firebase/auth';
+import { createUserWithEmailAndPassword, signInWithEmailAndPassword, User } from 'firebase/auth';
 import { Skeleton } from '@/components/ui/skeleton';
 import { doc, getDoc, setDoc } from 'firebase/firestore';
 
@@ -58,33 +58,44 @@ export default function LoginPage() {
     }
   }, [user, isUserLoading, router]);
 
-  async function handleUserCreation(signedInUser: any) {
+  async function handleUserDocCreation(signedInUser: User) {
     if (!firestore) return;
     const userDocRef = doc(firestore, 'users', signedInUser.uid);
     const userDocSnap = await getDoc(userDocRef);
 
     if (!userDocSnap.exists()) {
-      // For the very first user, assign 'admin' role. Otherwise, 'pharmacy'.
-      // This is a simplified bootstrap logic. A real app might have a different process.
-      const isFirstUser = signedInUser.email === 'admin@example.com';
-      const userRole = isFirstUser ? 'admin' : 'pharmacy';
+      const isFirstAdmin = signedInUser.email === 'admin@example.com';
+      const userRole = isFirstAdmin ? 'admin' : 'pharmacy';
 
-      await setDoc(userDocRef, {
-        id: signedInUser.uid,
-        username: signedInUser.email,
-        displayName: signedInUser.email?.split('@')[0] || 'New User',
-        role: userRole, 
-        locationId: isFirstUser ? 'all' : 'dispensary',
-      });
-      toast({
-        title: 'Welcome!',
-        description: 'Your user profile has been created.',
-      });
-    } else {
-       toast({
-        title: 'Sign in successful',
-        description: 'Redirecting to your dashboard...',
-      });
+      try {
+        await setDoc(userDocRef, {
+          id: signedInUser.uid,
+          username: signedInUser.email,
+          displayName: signedInUser.email?.split('@')[0] || 'New User',
+          role: userRole,
+          locationId: 'all',
+        });
+
+        // If this is the designated admin, add them to the 'admins' collection
+        if (isFirstAdmin) {
+          const adminDocRef = doc(firestore, 'admins', signedInUser.uid);
+          await setDoc(adminDocRef, { createdAt: new Date().toISOString() });
+        }
+        
+        toast({
+          title: 'Welcome!',
+          description: 'Your user profile has been created.',
+        });
+
+      } catch (error: any) {
+         toast({
+          variant: 'destructive',
+          title: 'Profile Creation Failed',
+          description: "Could not create your user profile. You may not have permissions.",
+        });
+        // Log out the user if profile creation fails
+        auth?.signOut();
+      }
     }
   }
 
@@ -96,15 +107,17 @@ export default function LoginPage() {
     setIsSubmitting(true);
 
     try {
-      // First, try to sign in the user.
       const userCredential = await signInWithEmailAndPassword(auth, values.email, values.password);
-      await handleUserCreation(userCredential.user);
+      await handleUserDocCreation(userCredential.user);
+       toast({
+        title: 'Sign in successful',
+        description: 'Redirecting to your dashboard...',
+      });
     } catch (error: any) {
-      // If sign-in fails because the user doesn't exist, create a new account.
       if (error.code === 'auth/user-not-found' || error.code === 'auth/invalid-credential') {
         try {
           const newUserCredential = await createUserWithEmailAndPassword(auth, values.email, values.password);
-          await handleUserCreation(newUserCredential.user);
+          await handleUserDocCreation(newUserCredential.user);
         } catch (creationError: any) {
           toast({
             variant: 'destructive',
@@ -113,7 +126,6 @@ export default function LoginPage() {
           });
         }
       } else {
-        // Handle other sign-in errors.
         toast({
           variant: 'destructive',
           title: 'Sign In Failed',
@@ -144,9 +156,9 @@ export default function LoginPage() {
           <div className="mb-4 flex justify-center">
             <Logo />
           </div>
-          <CardTitle className="text-2xl">Sign In or Sign Up</CardTitle>
+          <CardTitle className="text-2xl">Welcome</CardTitle>
           <CardDescription>
-            Enter your credentials to access the system. A new account will be created if one doesn't exist.
+            Enter your credentials to sign in. A new account will be created if one doesn't exist.
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -183,7 +195,7 @@ export default function LoginPage() {
                 )}
               />
               <Button type="submit" className="w-full" disabled={isSubmitting}>
-                {isSubmitting ? 'Processing...' : 'Continue'}
+                {isSubmitting ? 'Processing...' : 'Sign In'}
               </Button>
             </form>
           </Form>

@@ -54,8 +54,8 @@ export default function SettingsLayout({ children }: { children: ReactNode }) {
               </SidebarMenuButton>
             </SidebarMenuItem>
             <SidebarMenuItem>
-              <SidebarMenuButton asChild tooltip="Item Master" disabled>
-                <Link href="#">
+              <SidebarMenuButton asChild tooltip="Item Master">
+                <Link href="/settings/item-master">
                   <Package />
                   <span>Item Master</span>
                 </Link>

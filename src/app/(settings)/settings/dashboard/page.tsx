@@ -22,7 +22,7 @@ const settingsLinks = [
         description: 'Manage vendors and the items they supply.'
     },
     {
-        href: '#',
+        href: '/settings/item-master',
         icon: Package,
         title: 'Item Master Data',
         description: 'Define and manage all inventory item definitions.'

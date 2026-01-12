@@ -40,7 +40,7 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
-import { bulkStoreItems, lpos } from '@/lib/data';
+import { lpos } from '@/lib/data';
 import { vendors } from '@/lib/vendors';
 import type { Item, GenerateLpoOutput, Lpo } from '@/lib/types';
 import { differenceInDays, parseISO, format } from 'date-fns';
@@ -61,10 +61,20 @@ import { useToast } from "@/hooks/use-toast";
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { generateLpo } from '@/ai/flows/lpo-generation';
 import { Skeleton } from '@/components/ui/skeleton';
+import { useCollection, useFirestore, useMemoFirebase } from '@/firebase';
+import { collection, query, where } from 'firebase/firestore';
 
 export default function BulkStoreInventoryPage() {
   const { toast } = useToast();
-  const [data, setData] = React.useState<Item[]>(bulkStoreItems);
+  
+  const firestore = useFirestore();
+  const itemsCollectionQuery = useMemoFirebase(
+    () => collection(firestore, 'items'),
+    [firestore]
+  );
+  const { data: bulkStoreItems, isLoading } = useCollection<Item>(itemsCollectionQuery);
+
+  const [data, setData] = React.useState<Item[]>([]);
   const [sorting, setSorting] = React.useState<SortingState>([]);
   const [columnFilters, setColumnFilters] = React.useState<ColumnFiltersState>(
     []
@@ -82,6 +92,11 @@ export default function BulkStoreInventoryPage() {
   const [isGeneratingLpo, setIsGeneratingLpo] = React.useState(false);
   const [generatedLpo, setGeneratedLpo] = React.useState<GenerateLpoOutput | null>(null);
 
+  React.useEffect(() => {
+    if (bulkStoreItems) {
+      setData(bulkStoreItems);
+    }
+  }, [bulkStoreItems]);
 
   const handleOpenLpoDialog = async () => {
     setIsLpoDialogOpen(true);
@@ -196,7 +211,7 @@ export default function BulkStoreInventoryPage() {
       enableHiding: false,
     },
     {
-      accessorKey: 'name',
+      accessorKey: 'itemName',
       header: ({ column }) => {
         return (
           <Button
@@ -208,7 +223,7 @@ export default function BulkStoreInventoryPage() {
           </Button>
         );
       },
-      cell: ({ row }) => <div className="capitalize">{row.getValue('name')}</div>,
+      cell: ({ row }) => <div className="capitalize">{row.getValue('itemName')}</div>,
     },
     {
       accessorKey: 'category',
@@ -221,7 +236,8 @@ export default function BulkStoreInventoryPage() {
       accessorKey: 'quantity',
       header: () => <div className="text-right">Quantity</div>,
       cell: ({ row }) => {
-        const quantity = parseFloat(row.getValue('quantity'));
+        // Mock data as quantity isn't on the Item entity directly
+        const quantity = 0; //parseFloat(row.getValue('quantity'));
         const { reorderLevel } = row.original;
         const isLowStock = quantity < reorderLevel;
   
@@ -242,18 +258,8 @@ export default function BulkStoreInventoryPage() {
       accessorKey: 'expiryDate',
       header: 'Expiry Date',
       cell: ({ row }) => {
-        const expiryDate = parseISO(row.getValue('expiryDate'));
-        const daysToExpiry = differenceInDays(expiryDate, new Date());
-        let badgeVariant: 'default' | 'secondary' | 'destructive' = 'secondary';
-  
-        if (daysToExpiry < 0) {
-          badgeVariant = 'destructive';
-        } else if (daysToExpiry <= 30) {
-          badgeVariant = 'destructive';
-        }
-  
-        return <Badge variant={badgeVariant}>{new Date(row.getValue('expiryDate')).toLocaleDateString()}</Badge>;
-  
+        // This is a placeholder as expiry is on the batch
+        return <Badge variant={'secondary'}>N/A</Badge>;
       },
     },
     {
@@ -290,7 +296,7 @@ export default function BulkStoreInventoryPage() {
   ];
 
   const table = useReactTable({
-    data,
+    data: data,
     columns,
     onSortingChange: setSorting,
     onColumnFiltersChange: setColumnFilters,
@@ -319,9 +325,9 @@ export default function BulkStoreInventoryPage() {
         <div className="flex items-center justify-between py-4">
             <Input
             placeholder="Filter items..."
-            value={(table.getColumn('name')?.getFilterValue() as string) ?? ''}
+            value={(table.getColumn('itemName')?.getFilterValue() as string) ?? ''}
             onChange={(event) =>
-                table.getColumn('name')?.setFilterValue(event.target.value)
+                table.getColumn('itemName')?.setFilterValue(event.target.value)
             }
             className="max-w-sm"
             />
@@ -390,7 +396,16 @@ export default function BulkStoreInventoryPage() {
                 ))}
             </TableHeader>
             <TableBody>
-                {table.getRowModel().rows?.length ? (
+                {isLoading && (
+                  Array.from({ length: 5 }).map((_, i) => (
+                    <TableRow key={i}>
+                      <TableCell colSpan={columns.length}>
+                        <Skeleton className="h-8 w-full" />
+                      </TableCell>
+                    </TableRow>
+                  ))
+                )}
+                {!isLoading && table.getRowModel().rows?.length ? (
                 table.getRowModel().rows.map((row) => (
                     <TableRow
                     key={row.id}
@@ -407,12 +422,12 @@ export default function BulkStoreInventoryPage() {
                     </TableRow>
                 ))
                 ) : (
-                <TableRow>
+                !isLoading && <TableRow>
                     <TableCell
                     colSpan={columns.length}
                     className="h-24 text-center"
                     >
-                    No results.
+                    No items in inventory. Add one to get started.
                     </TableCell>
                 </TableRow>
                 )}
@@ -451,7 +466,7 @@ export default function BulkStoreInventoryPage() {
               <DialogHeader>
                 <DialogTitle>Item Details</DialogTitle>
                 <DialogDescription>
-                  Detailed information for {selectedItem.name}.
+                  Detailed information for {selectedItem.itemName}.
                 </DialogDescription>
               </DialogHeader>
               <ItemDetails item={selectedItem} />
@@ -461,7 +476,7 @@ export default function BulkStoreInventoryPage() {
           <Dialog open={isAdjustStockOpen} onOpenChange={setIsAdjustStockOpen}>
             <DialogContent className="sm:max-w-[425px]">
               <DialogHeader>
-                <DialogTitle>Adjust Stock: {selectedItem.name}</DialogTitle>
+                <DialogTitle>Adjust Stock: {selectedItem.itemName}</DialogTitle>
                 <DialogDescription>
                   Make a correction to the current stock quantity. Use a positive number to add stock, and a negative number to remove it (e.g. for breakages or count correction). To add a new batch with a different expiry date, please use the 'Add New Item' function.
                 </DialogDescription>

@@ -11,17 +11,19 @@ export type BillType = 'Walk-in' | 'OPD';
 
 export interface Item {
   id: string; // unique item code
-  name: string;
+  itemCode: string;
+  itemName: string;
   category: ItemCategory;
   unitOfMeasure: string;
-  batchNumber: string;
-  expiryDate: string; // ISO date string
   reorderLevel: number;
   unitCost: number;
   sellingPrice: number;
-  quantity: number;
-  location: Location;
-  usageHistory: { date: string; quantity: number }[];
+  // Deprecated fields from mock data - will be handled in subcollections
+  batchNumber?: string;
+  expiryDate?: string; // ISO date string
+  quantity?: number;
+  location?: Location;
+  usageHistory?: { date: string; quantity: number }[];
 }
 
 export interface Vendor {

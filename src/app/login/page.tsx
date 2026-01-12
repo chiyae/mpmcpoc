@@ -30,7 +30,7 @@ import {
 import { useRouter } from 'next/navigation';
 import { useToast } from '@/hooks/use-toast';
 import { doc, getDoc, setDoc } from 'firebase/firestore';
-import { UserCredential } from 'firebase/auth';
+import type { UserCredential } from 'firebase/auth';
 
 const formSchema = z.object({
   email: z.string().email({ message: 'Please enter a valid email address.' }),
@@ -100,6 +100,7 @@ export default function LoginPage() {
         title: 'Sign in successful',
         description: 'Redirecting to your dashboard...',
       });
+      router.push('/');
     } catch (error: any) {
       if (error.code === 'auth/user-not-found' || error.code === 'auth/invalid-credential') {
         // If sign-in fails because user doesn't exist, try to sign them up
@@ -110,6 +111,7 @@ export default function LoginPage() {
             title: 'Account created successfully',
             description: 'Signing you in and redirecting...',
           });
+          router.push('/');
         } catch (signUpError: any) {
           toast({
             variant: 'destructive',

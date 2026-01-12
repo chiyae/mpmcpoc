@@ -42,6 +42,8 @@ import { differenceInDays, parseISO } from 'date-fns';
 import { useToast } from "@/hooks/use-toast";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { RequestStockForm } from '@/components/request-stock-form';
+import { ClipboardList } from 'lucide-react';
+import Link from 'next/link';
 
 export default function DispensaryInventoryPage() {
   const { toast } = useToast();
@@ -195,6 +197,12 @@ export default function DispensaryInventoryPage() {
             className="max-w-sm"
             />
             <div className="flex items-center gap-2">
+                <Button variant="outline" asChild>
+                    <Link href="/dispensary/stock-taking">
+                        <ClipboardList className="mr-2 h-4 w-4" />
+                        Start Stock Take
+                    </Link>
+                </Button>
                 <Dialog open={isRequestStockOpen} onOpenChange={setIsRequestStockOpen}>
                   <DialogTrigger asChild>
                     <Button disabled={selectedItems.length === 0}>

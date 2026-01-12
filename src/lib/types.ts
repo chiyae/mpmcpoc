@@ -6,6 +6,8 @@ export type OrderStatus = 'Pending' | 'Approved' | 'Issued' | 'Rejected';
 export type LpoStatus = 'Pending' | 'Approved' | 'Rejected' | 'Completed';
 export type PaymentMethod = 'Cash' | 'Mobile Money' | 'Bank' | 'Invoice';
 export type PaymentStatus = 'Paid' | 'Unpaid';
+export type BillType = 'Walk-in' | 'OPD';
+
 
 export interface Item {
   id: string; // unique item code
@@ -65,6 +67,8 @@ export interface Bill {
   id: string; // Bill Number
   date: string; // ISO date string
   patientName: string;
+  billType: BillType;
+  prescriptionNumber?: string;
   receiptNumber?: string;
   items: BillItem[];
   grandTotal: number;

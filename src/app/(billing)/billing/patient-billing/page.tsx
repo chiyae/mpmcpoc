@@ -21,14 +21,17 @@ import {
 } from '@/components/ui/select';
 import { useToast } from '@/hooks/use-toast';
 import { dispensaryItems, predefinedServices } from '@/lib/data';
-import type { Bill, BillItem, PaymentMethod } from '@/lib/types';
+import type { Bill, BillItem, PaymentMethod, BillType } from '@/lib/types';
 import { PlusCircle, Trash2 } from 'lucide-react';
 import { Label } from '@/components/ui/label';
+import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 
 export default function PatientBillingPage() {
   const { toast } = useToast();
   const [patientName, setPatientName] = React.useState('');
   const [billItems, setBillItems] = React.useState<BillItem[]>([]);
+  const [billType, setBillType] = React.useState<BillType>('Walk-in');
+  const [prescriptionNumber, setPrescriptionNumber] = React.useState('');
   
   const [selectedMedicine, setSelectedMedicine] = React.useState<string | undefined>();
   const [medicineQuantity, setMedicineQuantity] = React.useState('1');
@@ -126,7 +129,8 @@ export default function PatientBillingPage() {
     ? tenderedAmountValue - grandTotal 
     : 0;
 
-  const canFinalize = billItems.length > 0 && !!patientName && 
+  const isOpdAndNoPrescription = billType === 'OPD' && !prescriptionNumber;
+  const canFinalize = billItems.length > 0 && !!patientName && !isOpdAndNoPrescription &&
     (paymentMethod === 'Invoice' || paymentMethod !== 'Cash' || (paymentMethod === 'Cash' && tenderedAmountValue >= grandTotal));
 
 
@@ -140,6 +144,8 @@ export default function PatientBillingPage() {
         id: `BILL-${Date.now()}`,
         date: new Date().toISOString(),
         patientName,
+        billType,
+        prescriptionNumber: billType === 'OPD' ? prescriptionNumber : undefined,
         items: billItems,
         grandTotal,
         paymentDetails: {
@@ -160,6 +166,8 @@ export default function PatientBillingPage() {
     // Reset state
     setPatientName('');
     setBillItems([]);
+    setBillType('Walk-in');
+    setPrescriptionNumber('');
     setPaymentMethod('Cash');
     setAmountTendered('');
   };
@@ -171,7 +179,39 @@ export default function PatientBillingPage() {
           <CardTitle>Create Patient Bill</CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
-          <div>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div>
+                <Label>Bill Type</Label>
+                <RadioGroup
+                  value={billType}
+                  onValueChange={(value: BillType) => setBillType(value)}
+                  className="flex items-center gap-4 mt-2"
+                >
+                  <div className="flex items-center space-x-2">
+                    <RadioGroupItem value="Walk-in" id="walk-in" />
+                    <Label htmlFor="walk-in">Walk-in</Label>
+                  </div>
+                  <div className="flex items-center space-x-2">
+                    <RadioGroupItem value="OPD" id="opd" />
+                    <Label htmlFor="opd">OPD (Out-Patient)</Label>
+                  </div>
+                </RadioGroup>
+              </div>
+
+            {billType === 'OPD' && (
+              <div>
+                <Label htmlFor="prescriptionNumber">Prescription Number</Label>
+                <Input
+                  id="prescriptionNumber"
+                  placeholder="Enter prescription number"
+                  value={prescriptionNumber}
+                  onChange={(e) => setPrescriptionNumber(e.target.value)}
+                  required
+                />
+              </div>
+            )}
+          </div>
+           <div>
             <Label htmlFor="patientName">Patient Name</Label>
             <Input
               id="patientName"

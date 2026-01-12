@@ -39,7 +39,7 @@ export default function BillingLayout({ children }: { children: ReactNode }) {
             </SidebarMenuItem>
             <SidebarMenuItem>
               <SidebarMenuButton asChild tooltip="Invoices">
-                <Link href="#">
+                <Link href="/billing/invoices">
                   <FileText />
                   <span>Invoices</span>
                 </Link>

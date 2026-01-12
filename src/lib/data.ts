@@ -159,5 +159,5 @@ export const lpos: Lpo[] = [];
 // Mock Internal Orders
 export const internalOrders: InternalOrder[] = [];
 
-// Mock Bills
+// Mock Bills - This will now be populated from the billing page
 export const bills: Bill[] = [];

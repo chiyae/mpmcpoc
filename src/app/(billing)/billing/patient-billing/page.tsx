@@ -20,7 +20,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { useToast } from '@/hooks/use-toast';
-import { dispensaryItems, predefinedServices } from '@/lib/data';
+import { dispensaryItems, predefinedServices, bills } from '@/lib/data';
 import type { Bill, BillItem, PaymentMethod, BillType } from '@/lib/types';
 import { PlusCircle, Trash2 } from 'lucide-react';
 import { Label } from '@/components/ui/label';
@@ -140,7 +140,7 @@ export default function PatientBillingPage() {
         return;
     }
 
-    const newBill: Partial<Bill> = {
+    const newBill: Bill = {
         id: `BILL-${Date.now()}`,
         date: new Date().toISOString(),
         patientName,
@@ -156,7 +156,7 @@ export default function PatientBillingPage() {
         }
     };
 
-    console.log("Finalized Bill:", newBill);
+    bills.unshift(newBill); // Add to the beginning of the central bills array
 
     toast({
         title: "Bill Finalized",
@@ -365,11 +365,4 @@ export default function PatientBillingPage() {
       </Card>
     </div>
   );
-}
-
-// Extend BillItem to include an optional itemName
-declare module '@/lib/types' {
-    interface BillItem {
-        itemName?: string;
-    }
 }

@@ -26,7 +26,7 @@ import Logo from '@/components/logo';
 import { useAuth, useFirestore, useUser } from '@/firebase';
 import { useRouter } from 'next/navigation';
 import { useToast } from '@/hooks/use-toast';
-import { collection, doc, getDoc, getDocs, setDoc, writeBatch } from 'firebase/firestore';
+import { collection, doc, getDoc, setDoc } from 'firebase/firestore';
 import type { UserCredential } from 'firebase/auth';
 import { signInWithEmailAndPassword, createUserWithEmailAndPassword } from 'firebase/auth';
 

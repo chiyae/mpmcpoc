@@ -66,23 +66,19 @@ export default function LoginPage() {
 
     if (!userDocSnap.exists()) {
       const batch = writeBatch(firestore);
-      const isFirstAdmin = signedInUser.email === 'admin@example.com';
-      const userRole = isFirstAdmin ? 'admin' : 'pharmacy';
+      const isAdmin = signedInUser.email === 'admin@example.com';
+      const userRole = isAdmin ? 'admin' : 'pharmacy';
+      const userLocation = isAdmin ? 'all' : 'unassigned';
+      const userDisplayName = isAdmin ? 'Admin' : signedInUser.email?.split('@')[0] || 'New User'
 
       // 1. Create the user profile document
       batch.set(userDocRef, {
         id: signedInUser.uid,
         username: signedInUser.email,
-        displayName: signedInUser.email?.split('@')[0] || 'New User',
+        displayName: userDisplayName,
         role: userRole,
-        locationId: 'all',
+        locationId: userLocation,
       });
-
-      // 2. If it's the designated first admin, add them to the 'admins' collection
-      if (isFirstAdmin) {
-        const adminDocRef = doc(firestore, 'admins', signedInUser.uid);
-        batch.set(adminDocRef, { createdAt: new Date().toISOString() });
-      }
       
       try {
         await batch.commit();

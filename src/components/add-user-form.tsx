@@ -74,11 +74,8 @@ export function AddUserForm({ onUserAdded }: AddUserFormProps) {
       const userCredential = await createUserWithEmailAndPassword(auth, values.username, values.password);
       const user = userCredential.user;
 
-      const batch = writeBatch(firestore);
-
-      // 1. Create the user's profile document
       const userRef = doc(firestore, 'users', user.uid);
-      batch.set(userRef, {
+      await setDoc(userRef, {
         id: user.uid,
         username: values.username,
         displayName: values.displayName,
@@ -86,14 +83,6 @@ export function AddUserForm({ onUserAdded }: AddUserFormProps) {
         locationId: values.locationId,
       });
 
-      // 2. If the user is an admin, create a corresponding document in the 'admins' collection.
-      // This is what the security rules will check.
-      if (values.role === 'admin') {
-        const adminRef = doc(firestore, 'admins', user.uid);
-        batch.set(adminRef, { createdAt: new Date().toISOString() });
-      }
-
-      await batch.commit();
 
       toast({
         title: 'User Created',

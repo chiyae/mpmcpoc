@@ -55,7 +55,7 @@ export default function LoginPage() {
   // Redirect if user is already logged in
   React.useEffect(() => {
     if (!isUserLoading && user) {
-      router.push('/bulk-store/dashboard');
+      router.push('/');
     }
   }, [user, isUserLoading, router]);
 

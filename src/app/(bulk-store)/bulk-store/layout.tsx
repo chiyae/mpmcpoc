@@ -83,7 +83,7 @@ export default function BulkStoreLayout({ children }: { children: ReactNode }) {
             </SidebarMenuItem>
             <SidebarMenuItem>
               <SidebarMenuButton asChild tooltip="Logout">
-                <Link href="/">
+                <Link href="/login">
                   <LogOut />
                   <span>Logout</span>
                 </Link>

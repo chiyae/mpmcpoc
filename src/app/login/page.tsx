@@ -22,11 +22,12 @@ import {
   CardTitle,
 } from '@/components/ui/card';
 import Logo from '@/components/logo';
-import { useAuth, useUser } from '@/firebase';
+import { useAuth, useFirestore, useUser } from '@/firebase';
 import { useRouter } from 'next/navigation';
 import { useToast } from '@/hooks/use-toast';
 import { signInWithEmailAndPassword } from 'firebase/auth';
 import { Skeleton } from '@/components/ui/skeleton';
+import { doc, getDoc, setDoc } from 'firebase/firestore';
 
 const formSchema = z.object({
   email: z.string().email({ message: 'Please enter a valid email address.' }),
@@ -37,6 +38,7 @@ const formSchema = z.object({
 
 export default function LoginPage() {
   const auth = useAuth();
+  const firestore = useFirestore();
   const { user, isUserLoading } = useUser();
   const router = useRouter();
   const { toast } = useToast();
@@ -57,18 +59,42 @@ export default function LoginPage() {
   }, [user, isUserLoading, router]);
 
   async function onSubmit(values: z.infer<typeof formSchema>) {
-    if (!auth) {
+    if (!auth || !firestore) {
       toast({ variant: 'destructive', title: 'Firebase not initialized.' });
       return;
     }
     setIsSubmitting(true);
 
     try {
-      await signInWithEmailAndPassword(auth, values.email, values.password);
-      toast({
-        title: 'Sign in successful',
-        description: 'Redirecting to your dashboard...',
-      });
+      const userCredential = await signInWithEmailAndPassword(auth, values.email, values.password);
+      const signedInUser = userCredential.user;
+
+      // After sign-in, check if a user document exists. If not, create one.
+      // This is crucial for the first admin user.
+      const userDocRef = doc(firestore, 'users', signedInUser.uid);
+      const userDocSnap = await getDoc(userDocRef);
+
+      if (!userDocSnap.exists()) {
+        // This is likely the first sign-in for the admin user.
+        // We create their document here.
+        await setDoc(userDocRef, {
+          id: signedInUser.uid,
+          username: signedInUser.email,
+          displayName: signedInUser.email?.split('@')[0] || 'Admin', // Default display name
+          role: 'admin', // Assign admin role
+          locationId: 'all', // Default location
+        });
+         toast({
+          title: 'Admin profile created',
+          description: 'First-time admin sign-in. Profile has been set up.',
+        });
+      } else {
+        toast({
+          title: 'Sign in successful',
+          description: 'Redirecting to your dashboard...',
+        });
+      }
+
       // The useEffect will handle the redirect to '/'
     } catch (error: any) {
       let errorMessage = "An unexpected error occurred during sign-in.";
@@ -108,7 +134,7 @@ export default function LoginPage() {
           </div>
           <CardTitle className="text-2xl">Welcome Back</CardTitle>
           <CardDescription>
-            Enter your credentials to access your dashboard.
+            Enter your admin credentials to access the system.
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -123,7 +149,7 @@ export default function LoginPage() {
                     <FormControl>
                       <Input
                         type="email"
-                        placeholder="user@example.com"
+                        placeholder="admin@example.com"
                         {...field}
                       />
                     </FormControl>

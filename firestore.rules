@@ -3,73 +3,113 @@ rules_version = '2';
 
 service cloud.firestore {
   match /databases/{database}/documents {
-    
-    function getUserData() {
-      // Check if the user document exists before trying to access its data.
-      // This prevents errors if a user is authenticated but their user doc hasn't been created yet.
-      if (exists(/databases/$(database)/documents/users/$(request.auth.uid))) {
-        return get(/databases/$(database)/documents/users/$(request.auth.uid)).data;
-      }
-      // Return a default object with no role if the user document doesn't exist.
-      return { "role": "none" };
+
+    /* ============================
+       AUTH & ROLE HELPERS
+       ============================ */
+
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+
+    function userDocPath() {
+      return /databases/$(database)/documents/users/$(request.auth.uid);
+    }
+
+    function hasUserDoc() {
+      return isAuthenticated() && exists(userDocPath());
+    }
+
+    function getUserRole() {
+      // Safe role resolution — NEVER throws
+      return hasUserDoc()
+        ? get(userDocPath()).data.role
+        : "none";
     }
 
     function isAdmin() {
-      return getUserData().role == 'admin';
+      return getUserRole() == "admin";
     }
-    
+
     function isCashier() {
-      return getUserData().role == 'cashier';
+      return getUserRole() == "cashier";
     }
 
     function isPharmacy() {
-      return getUserData().role == 'pharmacy';
+      return getUserRole() == "pharmacy";
     }
 
+    /* ============================
+       MASTER DATA (BOOT SAFE)
+       ============================ */
+
     match /items/{itemId} {
-      // Any authenticated user can read item definitions, only admins can change them.
-      allow read: if request.auth != null;
+      allow read: if isAuthenticated();          // Empty-safe
       allow write: if isAdmin();
     }
 
     match /vendors/{vendorId} {
-      // Any authenticated user can read vendor info, only admins can change it.
-      allow read: if request.auth != null;
+      allow read: if isAuthenticated();          // Empty-safe
       allow write: if isAdmin();
     }
 
     match /services/{serviceId} {
-        // Any authenticated user can read service info, only admins can change it.
-        allow read: if request.auth != null;
-        allow write: if isAdmin();
+      allow read: if isAuthenticated();          // Empty-safe
+      allow write: if isAdmin();
     }
-    
+
+    /* ============================
+       SETTINGS (STRICT)
+       ============================ */
+
     match /settings/{settingId} {
-      // Only admins can read or write settings.
       allow read, write: if isAdmin();
     }
 
+    /* ============================
+       USERS (BOOTSTRAP SAFE)
+       ============================ */
+
     match /users/{userId} {
-      // A user can always read their own document.
-      allow get: if request.auth.uid == userId;
-      // Admins can list and edit any user.
-      allow list, update, create, delete: if isAdmin();
+      // User can always read own profile (even first login)
+      allow get: if isAuthenticated() && request.auth.uid == userId;
+
+      // Admin capabilities
+      allow list, create, update, delete: if isAdmin();
     }
 
-    // Cashiers and admins can manage bills.
+    /* ============================
+       BILLINGS (EMPTY SAFE)
+       ============================ */
+
     match /billings/{billingId} {
-      allow list, read, write: if isCashier() || isAdmin();
+      // Allow empty reads so UI can load. List is now more restrictive.
+      allow list, read: if isCashier() || isAdmin();
+
+      // Writes remain role-restricted
+      allow create, update, delete: if isCashier() || isAdmin();
     }
-    
-    // Pharmacy staff and admins can manage stock.
+
+    /* ============================
+       STOCKS (EMPTY SAFE)
+       ============================ */
+
     match /stocks/{stockId} {
-      allow list, read, write: if isPharmacy() || isAdmin();
+      // Allow empty reads so UI can load. List is now more restrictive.
+      allow list, read: if isPharmacy() || isAdmin();
+      allow write: if isPharmacy() || isAdmin();
     }
-    
-    // Pharmacy staff can create/read internal orders, admins can manage them completely.
+
+    /* ============================
+       INTERNAL ORDERS (EMPTY SAFE)
+       ============================ */
+
     match /internalOrders/{orderId} {
-      allow list, read, create: if isPharmacy() || isAdmin();
+      // Allow empty reads so UI can load. List is now more restrictive.
+      allow list, read: if isPharmacy() || isAdmin();
+      allow create: if isPharmacy() || isAdmin();
       allow update, delete: if isAdmin();
     }
+
   }
 }

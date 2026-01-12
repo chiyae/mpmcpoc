@@ -23,14 +23,11 @@ import {
 } from '@/components/ui/card';
 import Logo from '@/components/logo';
 import { useAuth, useFirestore, useUser } from '@/firebase';
-import {
-  initiateEmailSignIn,
-  initiateEmailSignUp,
-} from '@/firebase/non-blocking-login';
 import { useRouter } from 'next/navigation';
 import { useToast } from '@/hooks/use-toast';
 import { doc, getDoc, setDoc } from 'firebase/firestore';
 import type { UserCredential } from 'firebase/auth';
+import { signInWithEmailAndPassword, createUserWithEmailAndPassword } from 'firebase/auth';
 
 const formSchema = z.object({
   email: z.string().email({ message: 'Please enter a valid email address.' }),
@@ -62,7 +59,7 @@ export default function LoginPage() {
     }
   }, [user, isUserLoading, router]);
 
-  const ensureUserDocument = async (userCredential: UserCredential) => {
+  const ensureUserDocument = async (userCredential: UserCredential, role: 'admin' | 'user' = 'user') => {
     if (!firestore) return;
     const user = userCredential.user;
     const userRef = doc(firestore, 'users', user.uid);
@@ -70,17 +67,16 @@ export default function LoginPage() {
 
     if (!userDoc.exists()) {
       // If the user document doesn't exist, create it.
-      // This is crucial for the first admin user.
       await setDoc(userRef, {
         id: user.uid,
         username: user.email,
-        displayName: user.email?.split('@')[0] || 'Admin',
-        role: 'admin', // Default first user to admin
-        locationId: 'all',
+        displayName: user.email?.split('@')[0] || 'New User',
+        role: role,
+        locationId: role === 'admin' ? 'all' : 'unassigned', // Default first user to admin
       });
       toast({
-        title: 'Admin profile created',
-        description: 'Your admin user profile has been set up in the database.',
+        title: `User profile created`,
+        description: `Your ${role} user profile has been set up in the database.`,
       });
     }
   };
@@ -94,8 +90,9 @@ export default function LoginPage() {
 
     try {
       // First, try to sign in
-      const userCredential = await initiateEmailSignIn(auth, values.email, values.password);
-      await ensureUserDocument(userCredential); // Check and create user doc if needed
+      const userCredential = await signInWithEmailAndPassword(auth, values.email, values.password);
+      // On successful sign-in, ensure their doc exists. This is key for the first admin.
+      await ensureUserDocument(userCredential, 'admin'); 
       toast({
         title: 'Sign in successful',
         description: 'Redirecting to your dashboard...',
@@ -105,8 +102,12 @@ export default function LoginPage() {
       if (error.code === 'auth/user-not-found' || error.code === 'auth/invalid-credential') {
         // If sign-in fails because user doesn't exist, try to sign them up
         try {
-          const userCredential = await initiateEmailSignUp(auth, values.email, values.password);
-          await ensureUserDocument(userCredential); // Create the user doc after sign-up
+          const userCredential = await createUserWithEmailAndPassword(auth, values.email, values.password);
+          // After sign-up, create their user doc. The first user becomes admin.
+          const userCount = (await getDoc(collection(firestore, 'users'))).size;
+          const role = userCount === 0 ? 'admin' : 'user';
+
+          await ensureUserDocument(userCredential, role);
           toast({
             title: 'Account created successfully',
             description: 'Signing you in and redirecting...',

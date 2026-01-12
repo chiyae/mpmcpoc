@@ -61,18 +61,21 @@ import { useToast } from "@/hooks/use-toast";
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { generateLpo } from '@/ai/flows/lpo-generation';
 import { Skeleton } from '@/components/ui/skeleton';
-import { useCollection, useFirestore, useMemoFirebase } from '@/firebase';
+import { useCollection, useFirestore, useMemoFirebase, useUser } from '@/firebase';
 import { collection, query, where } from 'firebase/firestore';
 
 export default function BulkStoreInventoryPage() {
   const { toast } = useToast();
   
   const firestore = useFirestore();
+  const { user, isUserLoading } = useUser();
+
   const itemsCollectionQuery = useMemoFirebase(
-    () => collection(firestore, 'items'),
-    [firestore]
+    () => (user && firestore ? collection(firestore, 'items') : null),
+    [user, firestore]
   );
-  const { data: bulkStoreItems, isLoading } = useCollection<Item>(itemsCollectionQuery);
+  
+  const { data: bulkStoreItems, isLoading: isItemsLoading } = useCollection<Item>(itemsCollectionQuery);
 
   const [data, setData] = React.useState<Item[]>([]);
   const [sorting, setSorting] = React.useState<SortingState>([]);
@@ -91,6 +94,8 @@ export default function BulkStoreInventoryPage() {
 
   const [isGeneratingLpo, setIsGeneratingLpo] = React.useState(false);
   const [generatedLpo, setGeneratedLpo] = React.useState<GenerateLpoOutput | null>(null);
+  
+  const isLoading = isUserLoading || isItemsLoading;
 
   React.useEffect(() => {
     if (bulkStoreItems) {
@@ -103,7 +108,7 @@ export default function BulkStoreInventoryPage() {
     setIsGeneratingLpo(true);
     setGeneratedLpo(null);
 
-    const lowStockItems = data.filter(item => item.quantity < item.reorderLevel);
+    const lowStockItems = data.filter(item => (item.quantity ?? 0) < item.reorderLevel);
 
     if (lowStockItems.length === 0) {
         setIsGeneratingLpo(false);
@@ -168,7 +173,7 @@ export default function BulkStoreInventoryPage() {
     setIsAddItemFormOpen(false);
     toast({
         title: "Item Added",
-        description: `Successfully added ${newItem.name} to the inventory.`,
+        description: `Successfully added ${newItem.itemName} to the inventory.`,
     });
   };
 
@@ -176,7 +181,7 @@ export default function BulkStoreInventoryPage() {
     setData((prev) =>
       prev.map((item) =>
         item.id === itemId
-          ? { ...item, quantity: item.quantity + adjustment }
+          ? { ...item, quantity: (item.quantity ?? 0) + adjustment }
           : item
       )
     );
@@ -237,7 +242,7 @@ export default function BulkStoreInventoryPage() {
       header: () => <div className="text-right">Quantity</div>,
       cell: ({ row }) => {
         // Mock data as quantity isn't on the Item entity directly
-        const quantity = 0; //parseFloat(row.getValue('quantity'));
+        const quantity = row.original.quantity ?? 0;
         const { reorderLevel } = row.original;
         const isLowStock = quantity < reorderLevel;
   

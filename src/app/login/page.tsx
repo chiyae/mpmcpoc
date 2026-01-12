@@ -22,10 +22,11 @@ import {
   CardTitle,
 } from '@/components/ui/card';
 import Logo from '@/components/logo';
-import { useAuth, useFirestore, useUser } from '@/firebase';
+import { useAuth, useUser } from '@/firebase';
 import { useRouter } from 'next/navigation';
 import { useToast } from '@/hooks/use-toast';
 import { signInWithEmailAndPassword } from 'firebase/auth';
+import { Skeleton } from '@/components/ui/skeleton';
 
 const formSchema = z.object({
   email: z.string().email({ message: 'Please enter a valid email address.' }),
@@ -68,29 +69,32 @@ export default function LoginPage() {
         title: 'Sign in successful',
         description: 'Redirecting to your dashboard...',
       });
-      router.push('/');
+      // The useEffect will handle the redirect to '/'
     } catch (error: any) {
-        let errorMessage = "An unexpected error occurred during sign-in.";
-        if (error.code === 'auth/user-not-found' || error.code === 'auth/invalid-credential') {
-            errorMessage = "Invalid email or password. Please try again.";
-        } else {
-            errorMessage = error.message;
-        }
-        toast({
-            variant: 'destructive',
-            title: 'Sign In Failed',
-            description: errorMessage,
-        });
+      let errorMessage = "An unexpected error occurred during sign-in.";
+      if (error.code === 'auth/user-not-found' || error.code === 'auth/invalid-credential') {
+        errorMessage = "Invalid email or password. Please try again.";
+      } else {
+        errorMessage = error.message;
+      }
+      toast({
+        variant: 'destructive',
+        title: 'Sign In Failed',
+        description: errorMessage,
+      });
     } finally {
       setIsSubmitting(false);
     }
   }
 
-
   if (isUserLoading || user) {
     return (
       <div className="flex flex-col items-center justify-center min-h-screen bg-background p-4">
-        <p>Loading...</p>
+        <div className="flex justify-center mb-4">
+          <Logo />
+        </div>
+        <Skeleton className="h-8 w-48 mb-4" />
+        <Skeleton className="h-96 w-full max-w-sm" />
       </div>
     );
   }

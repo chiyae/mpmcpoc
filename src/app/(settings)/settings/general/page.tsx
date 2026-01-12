@@ -119,6 +119,7 @@ export default function GeneralSettingsPage() {
                         <SelectItem value="KES">KES - Kenyan Shilling</SelectItem>
                         <SelectItem value="GHS">GHS - Ghanaian Cedi</SelectItem>
                         <SelectItem value="NGN">NGN - Nigerian Naira</SelectItem>
+                        <SelectItem value="MWK">MWK - Malawian Kwacha</SelectItem>
                     </SelectContent>
                 </Select>
             </div>

@@ -28,6 +28,12 @@ interface ClinicSettings {
 export default function GeneralSettingsPage() {
   const { toast } = useToast();
   const firestore = useFirestore();
+  
+  const [isClient, setIsClient] = React.useState(false);
+  React.useEffect(() => {
+    setIsClient(true);
+  }, []);
+
 
   const settingsDocRef = useMemoFirebase(
     () => (firestore ? doc(firestore, 'settings', 'clinic') : null),
@@ -95,7 +101,7 @@ export default function GeneralSettingsPage() {
     }
   };
 
-  if (isLoading) {
+  if (isLoading || !isClient) {
     return (
         <div className="space-y-8 max-w-4xl mx-auto">
              <header className="space-y-1.5">
@@ -214,5 +220,3 @@ export default function GeneralSettingsPage() {
     </div>
   );
 }
-
-    

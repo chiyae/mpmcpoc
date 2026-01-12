@@ -26,10 +26,10 @@ interface ClinicSettings {
 }
 
 const defaultSettings: ClinicSettings = {
-    clinicName: 'MediTrack Pro Clinic',
-    clinicAddress: '123 Health St, Wellness City',
-    clinicPhone: '+1-555-123-4567',
-    currency: 'USD',
+    clinicName: 'Mpingu Medical Clinic',
+    clinicAddress: 'Mpingu Trading Centre along Lilongwe Mchinji road.',
+    clinicPhone: '0999411352 / 0880118252',
+    currency: 'MWK',
 };
 
 export default function GeneralSettingsPage() {
@@ -52,7 +52,7 @@ export default function GeneralSettingsPage() {
   const [clinicName, setClinicName] = React.useState('');
   const [clinicAddress, setClinicAddress] = React.useState('');
   const [clinicPhone, setClinicPhone] = React.useState('');
-  const [currency, setCurrency] = React.useState('USD');
+  const [currency, setCurrency] = React.useState('MWK');
 
   // Effect to seed the database with initial data if none exists
   React.useEffect(() => {
@@ -75,7 +75,7 @@ export default function GeneralSettingsPage() {
     setClinicName(dataToDisplay.clinicName || '');
     setClinicAddress(dataToDisplay.clinicAddress || '');
     setClinicPhone(dataToDisplay.clinicPhone || '');
-    setCurrency(dataToDisplay.currency || 'USD');
+    setCurrency(dataToDisplay.currency || 'MWK');
   }, [settingsData]);
 
 

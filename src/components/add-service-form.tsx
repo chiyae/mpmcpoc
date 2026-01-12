@@ -31,6 +31,7 @@ export function AddServiceForm({ onAddService }: AddServiceFormProps) {
     resolver: zodResolver(formSchema),
     defaultValues: {
       name: "",
+      fee: 0,
     },
   })
 

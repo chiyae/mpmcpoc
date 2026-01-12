@@ -5,7 +5,14 @@ service cloud.firestore {
   match /databases/{database}/documents {
     
     function getUserData() {
-      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data;
+      // Check if the user document exists before trying to access its data.
+      // This prevents errors if a user is authenticated but their user doc hasn't been created yet.
+      let userDoc = get(/databases/$(database)/documents/users/$(request.auth.uid));
+      if (exists(/databases/$(database)/documents/users/$(request.auth.uid))) {
+        return userDoc.data;
+      }
+      // Return a default object with no role if the user document doesn't exist.
+      return { "role": "none" };
     }
 
     function isAdmin() {

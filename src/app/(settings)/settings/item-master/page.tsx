@@ -70,6 +70,11 @@ export default function ItemMasterPage() {
   const [rowSelection, setRowSelection] = React.useState({});
   const [isAddItemOpen, setIsAddItemOpen] = React.useState(false);
 
+  const [isClient, setIsClient] = React.useState(false);
+  React.useEffect(() => {
+    setIsClient(true);
+  }, []);
+
   const handleCopyItemId = (itemId: string) => {
     navigator.clipboard.writeText(itemId);
     toast({
@@ -220,20 +225,22 @@ export default function ItemMasterPage() {
             className="max-w-sm"
             />
             <div className="flex items-center gap-2">
-                <Dialog open={isAddItemOpen} onOpenChange={setIsAddItemOpen}>
-                  <DialogTrigger asChild>
-                    <Button>Add New Item</Button>
-                  </DialogTrigger>
-                  <DialogContent className="sm:max-w-[625px]">
-                    <DialogHeader>
-                      <DialogTitle>Add New Master Item</DialogTitle>
-                      <DialogDescription>
-                        Define a new item that can be stocked in inventory.
-                      </DialogDescription>
-                    </DialogHeader>
-                    <AddItemMasterForm onAddItem={handleAddItem} />
-                  </DialogContent>
-                </Dialog>
+                {isClient && (
+                  <Dialog open={isAddItemOpen} onOpenChange={setIsAddItemOpen}>
+                    <DialogTrigger asChild>
+                      <Button>Add New Item</Button>
+                    </DialogTrigger>
+                    <DialogContent className="sm:max-w-[625px]">
+                      <DialogHeader>
+                        <DialogTitle>Add New Master Item</DialogTitle>
+                        <DialogDescription>
+                          Define a new item that can be stocked in inventory.
+                        </DialogDescription>
+                      </DialogHeader>
+                      <AddItemMasterForm onAddItem={handleAddItem} />
+                    </DialogContent>
+                  </Dialog>
+                )}
                 <DropdownMenu>
                 <DropdownMenuTrigger asChild>
                     <Button variant="outline" className="ml-auto">

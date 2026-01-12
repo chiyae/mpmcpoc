@@ -62,6 +62,11 @@ export default function ServiceManagementPage() {
   const [isEditServiceOpen, setIsEditServiceOpen] = React.useState(false);
   const [selectedService, setSelectedService] = React.useState<Service | null>(null);
 
+  const [isClient, setIsClient] = React.useState(false);
+  React.useEffect(() => {
+    setIsClient(true);
+  }, []);
+
   const handleAddService = async (serviceData: Omit<Service, 'id'>) => {
     if (!firestore) return;
     try {
@@ -192,20 +197,22 @@ export default function ServiceManagementPage() {
                 <h1 className="text-3xl font-bold tracking-tight">Service Management</h1>
                 <p className="text-muted-foreground">Define billable clinic services like consultation or lab fees.</p>
             </header>
-            <Dialog open={isAddServiceOpen} onOpenChange={setIsAddServiceOpen}>
-                <DialogTrigger asChild>
-                <Button>Add New Service</Button>
-                </DialogTrigger>
-                <DialogContent className="sm:max-w-[425px]">
-                <DialogHeader>
-                    <DialogTitle>Add New Service</DialogTitle>
-                    <DialogDescription>
-                    Define a new billable service.
-                    </DialogDescription>
-                </DialogHeader>
-                <AddServiceForm onAddService={handleAddService} />
-                </DialogContent>
-            </Dialog>
+            {isClient && (
+              <Dialog open={isAddServiceOpen} onOpenChange={setIsAddServiceOpen}>
+                  <DialogTrigger asChild>
+                  <Button>Add New Service</Button>
+                  </DialogTrigger>
+                  <DialogContent className="sm:max-w-[425px]">
+                  <DialogHeader>
+                      <DialogTitle>Add New Service</DialogTitle>
+                      <DialogDescription>
+                      Define a new billable service.
+                      </DialogDescription>
+                  </DialogHeader>
+                  <AddServiceForm onAddService={handleAddService} />
+                  </DialogContent>
+              </Dialog>
+            )}
         </div>
         <div className="rounded-md border">
             <Table>
@@ -266,7 +273,7 @@ export default function ServiceManagementPage() {
             </Table>
         </div>
 
-        {selectedService && (
+        {selectedService && isClient && (
             <Dialog open={isEditServiceOpen} onOpenChange={setIsEditServiceOpen}>
                 <DialogContent className="sm:max-w-[425px]">
                 <DialogHeader>

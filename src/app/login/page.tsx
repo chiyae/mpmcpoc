@@ -30,6 +30,7 @@ import {
 import { useRouter } from 'next/navigation';
 import { useToast } from '@/hooks/use-toast';
 import { doc, getDoc, setDoc } from 'firebase/firestore';
+import { UserCredential } from 'firebase/auth';
 
 const formSchema = z.object({
   email: z.string().email({ message: 'Please enter a valid email address.' }),
@@ -61,68 +62,74 @@ export default function LoginPage() {
     }
   }, [user, isUserLoading, router]);
 
+  const ensureUserDocument = async (userCredential: UserCredential) => {
+    if (!firestore) return;
+    const user = userCredential.user;
+    const userRef = doc(firestore, 'users', user.uid);
+    const userDoc = await getDoc(userRef);
+
+    if (!userDoc.exists()) {
+      // If the user document doesn't exist, create it.
+      // This is crucial for the first admin user.
+      await setDoc(userRef, {
+        id: user.uid,
+        username: user.email,
+        displayName: user.email?.split('@')[0] || 'Admin',
+        role: 'admin', // Default first user to admin
+        locationId: 'all',
+      });
+      toast({
+        title: 'Admin profile created',
+        description: 'Your admin user profile has been set up in the database.',
+      });
+    }
+  };
+
   async function onSubmit(values: z.infer<typeof formSchema>) {
     if (!auth || !firestore) {
       toast({ variant: 'destructive', title: 'Firebase not initialized.' });
       return;
     }
     setIsSubmitting(true);
+
     try {
-      await initiateEmailSignIn(auth, values.email, values.password);
+      // First, try to sign in
+      const userCredential = await initiateEmailSignIn(auth, values.email, values.password);
+      await ensureUserDocument(userCredential); // Check and create user doc if needed
       toast({
         title: 'Sign in successful',
         description: 'Redirecting to your dashboard...',
       });
     } catch (error: any) {
       if (error.code === 'auth/user-not-found' || error.code === 'auth/invalid-credential') {
+        // If sign-in fails because user doesn't exist, try to sign them up
         try {
           const userCredential = await initiateEmailSignUp(auth, values.email, values.password);
-          const newUser = userCredential.user;
-          
-          // After first sign-up, create their user document with admin role
-          const userRef = doc(firestore, 'users', newUser.uid);
-          const userDoc = await getDoc(userRef);
-
-          if (!userDoc.exists()) {
-            await setDoc(userRef, {
-              id: newUser.uid,
-              username: values.email,
-              displayName: 'Admin', // Default display name for first user
-              role: 'admin',
-              locationId: 'all',
-            });
-          }
-
+          await ensureUserDocument(userCredential); // Create the user doc after sign-up
           toast({
             title: 'Account created successfully',
-            description: 'Signing you in and redirecting to your dashboard...',
+            description: 'Signing you in and redirecting...',
           });
         } catch (signUpError: any) {
-          let description = 'Could not create an account. Please try again.';
-           if (signUpError.code === 'auth/email-already-in-use') {
-            description = 'An account with this email already exists. Please try signing in.';
-          }
           toast({
             variant: 'destructive',
             title: 'Sign Up Failed',
-            description: description,
+            description: signUpError.message || 'Could not create an account.',
           });
         }
       } else {
-        let description = 'An unexpected error occurred. Please try again.';
-        if (error.code === 'auth/wrong-password' || error.code === 'auth/invalid-credential') {
-          description = 'Invalid email or password. Please try again.';
-        }
+        // Handle other sign-in errors
         toast({
           variant: 'destructive',
           title: 'Sign In Failed',
-          description: description,
+          description: error.message || 'An unexpected error occurred.',
         });
       }
     } finally {
       setIsSubmitting(false);
     }
   }
+
 
   if (isUserLoading || user) {
     return (

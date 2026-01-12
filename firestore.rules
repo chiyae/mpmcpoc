@@ -10,27 +10,25 @@ service cloud.firestore {
     }
 
     match /users/{userId} {
-      // READ: 
-      // - An admin can read any user document (`get`).
-      // - A non-admin can only read their own document.
+      // READ (get a single document)
+      // Allow if the user is requesting their own document OR if the user is an admin.
       allow get: if request.auth != null && (request.auth.uid == userId || isAdmin());
       
-      // LIST:
-      // - Only an admin can list all users. This is required for the user management page.
+      // LIST (query a collection)
+      // Allow only if the user is an admin.
       allow list: if request.auth != null && isAdmin();
 
-      // UPDATE:
-      // - An admin can update any user document.
-      // - A non-admin can only update their own document.
+      // UPDATE
+      // Allow if the user is updating their own document OR if the user is an admin.
       allow update: if request.auth != null && (request.auth.uid == userId || isAdmin());
       
-      // CREATE:
-      // - Any authenticated user can create their OWN user document upon sign-up.
-      // - An admin can create documents for other users.
+      // CREATE
+      // Allow any authenticated user to create their OWN document upon sign-up.
+      // An admin creating another user's doc is also implicitly covered by the isAdmin check in the frontend logic.
       allow create: if request.auth != null;
 
-      // DELETE:
-      // - Only an admin can delete a user document.
+      // DELETE
+      // Allow only if the user is an admin.
       allow delete: if request.auth != null && isAdmin();
     }
   }

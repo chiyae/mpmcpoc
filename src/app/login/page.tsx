@@ -25,7 +25,7 @@ import Logo from '@/components/logo';
 import { useAuth, useFirestore, useUser } from '@/firebase';
 import { useRouter } from 'next/navigation';
 import { useToast } from '@/hooks/use-toast';
-import { collection, doc, getDoc, setDoc } from 'firebase/firestore';
+import { collection, doc, getDoc, setDoc, getDocs, query, limit } from 'firebase/firestore';
 import type { UserCredential } from 'firebase/auth';
 import { signInWithEmailAndPassword, createUserWithEmailAndPassword } from 'firebase/auth';
 
@@ -58,7 +58,7 @@ export default function LoginPage() {
     }
   }, [user, isUserLoading, router]);
 
-  const ensureUserDocument = async (userCredential: UserCredential, isNewUser: boolean) => {
+  const ensureUserDocument = async (userCredential: UserCredential) => {
     if (!firestore) return;
   
     const user = userCredential.user;
@@ -67,16 +67,21 @@ export default function LoginPage() {
     try {
       const docSnap = await getDoc(userRef);
       if (docSnap.exists()) {
-        return; // Document already exists, nothing to do.
+        // User document already exists, do nothing.
+        return;
       }
   
-      // If the document doesn't exist, it must be created.
-      // This happens for new sign-ups, or for existing auth users without a firestore doc.
-      // The first user to ever be created gets the 'admin' role.
-      // We determine this by checking if it was a `createUserWithEmailAndPassword` call.
-      // This is a simplification to avoid a collection query which causes permission issues.
-      const role = isNewUser ? 'admin' : 'pharmacy'; 
-      const locationId = isNewUser ? 'all' : 'unassigned';
+      // Document doesn't exist, so we need to create it.
+      // Let's check if this is the first user ever.
+      const usersCollectionRef = collection(firestore, 'users');
+      const q = query(usersCollectionRef, limit(1));
+      const existingUsersSnap = await getDocs(q);
+      
+      // If there are no other documents in the collection, this is the first user.
+      const isFirstUser = existingUsersSnap.empty;
+      
+      const role = isFirstUser ? 'admin' : 'pharmacy';
+      const locationId = isFirstUser ? 'all' : 'unassigned';
   
       await setDoc(userRef, {
         id: user.uid,
@@ -86,7 +91,7 @@ export default function LoginPage() {
         locationId: locationId,
       });
   
-      if (isNewUser) {
+      if (isFirstUser) {
         toast({
           title: `Admin User Created`,
           description: `The first user account is now an Administrator.`,
@@ -94,12 +99,28 @@ export default function LoginPage() {
       }
   
     } catch (error: any) {
-      console.error("Error in ensureUserDocument:", error);
-      toast({
-        variant: "destructive",
-        title: 'Profile Creation Failed',
-        description: "We couldn't set up your user profile. Please contact support.",
-      });
+      // This catch block is important. A non-admin user won't have permission to query
+      // the 'users' collection. We can infer the outcome.
+      if (error.code === 'permission-denied') {
+        // This error means the collection is NOT empty (an admin already exists).
+        // The rules are preventing a non-admin from listing users, which is correct.
+        // So, we just create the document for the current user with a default role.
+        await setDoc(userRef, {
+          id: user.uid,
+          username: user.email,
+          displayName: user.email?.split('@')[0] || 'New User',
+          role: 'pharmacy',
+          locationId: 'unassigned',
+        });
+      } else {
+        // Handle other errors
+        console.error("Error in ensureUserDocument:", error);
+        toast({
+          variant: "destructive",
+          title: 'Profile Creation Failed',
+          description: "We couldn't set up your user profile. Please contact support.",
+        });
+      }
     }
   };
 
@@ -114,7 +135,7 @@ export default function LoginPage() {
     try {
       // Attempt to sign in first
       const userCredential = await signInWithEmailAndPassword(auth, values.email, values.password);
-      await ensureUserDocument(userCredential, false); // isNewUser = false
+      await ensureUserDocument(userCredential);
       toast({
         title: 'Sign in successful',
         description: 'Redirecting to your dashboard...',
@@ -125,7 +146,7 @@ export default function LoginPage() {
         // If sign-in fails because the user doesn't exist, try to sign them up.
         try {
           const newUserCredential = await createUserWithEmailAndPassword(auth, values.email, values.password);
-          await ensureUserDocument(newUserCredential, true); // isNewUser = true
+          await ensureUserDocument(newUserCredential);
           toast({
             title: 'Account created successfully',
             description: 'Signing you in and redirecting...',

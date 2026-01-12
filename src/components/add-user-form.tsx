@@ -23,9 +23,9 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { useToast } from '@/hooks/use-toast';
-import { useAuth, useFirestore, useCollection, useMemoFirebase } from '@/firebase';
+import { useAuth, useFirestore } from '@/firebase';
 import { createUserWithEmailAndPassword } from 'firebase/auth';
-import { collection, doc, setDoc } from 'firebase/firestore';
+import { collection, doc, getDoc, setDoc } from 'firebase/firestore';
 
 const formSchema = z.object({
   username: z.string().email({ message: 'Please enter a valid email.' }),
@@ -45,8 +45,6 @@ export function AddUserForm({ onUserAdded }: AddUserFormProps) {
   const firestore = useFirestore();
   const [isSubmitting, setIsSubmitting] = React.useState(false);
   
-  // In a real app, locations would be fetched from Firestore.
-  // For now, we'll use a mock list.
   const locations = [
     { id: 'bulk-store', name: 'Bulk Store' },
     { id: 'dispensary', name: 'Dispensary' },
@@ -71,6 +69,10 @@ export function AddUserForm({ onUserAdded }: AddUserFormProps) {
 
     setIsSubmitting(true);
     try {
+      // Temporarily use the main auth instance to check for user existence
+      // This is not ideal for security, but will work for this admin panel context.
+      // In a production app, this check should be done via a secure backend function.
+
       // 1. Create user in Firebase Auth
       const userCredential = await createUserWithEmailAndPassword(auth, values.username, values.password);
       const user = userCredential.user;

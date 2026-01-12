@@ -27,7 +27,7 @@ import { useRouter } from 'next/navigation';
 import { useToast } from '@/hooks/use-toast';
 import { createUserWithEmailAndPassword, signInWithEmailAndPassword, User } from 'firebase/auth';
 import { Skeleton } from '@/components/ui/skeleton';
-import { doc, getDoc, setDoc } from 'firebase/firestore';
+import { doc, getDoc, setDoc, writeBatch } from 'firebase/firestore';
 
 const formSchema = z.object({
   email: z.string().email({ message: 'Please enter a valid email address.' }),
@@ -60,44 +60,47 @@ export default function LoginPage() {
 
   async function handleUserDocCreation(signedInUser: User) {
     if (!firestore) return;
+    
+    const batch = writeBatch(firestore);
     const userDocRef = doc(firestore, 'users', signedInUser.uid);
     const userDocSnap = await getDoc(userDocRef);
 
     if (!userDocSnap.exists()) {
       const isFirstAdmin = signedInUser.email === 'admin@example.com';
-      const userRole = isFirstAdmin ? 'admin' : 'pharmacy';
+      const userRole = isFirstAdmin ? 'admin' : 'pharmacy'; // Default new sign-ups to a non-admin role
 
+      // 1. Create the user profile document
+      batch.set(userDocRef, {
+        id: signedInUser.uid,
+        username: signedInUser.email,
+        displayName: signedInUser.email?.split('@')[0] || 'New User',
+        role: userRole,
+        locationId: 'all', // Default location
+      });
+
+      // 2. If it's the designated first admin, add them to the 'admins' collection
+      if (isFirstAdmin) {
+        const adminDocRef = doc(firestore, 'admins', signedInUser.uid);
+        batch.set(adminDocRef, { createdAt: new Date().toISOString() });
+      }
+      
       try {
-        await setDoc(userDocRef, {
-          id: signedInUser.uid,
-          username: signedInUser.email,
-          displayName: signedInUser.email?.split('@')[0] || 'New User',
-          role: userRole,
-          locationId: 'all',
-        });
-
-        // If this is the designated admin, add them to the 'admins' collection
-        if (isFirstAdmin) {
-          const adminDocRef = doc(firestore, 'admins', signedInUser.uid);
-          await setDoc(adminDocRef, { createdAt: new Date().toISOString() });
-        }
-        
+        await batch.commit();
         toast({
           title: 'Welcome!',
           description: 'Your user profile has been created.',
         });
-
       } catch (error: any) {
-         toast({
+        toast({
           variant: 'destructive',
           title: 'Profile Creation Failed',
-          description: "Could not create your user profile. You may not have permissions.",
+          description: 'Could not create your user profile. You may not have permissions.',
         });
-        // Log out the user if profile creation fails
-        auth?.signOut();
+        auth?.signOut(); // Log out the user if profile creation fails
       }
     }
   }
+
 
   async function onSubmit(values: z.infer<typeof formSchema>) {
     if (!auth || !firestore) {
@@ -115,6 +118,7 @@ export default function LoginPage() {
       });
     } catch (error: any) {
       if (error.code === 'auth/user-not-found' || error.code === 'auth/invalid-credential') {
+        // Allow self-registration by creating a new user if sign-in fails
         try {
           const newUserCredential = await createUserWithEmailAndPassword(auth, values.email, values.password);
           await handleUserDocCreation(newUserCredential.user);

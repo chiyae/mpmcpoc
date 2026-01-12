@@ -68,25 +68,15 @@ export function AddUserForm({ onUserAdded }: AddUserFormProps) {
     }
 
     setIsSubmitting(true);
-    // We cannot create a user with email and password on the client and then use them.
-    // Instead, we should rely on a backend function to do this securely.
-    // For this simulation, we'll create the user document, and assume a backend function would create the auth user.
-    // THIS IS NOT A SECURE PRODUCTION PATTERN.
-    // A secure pattern involves calling a Cloud Function that uses the Admin SDK.
-
+    // This pattern is for demonstration purposes in an environment where backend functions aren't used.
+    // In a production app, this logic should be in a secure Cloud Function that uses the Firebase Admin SDK.
     try {
-      // NOTE: In a real app, you'd call a Cloud Function here.
-      // This client-side user creation is for demonstration purposes in this environment.
-      const tempAuth = auth; // Use a temporary instance if needed, or the main one
-      
-      // We are creating a dummy user in auth. In a real app, this would be a secure backend call.
-      // We will delete this user if the firestore write fails.
-      const userCredential = await createUserWithEmailAndPassword(tempAuth, values.username, values.password);
+      const userCredential = await createUserWithEmailAndPassword(auth, values.username, values.password);
       const user = userCredential.user;
 
       const batch = writeBatch(firestore);
 
-      // 1. Create user document in Firestore
+      // 1. Create the user's profile document
       const userRef = doc(firestore, 'users', user.uid);
       batch.set(userRef, {
         id: user.uid,
@@ -96,7 +86,8 @@ export function AddUserForm({ onUserAdded }: AddUserFormProps) {
         locationId: values.locationId,
       });
 
-      // 2. If the user is an admin, add them to the 'admins' collection
+      // 2. If the user is an admin, create a corresponding document in the 'admins' collection.
+      // This is what the security rules will check.
       if (values.role === 'admin') {
         const adminRef = doc(firestore, 'admins', user.uid);
         batch.set(adminRef, { createdAt: new Date().toISOString() });
@@ -118,7 +109,7 @@ export function AddUserForm({ onUserAdded }: AddUserFormProps) {
       } else if (error.code === 'auth/weak-password') {
         errorMessage = 'The password is too weak.';
       } else if (error.code === 'permission-denied') {
-        errorMessage = 'You do not have permission to create new users.';
+        errorMessage = 'You do not have permission to perform this action.';
       }
       toast({
         variant: 'destructive',

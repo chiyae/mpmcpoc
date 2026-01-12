@@ -1,7 +1,7 @@
 
 "use client";
 
-import type { Item } from "@/lib/types";
+import type { Item, Stock } from "@/lib/types";
 import {
   Card,
   CardContent,
@@ -23,27 +23,36 @@ import { format } from "date-fns";
 import { useSettings } from "@/context/settings-provider";
 
 type ItemDetailsProps = {
-  item: Item;
+  item: Item & { stock?: Stock };
 };
+
+function formatItemName(item: Item) {
+    let name = item.genericName;
+    if (item.brandName) name += ` (${item.brandName})`;
+    if (item.strengthValue) name += ` ${item.strengthValue}${item.strengthUnit}`;
+    return name;
+  }
 
 export function ItemDetails({ item }: ItemDetailsProps) {
   const { formatCurrency } = useSettings();
+  const hasStock = !!item.stock;
+  
   return (
     <div className="grid gap-6">
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <div>
-          <h3 className="text-lg font-semibold">{item.name}</h3>
+          <h3 className="text-lg font-semibold">{formatItemName(item)}</h3>
           <p className="text-sm text-muted-foreground">{item.id}</p>
         </div>
         <div className="flex flex-wrap items-start gap-2">
           <Badge variant="secondary">{item.category}</Badge>
-          <Badge variant="outline">Location: {item.location}</Badge>
+          {hasStock && <Badge variant="outline">Location: {item.stock.locationId}</Badge>}
         </div>
       </div>
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
         <div>
           <p className="text-muted-foreground">Quantity</p>
-          <p className="font-medium">{item.quantity}</p>
+          <p className="font-medium">{item.stock?.currentStockQuantity ?? 'N/A'}</p>
         </div>
         <div>
           <p className="text-muted-foreground">Reorder Level</p>
@@ -55,12 +64,12 @@ export function ItemDetails({ item }: ItemDetailsProps) {
         </div>
         <div>
           <p className="text-muted-foreground">Batch No.</p>
-          <p className="font-medium">{item.batchNumber}</p>
+          <p className="font-medium">{item.stock?.batchId ?? 'N/A'}</p>
         </div>
         <div>
           <p className="text-muted-foreground">Expiry Date</p>
           <p className="font-medium">
-            {format(new Date(item.expiryDate), "dd/MM/yyyy")}
+            {item.stock?.expiryDate ? format(new Date(item.stock.expiryDate), "dd/MM/yyyy") : 'N/A'}
           </p>
         </div>
         <div>
@@ -72,49 +81,6 @@ export function ItemDetails({ item }: ItemDetailsProps) {
           <p className="font-medium">{formatCurrency(item.sellingPrice)}</p>
         </div>
       </div>
-      <Card>
-        <CardHeader>
-          <CardTitle>Usage History</CardTitle>
-          <CardDescription>
-            Recent usage for the last 30 days.
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <ScrollArea className="h-48">
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Date</TableHead>
-                  <TableHead className="text-right">Quantity Used</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {item.usageHistory.length > 0 ? (
-                  [...item.usageHistory].reverse().map((record, index) => (
-                    <TableRow key={index}>
-                      <TableCell>
-                        {format(new Date(record.date), "dd/MM/yyyy")}
-                      </TableCell>
-                      <TableCell className="text-right">
-                        {record.quantity}
-                      </TableCell>
-                    </TableRow>
-                  ))
-                ) : (
-                  <TableRow>
-                    <TableCell
-                      colSpan={2}
-                      className="h-24 text-center"
-                    >
-                      No usage history available.
-                    </TableCell>
-                  </TableRow>
-                )}
-              </TableBody>
-            </Table>
-          </ScrollArea>
-        </CardContent>
-      </Card>
     </div>
   );
 }

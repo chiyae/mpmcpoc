@@ -1,3 +1,4 @@
+
 'use client';
 
 import * as React from 'react';
@@ -40,8 +41,7 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
-import { lpos } from '@/lib/data';
-import type { Item, GenerateLpoOutput, Lpo, Vendor } from '@/lib/types';
+import type { Item, GenerateLpoOutput, Lpo, Vendor, Stock } from '@/lib/types';
 import { format } from 'date-fns';
 import { AddItemForm } from '@/components/add-item-form';
 import {
@@ -54,27 +54,42 @@ import {
   DialogFooter,
   DialogClose,
 } from '@/components/ui/dialog';
-import { ItemDetails } from '@/components/item-details';
 import { AdjustStockForm } from '@/components/adjust-stock-form';
 import { useToast } from "@/hooks/use-toast";
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { generateLpo } from '@/ai/flows/lpo-generation';
 import { Skeleton } from '@/components/ui/skeleton';
-import { useCollection, useFirestore, useMemoFirebase, useUser } from '@/firebase';
-import { collection, query, where } from 'firebase/firestore';
+import { useCollection, useFirestore, useMemoFirebase } from '@/firebase';
+import { addDoc, collection, doc, setDoc, writeBatch } from 'firebase/firestore';
+
+type BulkStoreInventoryItem = Item & {
+  stock?: Stock; // Stock is now optional
+};
+
+
+function formatItemName(item: Item) {
+  let name = item.genericName;
+  if (item.brandName) name += ` (${item.brandName})`;
+  if (item.strengthValue) name += ` ${item.strengthValue}${item.strengthUnit}`;
+  return name;
+}
 
 export default function BulkStoreInventoryPage() {
   const { toast } = useToast();
   
   const firestore = useFirestore();
-  const { user, isUserLoading } = useUser();
 
   const itemsCollectionQuery = useMemoFirebase(
-    () => (user && firestore ? collection(firestore, 'items') : null),
-    [user, firestore]
+    () => (firestore ? collection(firestore, 'items') : null),
+    [firestore]
   );
-  
-  const { data: bulkStoreItems, isLoading: isItemsLoading } = useCollection<Item>(itemsCollectionQuery);
+  const { data: allItems, isLoading: isItemsLoading } = useCollection<Item>(itemsCollectionQuery);
+
+  const stockCollectionQuery = useMemoFirebase(
+    () => (firestore ? collection(firestore, 'stocks') : null),
+    [firestore]
+  );
+  const { data: allStock, isLoading: isStockLoading } = useCollection<Stock>(stockCollectionQuery);
 
   const vendorsCollectionQuery = useMemoFirebase(
     () => (firestore ? collection(firestore, 'vendors') : null),
@@ -83,7 +98,6 @@ export default function BulkStoreInventoryPage() {
   const { data: vendors, isLoading: areVendorsLoading } = useCollection<Vendor>(vendorsCollectionQuery);
 
 
-  const [data, setData] = React.useState<Item[]>([]);
   const [sorting, setSorting] = React.useState<SortingState>([]);
   const [columnFilters, setColumnFilters] = React.useState<ColumnFiltersState>(
     []
@@ -93,28 +107,35 @@ export default function BulkStoreInventoryPage() {
   const [rowSelection, setRowSelection] = React.useState({});
   const [isAddItemFormOpen, setIsAddItemFormOpen] = React.useState(false);
 
-  const [selectedItem, setSelectedItem] = React.useState<Item | null>(null);
-  const [isViewDetailsOpen, setIsViewDetailsOpen] = React.useState(false);
+  const [selectedItem, setSelectedItem] = React.useState<BulkStoreInventoryItem | null>(null);
   const [isAdjustStockOpen, setIsAdjustStockOpen] = React.useState(false);
   const [isLpoDialogOpen, setIsLpoDialogOpen] = React.useState(false);
 
   const [isGeneratingLpo, setIsGeneratingLpo] = React.useState(false);
   const [generatedLpo, setGeneratedLpo] = React.useState<GenerateLpoOutput | null>(null);
+  const [savedLpos, setSavedLpos] = React.useState<Lpo[]>([]);
   
-  const isLoading = isUserLoading || isItemsLoading || areVendorsLoading;
+  const isLoading = isItemsLoading || isStockLoading || areVendorsLoading;
 
-  React.useEffect(() => {
-    if (bulkStoreItems) {
-      setData(bulkStoreItems);
-    }
-  }, [bulkStoreItems]);
+  const inventoryData: BulkStoreInventoryItem[] = React.useMemo(() => {
+    if (!allItems) return [];
+    // This combines items with their stock information
+    return allItems.map(item => {
+        const bulkStock = allStock?.find(s => s.itemId === item.id && s.locationId === 'bulk-store');
+        return {
+            ...item,
+            stock: bulkStock
+        };
+    });
+  }, [allItems, allStock]);
+
 
   const handleOpenLpoDialog = async () => {
     setIsLpoDialogOpen(true);
     setIsGeneratingLpo(true);
     setGeneratedLpo(null);
 
-    const lowStockItems = data.filter(item => (item.quantity ?? 0) < item.reorderLevel);
+    const lowStockItems = inventoryData.filter(item => (item.stock?.currentStockQuantity ?? 0) < item.reorderLevel);
 
     if (lowStockItems.length === 0 || !vendors || vendors.length === 0) {
         setIsGeneratingLpo(false);
@@ -122,7 +143,17 @@ export default function BulkStoreInventoryPage() {
     }
     
     try {
-        const lpo = await generateLpo({ lowStockItems, vendors });
+        const lpoInput = {
+            lowStockItems: lowStockItems.map(item => ({
+                id: item.id,
+                name: formatItemName(item),
+                quantity: item.stock?.currentStockQuantity ?? 0,
+                reorderLevel: item.reorderLevel,
+                usageHistory: [] // Note: usage history is not tracked yet
+            })),
+            vendors: vendors.map(v => ({ id: v.id, name: v.name, supplies: v.supplies || []}))
+        }
+        const lpo = await generateLpo(lpoInput);
         setGeneratedLpo(lpo);
     } catch (error) {
         console.error("Failed to generate LPO:", error);
@@ -144,7 +175,7 @@ export default function BulkStoreInventoryPage() {
       ...generatedLpo,
       status: "Pending",
     };
-    lpos.unshift(newLpo); // Add to the beginning of the array
+    setSavedLpos(prev => [newLpo, ...prev]);
 
     toast({
       title: "LPO Confirmed",
@@ -163,42 +194,77 @@ export default function BulkStoreInventoryPage() {
     });
   }
 
-  const handleOpenViewDetails = (item: Item) => {
-    setSelectedItem(item);
-    setIsViewDetailsOpen(true);
-  };
-
-  const handleOpenAdjustStock = (item: Item) => {
+  const handleOpenAdjustStock = (item: BulkStoreInventoryItem) => {
     setSelectedItem(item);
     setIsAdjustStockOpen(true);
   };
 
 
-  const handleAddItem = (newItem: Item) => {
-    setData((prev) => [...prev, newItem]);
+  const handleAddItem = async (itemData: Omit<Item, 'id'| 'itemCode'>) => {
+    if (!firestore) return;
     setIsAddItemFormOpen(false);
-    toast({
-        title: "Item Added",
-        description: `Successfully added ${newItem.itemName} to the inventory.`,
-    });
+
+    try {
+        const codePrefix = itemData.genericName.substring(0, 3).toUpperCase();
+        const codeSuffix = Math.floor(1000 + Math.random() * 9000);
+        const itemCode = `${codePrefix}${codeSuffix}`;
+        
+        const itemRef = doc(firestore, 'items', itemCode);
+        const newItem: Item = { ...itemData, id: itemCode, itemCode: itemCode };
+
+        await setDoc(itemRef, newItem);
+        toast({
+            title: "Item Added",
+            description: `Successfully added ${formatItemName(newItem)} to the master list.`,
+        });
+
+    } catch (error) {
+        console.error("Error adding item:", error);
+        toast({ variant: 'destructive', title: 'Error', description: 'Failed to add new item.'});
+    }
   };
 
-  const handleAdjustStock = (itemId: string, adjustment: number) => {
-    setData((prev) =>
-      prev.map((item) =>
-        item.id === itemId
-          ? { ...item, quantity: (item.quantity ?? 0) + adjustment }
-          : item
-      )
-    );
-    setIsAdjustStockOpen(false);
-    toast({
-        title: "Stock Adjusted",
-        description: `Successfully updated stock for item ${itemId}.`,
-    });
+  const handleAdjustStock = async (itemId: string, adjustment: number) => {
+     if (!firestore || !selectedItem) return;
+     setIsAdjustStockOpen(false);
+
+     const stockDoc = selectedItem.stock;
+
+     try {
+        if (stockDoc) {
+            // Update existing stock document
+            const stockRef = doc(firestore, 'stocks', stockDoc.id);
+            await writeBatch(firestore).update(stockRef, { currentStockQuantity: stockDoc.currentStockQuantity + adjustment }).commit();
+        } else {
+            // Create a new stock document for this item in the bulk-store
+            const newStockRef = doc(collection(firestore, 'stocks'));
+            // This is simplified - assumes a new batch. A real app would need a batch selection UI.
+            const newBatchId = `B${Date.now()}`; 
+            const expiryDate = new Date();
+            expiryDate.setFullYear(expiryDate.getFullYear() + 1); // Default 1 year expiry
+
+            await setDoc(newStockRef, {
+                id: newStockRef.id,
+                itemId: itemId,
+                locationId: 'bulk-store',
+                currentStockQuantity: adjustment,
+                batchId: newBatchId,
+                expiryDate: expiryDate.toISOString(),
+            });
+        }
+        
+        toast({
+            title: "Stock Adjusted",
+            description: `Successfully updated stock for item ${itemId}.`,
+        });
+
+     } catch(error) {
+        console.error("Error adjusting stock:", error);
+        toast({ variant: 'destructive', title: 'Error', description: 'Failed to adjust stock.'});
+     }
   };
 
-  const columns: ColumnDef<Item>[] = [
+  const columns: ColumnDef<BulkStoreInventoryItem>[] = [
     {
       id: 'select',
       header: ({ table }) => (
@@ -222,7 +288,7 @@ export default function BulkStoreInventoryPage() {
       enableHiding: false,
     },
     {
-      accessorKey: 'itemName',
+      accessorKey: 'genericName',
       header: ({ column }) => {
         return (
           <Button
@@ -234,7 +300,7 @@ export default function BulkStoreInventoryPage() {
           </Button>
         );
       },
-      cell: ({ row }) => <div className="capitalize">{row.getValue('itemName')}</div>,
+      cell: ({ row }) => <div className="capitalize font-medium">{formatItemName(row.original)}</div>,
     },
     {
       accessorKey: 'category',
@@ -244,11 +310,10 @@ export default function BulkStoreInventoryPage() {
       ),
     },
     {
-      accessorKey: 'quantity',
+      accessorKey: 'stock.currentStockQuantity',
       header: () => <div className="text-right">Quantity</div>,
       cell: ({ row }) => {
-        // Mock data as quantity isn't on the Item entity directly
-        const quantity = row.original.quantity ?? 0;
+        const quantity = row.original.stock?.currentStockQuantity ?? 0;
         const { reorderLevel } = row.original;
         const isLowStock = quantity < reorderLevel;
   
@@ -266,11 +331,11 @@ export default function BulkStoreInventoryPage() {
       },
     },
      {
-      accessorKey: 'expiryDate',
+      accessorKey: 'stock.expiryDate',
       header: 'Expiry Date',
       cell: ({ row }) => {
-        // This is a placeholder as expiry is on the batch
-        return <Badge variant={'secondary'}>N/A</Badge>;
+        const expiryDate = row.original.stock?.expiryDate;
+        return <Badge variant={expiryDate ? 'secondary' : 'outline'}>{expiryDate ? format(new Date(expiryDate), 'dd/MM/yyyy') : 'N/A'}</Badge>;
       },
     },
     {
@@ -293,9 +358,6 @@ export default function BulkStoreInventoryPage() {
                 Copy item ID
               </DropdownMenuItem>
               <DropdownMenuSeparator />
-              <DropdownMenuItem onClick={() => handleOpenViewDetails(item)}>
-                View item details
-              </DropdownMenuItem>
               <DropdownMenuItem onClick={() => handleOpenAdjustStock(item)}>
                 Adjust stock
               </DropdownMenuItem>
@@ -307,7 +369,7 @@ export default function BulkStoreInventoryPage() {
   ];
 
   const table = useReactTable({
-    data: data,
+    data: inventoryData,
     columns,
     onSortingChange: setSorting,
     onColumnFiltersChange: setColumnFilters,
@@ -324,7 +386,6 @@ export default function BulkStoreInventoryPage() {
       rowSelection,
     },
     meta: {
-      handleOpenViewDetails,
       handleOpenAdjustStock,
       handleCopyItemId,
     }
@@ -336,9 +397,9 @@ export default function BulkStoreInventoryPage() {
         <div className="flex items-center justify-between py-4">
             <Input
             placeholder="Filter items..."
-            value={(table.getColumn('itemName')?.getFilterValue() as string) ?? ''}
+            value={(table.getColumn('genericName')?.getFilterValue() as string) ?? ''}
             onChange={(event) =>
-                table.getColumn('itemName')?.setFilterValue(event.target.value)
+                table.getColumn('genericName')?.setFilterValue(event.target.value)
             }
             className="max-w-sm"
             />
@@ -352,7 +413,7 @@ export default function BulkStoreInventoryPage() {
                     <DialogHeader>
                       <DialogTitle>Add New Item</DialogTitle>
                       <DialogDescription>
-                        Fill in the details below to add a new item to the bulk store inventory.
+                        Fill in the details below to add a new item to the master inventory list.
                       </DialogDescription>
                     </DialogHeader>
                     <AddItemForm onAddItem={handleAddItem} />
@@ -471,31 +532,17 @@ export default function BulkStoreInventoryPage() {
       </div>
       
       {selectedItem && (
-        <>
-          <Dialog open={isViewDetailsOpen} onOpenChange={setIsViewDetailsOpen}>
-            <DialogContent className="sm:max-w-4xl">
-              <DialogHeader>
-                <DialogTitle>Item Details</DialogTitle>
-                <DialogDescription>
-                  Detailed information for {selectedItem.itemName}.
-                </DialogDescription>
-              </DialogHeader>
-              <ItemDetails item={selectedItem} />
-            </DialogContent>
-          </Dialog>
-
           <Dialog open={isAdjustStockOpen} onOpenChange={setIsAdjustStockOpen}>
             <DialogContent className="sm:max-w-[425px]">
               <DialogHeader>
-                <DialogTitle>Adjust Stock: {selectedItem.itemName}</DialogTitle>
+                <DialogTitle>Adjust Stock: {formatItemName(selectedItem)}</DialogTitle>
                 <DialogDescription>
-                  Make a correction to the current stock quantity. Use a positive number to add stock, and a negative number to remove it (e.g. for breakages or count correction). To add a new batch with a different expiry date, please use the 'Add New Item' function.
+                  Make a correction to the current stock quantity. Use a positive number to add stock, and a negative number to remove it.
                 </DialogDescription>
               </DialogHeader>
               <AdjustStockForm item={selectedItem} onAdjustStock={handleAdjustStock} />
             </DialogContent>
           </Dialog>
-        </>
       )}
 
       <Dialog open={isLpoDialogOpen} onOpenChange={setIsLpoDialogOpen}>

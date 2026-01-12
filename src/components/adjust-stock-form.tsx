@@ -1,3 +1,4 @@
+
 "use client"
 
 import { zodResolver } from "@hookform/resolvers/zod"
@@ -14,7 +15,7 @@ import {
   FormMessage,
 } from "@/components/ui/form"
 import { Input } from "@/components/ui/input"
-import type { Item } from "@/lib/types"
+import type { Item, Stock } from "@/lib/types"
 
 const formSchema = z.object({
   adjustment: z.coerce
@@ -24,7 +25,7 @@ const formSchema = z.object({
 });
 
 type AdjustStockFormProps = {
-  item: Item;
+  item: Item & { stock?: Stock };
   onAdjustStock: (itemId: string, adjustment: number) => void;
 };
 
@@ -37,7 +38,8 @@ export function AdjustStockForm({ item, onAdjustStock }: AdjustStockFormProps) {
   });
 
   function onSubmit(values: z.infer<typeof formSchema>) {
-    if (item.quantity + values.adjustment < 0) {
+    const currentQuantity = item.stock?.currentStockQuantity ?? 0;
+    if (currentQuantity + values.adjustment < 0) {
       form.setError("adjustment", {
         type: "manual",
         message: "Stock cannot go below zero.",
@@ -61,7 +63,7 @@ export function AdjustStockForm({ item, onAdjustStock }: AdjustStockFormProps) {
                 <Input type="number" placeholder="e.g., -10 or 25" {...field} />
               </FormControl>
               <FormDescription>
-                Current quantity: {item.quantity}. Enter a positive value to increase stock, or a negative value to decrease it (e.g. for breakages or count correction).
+                Current quantity: {item.stock?.currentStockQuantity ?? 0}. Enter a positive value to add stock, and a negative value to remove it.
               </FormDescription>
               <FormMessage />
             </FormItem>
@@ -74,5 +76,3 @@ export function AdjustStockForm({ item, onAdjustStock }: AdjustStockFormProps) {
     </Form>
   );
 }
-
-    

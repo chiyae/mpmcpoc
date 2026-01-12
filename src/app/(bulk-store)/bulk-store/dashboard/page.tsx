@@ -1,3 +1,6 @@
+
+'use client';
+import * as React from 'react';
 import {
   Card,
   CardContent,
@@ -6,12 +9,51 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Package, AlertTriangle, Truck } from "lucide-react";
-import { bulkStoreItems } from "@/lib/data";
+import { useCollection, useFirestore, useMemoFirebase } from '@/firebase';
+import type { Stock, Item, InternalOrder } from '@/lib/types';
+import { collection, query, where } from 'firebase/firestore';
+import { Skeleton } from '@/components/ui/skeleton';
 
 export default function BulkStoreDashboard() {
-  const totalItems = bulkStoreItems.length;
-  const lowStockItems = bulkStoreItems.filter(item => item.quantity < item.reorderLevel).length;
-  const pendingOrders = 5; // Mock data for now
+  const firestore = useFirestore();
+
+  // --- Data Fetching ---
+  const bulkStockQuery = useMemoFirebase(
+    () => firestore ? query(collection(firestore, 'stocks'), where('locationId', '==', 'bulk-store')) : null,
+    [firestore]
+  );
+  const { data: bulkStocks, isLoading: isLoadingStock } = useCollection<Stock>(bulkStockQuery);
+
+  const itemsQuery = useMemoFirebase(() => firestore ? collection(firestore, 'items') : null, [firestore]);
+  const { data: allItems, isLoading: isLoadingItems } = useCollection<Item>(itemsQuery);
+
+  const pendingOrdersQuery = useMemoFirebase(
+    () => firestore ? query(collection(firestore, 'internalOrders'), where('status', '==', 'Pending')) : null,
+    [firestore]
+  );
+  const { data: pendingOrdersData, isLoading: isLoadingOrders } = useCollection<InternalOrder>(pendingOrdersQuery);
+
+  // --- Calculations ---
+  const { totalUniqueItems, lowStockItemsCount } = React.useMemo(() => {
+    if (!bulkStocks || !allItems) return { totalUniqueItems: 0, lowStockItemsCount: 0 };
+    
+    const itemIdsInStock = new Set(bulkStocks.map(stock => stock.itemId));
+
+    const lowStockCount = allItems.reduce((count, item) => {
+        const stockForThisItem = bulkStocks.filter(s => s.itemId === item.id);
+        const totalQuantity = stockForThisItem.reduce((sum, s) => sum + s.currentStockQuantity, 0);
+
+        if (totalQuantity < item.reorderLevel) {
+            return count + 1;
+        }
+        return count;
+    }, 0);
+
+    return { totalUniqueItems: itemIdsInStock.size, lowStockItemsCount: lowStockCount };
+  }, [bulkStocks, allItems]);
+
+  const pendingOrdersCount = pendingOrdersData?.length || 0;
+  const isLoading = isLoadingStock || isLoadingItems || isLoadingOrders;
 
   return (
     <div className="space-y-6">
@@ -22,7 +64,7 @@ export default function BulkStoreDashboard() {
             <Package className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{totalItems}</div>
+            {isLoading ? <Skeleton className="h-8 w-1/2" /> : <div className="text-2xl font-bold">{totalUniqueItems}</div>}
             <p className="text-xs text-muted-foreground">
               Unique items in bulk store
             </p>
@@ -34,7 +76,7 @@ export default function BulkStoreDashboard() {
             <AlertTriangle className="h-4 w-4 text-destructive" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{lowStockItems}</div>
+            {isLoading ? <Skeleton className="h-8 w-1/2" /> : <div className="text-2xl font-bold">{lowStockItemsCount}</div>}
             <p className="text-xs text-muted-foreground">
               Items below reorder level
             </p>
@@ -46,7 +88,7 @@ export default function BulkStoreDashboard() {
             <Truck className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">+{pendingOrders}</div>
+            {isLoading ? <Skeleton className="h-8 w-1/2" /> : <div className="text-2xl font-bold">+{pendingOrdersCount}</div>}
             <p className="text-xs text-muted-foreground">
               Internal orders from dispensary
             </p>

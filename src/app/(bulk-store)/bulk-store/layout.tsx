@@ -14,6 +14,7 @@ import {
 import { Home, Package, Truck, LineChart, Settings, LogOut, ClipboardCheck } from "lucide-react";
 import Logo from "@/components/logo";
 import DashboardHeader from "@/components/dashboard-header";
+import LogoutButton from "@/components/logout-button";
 
 
 export default function BulkStoreLayout({ children }: { children: ReactNode }) {
@@ -82,12 +83,7 @@ export default function BulkStoreLayout({ children }: { children: ReactNode }) {
               </SidebarMenuButton>
             </SidebarMenuItem>
             <SidebarMenuItem>
-              <SidebarMenuButton asChild tooltip="Logout">
-                <Link href="/login">
-                  <LogOut />
-                  <span>Logout</span>
-                </Link>
-              </SidebarMenuButton>
+              <LogoutButton />
             </SidebarMenuItem>
           </SidebarMenu>
         </SidebarFooter>

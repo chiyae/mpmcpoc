@@ -14,6 +14,7 @@ import {
 import { Home, DollarSign, FileText, Settings, LogOut, LineChart } from "lucide-react";
 import Logo from "@/components/logo";
 import DashboardHeader from "@/components/dashboard-header";
+import LogoutButton from "@/components/logout-button";
 
 
 export default function BillingLayout({ children }: { children: ReactNode }) {
@@ -74,12 +75,7 @@ export default function BillingLayout({ children }: { children: ReactNode }) {
               </SidebarMenuButton>
             </SidebarMenuItem>
             <SidebarMenuItem>
-              <SidebarMenuButton asChild tooltip="Logout">
-                <Link href="/login">
-                  <LogOut />
-                  <span>Logout</span>
-                </Link>
-              </SidebarMenuButton>
+              <LogoutButton />
             </SidebarMenuItem>
           </SidebarMenu>
         </SidebarFooter>

@@ -4,34 +4,87 @@ import { useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useUser } from '@/firebase';
 import { Skeleton } from '@/components/ui/skeleton';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import Link from 'next/link';
+import { Building, Pill, DollarSign } from 'lucide-react';
+import Logo from '@/components/logo';
 
 export default function Home() {
   const { user, isUserLoading } = useUser();
   const router = useRouter();
 
   useEffect(() => {
-    if (!isUserLoading) {
-      if (user) {
-        // In a real app with roles, you'd redirect based on user.role
-        // For now, we'll default to the bulk-store dashboard.
-        router.push('/bulk-store/dashboard');
-      } else {
-        router.push('/login');
-      }
+    if (!isUserLoading && !user) {
+      router.push('/login');
     }
   }, [user, isUserLoading, router]);
 
-  // Display a loading state while checking for the user
-  return (
-     <div className="flex flex-col items-center justify-center min-h-screen bg-background p-4">
-      <div className="space-y-4">
-        <Skeleton className="h-12 w-64" />
-        <Skeleton className="h-8 w-80" />
-        <div className="flex justify-center gap-4 pt-8">
+  if (isUserLoading || !user) {
+    return (
+      <div className="flex flex-col items-center justify-center min-h-screen bg-background p-4">
+        <div className="space-y-4">
+          <Skeleton className="h-12 w-64" />
+          <Skeleton className="h-8 w-80" />
+          <div className="flex justify-center gap-4 pt-8">
             <Skeleton className="h-48 w-64" />
             <Skeleton className="h-48 w-64" />
             <Skeleton className="h-48 w-64" />
+          </div>
         </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="flex flex-col items-center justify-center min-h-screen bg-background p-4">
+      <div className="mb-8">
+        <Logo />
+      </div>
+      <h2 className="text-2xl font-semibold text-center mb-2">Welcome to MediTrack Pro</h2>
+      <p className="text-muted-foreground text-center mb-8">Please select a module to continue.</p>
+
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6 max-w-4xl">
+        <Link href="/bulk-store/dashboard" passHref>
+          <Card className="hover:bg-accent hover:text-accent-foreground transition-colors">
+            <CardHeader className="flex flex-col items-center justify-center text-center">
+              <Building className="h-12 w-12 mb-4 text-primary" />
+              <CardTitle>Bulk Store</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <p className="text-sm text-center text-muted-foreground">
+                Manage main inventory, procurement, and internal stock transfers.
+              </p>
+            </CardContent>
+          </Card>
+        </Link>
+        
+        <Link href="/dispensary/dashboard" passHref>
+          <Card className="hover:bg-accent hover:text-accent-foreground transition-colors">
+            <CardHeader className="flex flex-col items-center justify-center text-center">
+              <Pill className="h-12 w-12 mb-4 text-primary" />
+              <CardTitle>Dispensary</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <p className="text-sm text-center text-muted-foreground">
+                Handle medication dispensing, patient sales, and local stock.
+              </p>
+            </CardContent>
+          </Card>
+        </Link>
+
+        <Link href="/billing/dashboard" passHref>
+          <Card className="hover:bg-accent hover:text-accent-foreground transition-colors">
+            <CardHeader className="flex flex-col items-center justify-center text-center">
+              <DollarSign className="h-12 w-12 mb-4 text-primary" />
+              <CardTitle>Billing</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <p className="text-sm text-center text-muted-foreground">
+                Create patient bills, manage invoices, and view financial reports.
+              </p>
+            </CardContent>
+          </Card>
+        </Link>
       </div>
     </div>
   );

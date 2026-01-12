@@ -27,7 +27,7 @@ import { useRouter } from 'next/navigation';
 import { useToast } from '@/hooks/use-toast';
 import { createUserWithEmailAndPassword, signInWithEmailAndPassword, User as FirebaseAuthUser } from 'firebase/auth';
 import { Skeleton } from '@/components/ui/skeleton';
-import { doc, getDoc, setDoc, writeBatch } from 'firebase/firestore';
+import { doc, getDoc, setDoc } from 'firebase/firestore';
 
 const formSchema = z.object({
   email: z.string().email({ message: 'Please enter a valid email address.' }),
@@ -65,23 +65,20 @@ export default function LoginPage() {
     const userDocSnap = await getDoc(userDocRef);
 
     if (!userDocSnap.exists()) {
-      const batch = writeBatch(firestore);
       const isAdmin = signedInUser.email === 'admin@example.com';
       const userRole = isAdmin ? 'admin' : 'pharmacy';
       const userLocation = isAdmin ? 'all' : 'unassigned';
       const userDisplayName = isAdmin ? 'Admin' : signedInUser.email?.split('@')[0] || 'New User'
 
-      // 1. Create the user profile document
-      batch.set(userDocRef, {
-        id: signedInUser.uid,
-        username: signedInUser.email,
-        displayName: userDisplayName,
-        role: userRole,
-        locationId: userLocation,
-      });
-      
       try {
-        await batch.commit();
+        await setDoc(userDocRef, {
+          id: signedInUser.uid,
+          username: signedInUser.email,
+          displayName: userDisplayName,
+          role: userRole,
+          locationId: userLocation,
+        });
+
         toast({
           title: 'Welcome!',
           description: 'Your user profile has been created.',

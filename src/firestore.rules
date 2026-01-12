@@ -1,60 +1,13 @@
+
 rules_version = '2';
 
 service cloud.firestore {
   match /databases/{database}/documents {
 
-    // -------------------------------------------------------------------------
-    // Helper Functions
-    // -------------------------------------------------------------------------
-
-    function isSignedIn() {
-      return request.auth != null;
-    }
-
-    function isOwner(userId) {
-      return isSignedIn() && request.auth.uid == userId;
-    }
-    
-    function getUserData(userId) {
-      return get(/databases/$(database)/documents/users/$(userId)).data;
-    }
-
-    function isAdmin() {
-      return isSignedIn() && getUserData(request.auth.uid).role == 'admin';
-    }
-
-    // -------------------------------------------------------------------------
-    // User Profiles
-    // -------------------------------------------------------------------------
-
     match /users/{userId} {
-      // Admins can list all users. Any authenticated user can read their own profile.
-      allow list: if isAdmin();
-      allow get: if isOwner(userId) || isAdmin();
-      
-      // Only admins can create, update, or delete user profiles.
-      allow create, update, delete: if isAdmin();
+      allow get, update: if request.auth != null
+                         && request.auth.uid == userId;
+      allow create: if request.auth != null;
     }
-
-    // -------------------------------------------------------------------------
-    // Core Business Data (Read-Only for most clients)
-    // -------------------------------------------------------------------------
-
-    match /locations/{locationId} {
-      allow read: if isSignedIn();
-      allow write: if false; // Locations are not client-modifiable
-    }
-
-    match /items/{itemId} {
-      allow read: if isSignedIn();
-      allow write: if isAdmin();
-    }
-
-    match /items/{itemId}/batches/{batchId} {
-      allow read: if isSignedIn();
-      allow write: if isAdmin();
-    }
-    
-    // ... other rules can follow ...
   }
 }

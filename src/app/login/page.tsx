@@ -1,3 +1,4 @@
+
 'use client';
 
 import * as React from 'react';
@@ -74,11 +75,11 @@ export default function LoginPage() {
     const usersCollectionRef = collection(firestore, 'users');
     const allUsersSnapshot = await getDocs(usersCollectionRef);
     
-    // If the snapshot is empty, this is the very first user document being created.
+    // If the snapshot is empty after creating the auth user, this is the very first user document.
     const isFirstUser = allUsersSnapshot.empty;
     
     const role = isFirstUser ? 'admin' : 'pharmacy';
-    const locationId = isFirstUser ? 'all' : 'unassigned';
+    const locationId = 'unassigned';
 
     await setDoc(userRef, {
       id: user.uid,
@@ -156,8 +157,7 @@ export default function LoginPage() {
           </div>
           <CardTitle className="text-2xl">Welcome Back</CardTitle>
           <CardDescription>
-            Enter your credentials to access your dashboard. Use{' '}
-            <strong>admin@example.com</strong> and <strong>admin123</strong>.
+            Enter your credentials to access your dashboard.
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -172,7 +172,7 @@ export default function LoginPage() {
                     <FormControl>
                       <Input
                         type="email"
-                        placeholder="admin@example.com"
+                        placeholder="user@example.com"
                         {...field}
                       />
                     </FormControl>

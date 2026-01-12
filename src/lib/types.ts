@@ -7,6 +7,7 @@ export type LpoStatus = 'Draft' | 'Sent' | 'Completed' | 'Rejected';
 export type PaymentMethod = 'Cash' | 'Mobile Money' | 'Bank' | 'Invoice';
 export type PaymentStatus = 'Paid' | 'Unpaid';
 export type BillType = 'Walk-in' | 'OPD';
+export type UserRole = 'admin' | 'cashier' | 'pharmacy';
 
 
 export interface Item {
@@ -24,6 +25,14 @@ export interface Item {
   quantity?: number;
   location?: Location;
   usageHistory?: { date: string; quantity: number }[];
+}
+
+export interface User {
+  id: string; // Firebase Auth UID
+  username: string;
+  displayName: string;
+  role: UserRole;
+  locationId: string; // Reference to a location
 }
 
 export interface Vendor {
@@ -152,3 +161,5 @@ export type GenerateLpoOutput = z.infer<typeof GenerateLpoOutputSchema>;
 export interface Lpo extends GenerateLpoOutput {
   status: 'Pending' | 'Approved' | 'Rejected' | 'Completed';
 }
+
+    

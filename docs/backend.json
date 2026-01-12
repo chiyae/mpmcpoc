@@ -299,9 +299,14 @@
           "type": "string",
           "description": "Username for login."
         },
-        "userType": {
+        "displayName": {
           "type": "string",
-          "description": "Type of user (Bulk Store or Dispensary)."
+          "description": "User's display name."
+        },
+        "role": {
+          "type": "string",
+          "description": "User role (admin, cashier, pharmacy).",
+          "enum": ["admin", "cashier", "pharmacy"]
         },
         "locationId": {
           "type": "string",
@@ -311,7 +316,8 @@
       "required": [
         "id",
         "username",
-        "userType",
+        "displayName",
+        "role",
         "locationId"
       ]
     },
@@ -574,3 +580,4 @@
     "reasoning": "The Firestore structure is designed to support the MediTrack Pro application, focusing on inventory management and billing for a clinic with a Bulk Store and a Dispensary. The primary goal is to create a scalable and secure database that avoids complex authorization logic. We will use path-based ownership for user-specific data and denormalization for collaborative data to ensure atomic operations and straightforward security rules.\n\n1.  **Items Collection:** Stores general item information. No location-specific details.\n2.  **Locations Collection:** Stores location details. Used for filtering data relevant to a specific location.\n3.  **Users Collection:** Stores user information, including the location they are assigned to.\n4.  **Batches Subcollection:** Each Item document contains a 'batches' subcollection. Stores batch details for that item.\n5.  **Stocks Subcollection:** Each Batch document contains a 'stocks' subcollection. Stores stock levels for that batch at specific locations. This denormalizes location information to allow QAPs, enabling rules to check if the user’s location matches the location of the stock.\n6.  **InternalOrders Subcollection:** Each Location document contains an 'internalOrders' subcollection. Stores internal orders requested by that location.\n7.  **OrderItems Subcollection:** Each InternalOrder document contains an 'orderItems' subcollection. Stores items included in that order.\n8.  **Billings Subcollection:** Each Location document contains a 'billings' subcollection. Stores billing records for that location.\n9.  **BillingItems Subcollection:** Each Billing document contains a 'billingItems' subcollection. Stores items included in that bill.\n10. **StockTransfers Subcollection:** Each Item document contains a 'stockTransfers' subcollection. Stores stock transfer records for that item.\n\n**Authorization Independence:** Denormalization is used to ensure authorization independence. For example, the `stocks` subcollection denormalizes location information from the `Location` document. This removes the need for `get()` calls to parent documents in security rules.\n\n**QAPs Support:** The structure supports QAPs by using structural segregation. Each collection serves a specific purpose and has homogeneous security requirements. Path-based ownership (`/users/{userId}/...`) ensures that only the user can access their specific data. By incorporating location-based access at the `stock` level, data is accessible for each user."
   }
 }
+    

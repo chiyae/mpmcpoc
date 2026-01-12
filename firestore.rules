@@ -3,30 +3,20 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
-    // Helper functions can be defined but the key is how they are used.
-    // The get() call inside a function that is used in a 'list' rule is the source of the paradox.
-    // Instead of custom functions, we will write the logic inline for clarity.
-
     match /users/{userId} {
-      // LIST: Allow a 'list' operation (e.g., useCollection) only if the user making
-      // the request has a document in the 'users' collection where the 'role' field is 'admin'.
-      // This rule still uses get(), which is problematic for list queries.
-      // A better approach is to use custom claims.
-      // For this prototype, we are making a key change to allow create for any auth user.
-      allow list: if request.auth != null && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin';
+      // Allow a user to get/update their own document.
+      allow get, update: if request.auth != null && request.auth.uid == userId;
 
-      // GET: Allow a user to get their own document, or an admin to get any user document.
-      allow get: if request.auth != null && (request.auth.uid == userId || get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin');
-
-      // CREATE: Allow any authenticated user to create their own user document.
-      // This is crucial for the sign-up process to succeed without a permission error.
+      // Allow any authenticated user to create their own user document upon sign-up.
       allow create: if request.auth != null && request.auth.uid == userId;
 
-      // UPDATE: Allow a user to update their own document, or an admin to update any.
-      allow update: if request.auth != null && (request.auth.uid == userId || get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin');
+      // Allow an admin to get any user document and to list all users.
+      // This works because the get() is checking the requesting user's own document,
+      // which is a valid and performant check.
+      allow list, get: if request.auth != null && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin';
 
-      // DELETE: Only allow an admin to delete a user.
-      allow delete: if request.auth != null && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin';
+      // Allow an admin to create, update, or delete any user document.
+      allow create, update, delete: if request.auth != null && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin';
     }
   }
 }

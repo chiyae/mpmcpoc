@@ -60,32 +60,43 @@ export default function LoginPage() {
 
   const ensureUserDocument = async (userCredential: UserCredential) => {
     if (!firestore) return;
-
+  
     const user = userCredential.user;
     const userRef = doc(firestore, 'users', user.uid);
-
+  
     try {
       const docSnap = await getDoc(userRef);
       if (docSnap.exists()) {
         // Document already exists, do nothing further.
         return;
       }
-
-      // Document doesn't exist, so create it.
-      // This is the first sign-in for this user.
-      // We will check if this is the first user document ever being created.
-      const usersCollectionRef = collection(firestore, 'users');
-      const allUsersSnap = await getDocs(usersCollectionRef);
-
-      const isFirstUser = allUsersSnap.empty;
+  
+      // Document doesn't exist, this is a new user sign-up.
+      // The first user to ever be created in the system gets the 'admin' role.
+      // This is determined by checking if there are any other documents in the 'users' collection.
+      // Note: This check itself is subject to security rules. We'll handle the potential error.
+      let isFirstUser = false;
+      try {
+        const usersCollectionRef = collection(firestore, 'users');
+        const allUsersSnap = await getDocs(usersCollectionRef);
+        // If we get here and it's empty, they are the first user.
+        // We add 1 because we haven't created the doc for the current user yet.
+        isFirstUser = allUsersSnap.size === 0;
+      } catch (e: any) {
+        // A 'permission-denied' error is EXPECTED here if a non-admin is signing up
+        // after the admin already exists. It means the list rule is working.
+        // We can safely assume they are not the first user.
+        if (e.code === 'permission-denied') {
+          isFirstUser = false;
+        } else {
+          // Re-throw other unexpected errors.
+          throw e;
+        }
+      }
       
       const role = isFirstUser ? 'admin' : 'pharmacy';
       const locationId = isFirstUser ? 'all' : 'unassigned';
-      
-      // Note: In a real app, setting the custom claim 'role' would be done
-      // via a backend function (e.g., a Cloud Function) triggered on user creation.
-      // For this prototype, we are creating the Firestore document which the rules will read.
-
+  
       await setDoc(userRef, {
         id: user.uid,
         username: user.email,
@@ -93,36 +104,21 @@ export default function LoginPage() {
         role: role,
         locationId: locationId,
       });
-
+  
       if (isFirstUser) {
         toast({
           title: `Admin User Created`,
           description: `The first user account is now an Administrator.`,
         });
       }
-
+  
     } catch (error: any) {
-      // Catch potential permission errors during the getDocs check for non-admins.
-      if (error.code === 'permission-denied') {
-        // This is an expected error for a new, non-admin user trying to check if they are the first user.
-        // We can safely assume they are not the admin and proceed.
-        const defaultRole = 'pharmacy';
-        await setDoc(userRef, {
-          id: user.uid,
-          username: user.email,
-          displayName: user.email?.split('@')[0] || 'New User',
-          role: defaultRole,
-          locationId: 'unassigned',
-        });
-      } else {
-        // Handle other, unexpected errors during document creation
-        console.error("Error creating user document:", error);
-        toast({
-          variant: "destructive",
-          title: 'Profile Creation Failed',
-          description: "We couldn't set up your user profile. Please contact support.",
-        });
-      }
+      console.error("Error creating user document:", error);
+      toast({
+        variant: "destructive",
+        title: 'Profile Creation Failed',
+        description: "We couldn't set up your user profile. Please contact support.",
+      });
     }
   };
 

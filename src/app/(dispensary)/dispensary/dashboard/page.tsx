@@ -12,7 +12,7 @@ import { Package, AlertTriangle, DollarSign } from "lucide-react";
 import { useSettings } from '@/context/settings-provider';
 import { useCollection, useFirestore, useMemoFirebase } from '@/firebase';
 import { collection, query, where } from 'firebase/firestore';
-import type { Stock, Bill } from '@/lib/types';
+import type { Stock, Bill, Item } from '@/lib/types';
 import { differenceInDays, parseISO } from 'date-fns';
 import { Skeleton } from '@/components/ui/skeleton';
 
@@ -29,6 +29,9 @@ export default function DispensaryDashboard() {
   );
   const { data: dispensaryStocks, isLoading: isLoadingStock } = useCollection<Stock>(dispensaryStockQuery);
   
+  const itemsQuery = useMemoFirebase(() => firestore ? collection(firestore, 'items') : null, [firestore]);
+  const { data: allItems, isLoading: isLoadingItems } = useCollection<Item>(itemsQuery);
+
   const todaysBillsQuery = useMemoFirebase(
     () => {
         if (!firestore) return null;
@@ -49,14 +52,16 @@ export default function DispensaryDashboard() {
   const { data: todaysBills, isLoading: isLoadingBills } = useCollection<Bill>(todaysBillsQuery);
 
   // --- Calculations ---
-  const { totalItems, nearExpiryItems, todaysSales } = React.useMemo(() => {
+  const { totalItems, nearExpiryItems, lowStockItemsCount, todaysSales } = React.useMemo(() => {
     const today = new Date();
     
-    const stockStats = dispensaryStocks?.reduce((acc, stock) => {
-        // Simple count of unique items (by itemId)
+    if (!dispensaryStocks || !allItems) {
+        return { totalItems: 0, nearExpiryItems: 0, lowStockItemsCount: 0, todaysSales: 0 };
+    }
+
+    const stockStats = dispensaryStocks.reduce((acc, stock) => {
         acc.itemIds.add(stock.itemId);
 
-        // Near Expiry Check
         if (stock.expiryDate) {
             const expiry = parseISO(stock.expiryDate);
             const daysToExpiry = differenceInDays(expiry, today);
@@ -67,20 +72,30 @@ export default function DispensaryDashboard() {
         return acc;
     }, { itemIds: new Set<string>(), nearExpiryCount: 0 });
 
+    const lowStockCount = allItems.reduce((count, item) => {
+        const stockForThisItem = dispensaryStocks.filter(s => s.itemId === item.id);
+        const totalQuantity = stockForThisItem.reduce((sum, s) => sum + s.currentStockQuantity, 0);
+        if (totalQuantity < item.reorderLevel) {
+            return count + 1;
+        }
+        return count;
+    }, 0);
+
     const sales = todaysBills?.reduce((sum, bill) => sum + bill.grandTotal, 0) || 0;
 
     return {
-        totalItems: stockStats?.itemIds.size || 0,
-        nearExpiryItems: stockStats?.nearExpiryCount || 0,
+        totalItems: stockStats.itemIds.size,
+        nearExpiryItems: stockStats.nearExpiryCount,
+        lowStockItemsCount: lowStockCount,
         todaysSales: sales
     }
-  }, [dispensaryStocks, todaysBills]);
+  }, [dispensaryStocks, allItems, todaysBills]);
 
-  const isLoading = isLoadingStock || isLoadingBills;
+  const isLoading = isLoadingStock || isLoadingBills || isLoadingItems;
 
   return (
     <div className="space-y-6">
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Items on Hand</CardTitle>
@@ -90,6 +105,18 @@ export default function DispensaryDashboard() {
             {isLoading ? <Skeleton className='h-8 w-1/2' /> : <div className="text-2xl font-bold">{totalItems}</div>}
             <p className="text-xs text-muted-foreground">
               Unique items in dispensary
+            </p>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Low Stock Alerts</CardTitle>
+            <AlertTriangle className="h-4 w-4 text-orange-500" />
+          </CardHeader>
+          <CardContent>
+             {isLoading ? <Skeleton className='h-8 w-1/2' /> : <div className="text-2xl font-bold">{lowStockItemsCount}</div>}
+            <p className="text-xs text-muted-foreground">
+              Items below their reorder level
             </p>
           </CardContent>
         </Card>

@@ -4,8 +4,18 @@ import * as React from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { FilePlus2, List, Scale, FileText } from 'lucide-react';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
+import { BuildProcurementListDialog } from '@/components/build-procurement-list-dialog';
+import type { Item } from '@/lib/types';
 
 export default function ProcurementPage() {
+  const [procurementList, setProcurementList] = React.useState<Item[]>([]);
+  const [isBuildListOpen, setIsBuildListOpen] = React.useState(false);
+
+  const handleListBuilt = (selectedItems: Item[]) => {
+    setProcurementList(selectedItems);
+    setIsBuildListOpen(false);
+  }
 
   return (
     <div className="space-y-6">
@@ -36,9 +46,9 @@ export default function ProcurementPage() {
             </CardDescription>
           </CardContent>
           <CardFooter>
-            <Button>
+            <Button onClick={() => setIsBuildListOpen(true)}>
               <FilePlus2 className="mr-2" />
-              Identify Items
+              {procurementList.length > 0 ? `Edit List (${procurementList.length})` : 'Identify Items'}
             </Button>
           </CardFooter>
         </Card>
@@ -62,8 +72,8 @@ export default function ProcurementPage() {
             </CardDescription>
           </CardContent>
           <CardFooter>
-            <Button disabled>
-              Compare Prices (0 items)
+            <Button disabled={procurementList.length === 0}>
+              Compare Prices ({procurementList.length} items)
             </Button>
           </CardFooter>
         </Card>
@@ -108,6 +118,21 @@ export default function ProcurementPage() {
           </div>
         </CardContent>
       </Card>
+
+      <Dialog open={isBuildListOpen} onOpenChange={setIsBuildListOpen}>
+        <DialogContent className="max-w-4xl">
+            <DialogHeader>
+                <DialogTitle>Build Procurement List</DialogTitle>
+                <DialogDescription>
+                    Select items to add to your procurement list. Items below their reorder level are pre-selected.
+                </DialogDescription>
+            </DialogHeader>
+            <BuildProcurementListDialog 
+                onConfirm={handleListBuilt} 
+                initialSelectedItems={procurementList}
+            />
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

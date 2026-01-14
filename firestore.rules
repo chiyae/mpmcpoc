@@ -40,7 +40,7 @@ service cloud.firestore {
     }
 
     /* ============================
-       MASTER DATA (BOOT SAFE)
+       MASTER DATA
        ============================ */
 
     match /items/{itemId} {
@@ -59,7 +59,7 @@ service cloud.firestore {
     }
 
     /* ============================
-       SETTINGS (STRICT)
+       SETTINGS
        ============================ */
 
     match /settings/{settingId} {
@@ -67,44 +67,38 @@ service cloud.firestore {
     }
 
     /* ============================
-       USERS (BOOTSTRAP SAFE)
+       USERS
        ============================ */
 
     match /users/{userId} {
-      // User can always read own profile (even first login)
       allow get: if isAuthenticated() && request.auth.uid == userId;
-
-      // Admin capabilities
       allow list, create, update, delete: if isAdmin();
     }
 
     /* ============================
-       BILLINGS (EMPTY SAFE)
+       BILLINGS
        ============================ */
 
     match /billings/{billingId} {
-      // Allow empty reads so UI can load
-      allow list, read: if isAuthenticated();
-
-      // Writes remain role-restricted
+      allow list, read: if isCashier() || isAdmin();
       allow create, update, delete: if isCashier() || isAdmin();
     }
 
     /* ============================
-       STOCKS (EMPTY SAFE)
+       STOCKS
        ============================ */
 
     match /stocks/{stockId} {
-      allow list, read: if isAuthenticated();
+      allow list, read: if isPharmacy() || isAdmin();
       allow write: if isPharmacy() || isAdmin();
     }
 
     /* ============================
-       INTERNAL ORDERS (EMPTY SAFE)
+       INTERNAL ORDERS
        ============================ */
 
     match /internalOrders/{orderId} {
-      allow list, read: if isAuthenticated();
+      allow list, read: if isPharmacy() || isAdmin();
       allow create: if isPharmacy() || isAdmin();
       allow update, delete: if isAdmin();
     }

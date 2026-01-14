@@ -13,7 +13,7 @@ import { useSettings } from '@/context/settings-provider';
 import { useCollection, useFirestore, useMemoFirebase } from '@/firebase';
 import { collection, query, where } from 'firebase/firestore';
 import type { Stock, Bill, Item } from '@/lib/types';
-import { differenceInDays, parseISO } from 'date-fns';
+import { differenceInDays, parseISO, isToday } from 'date-fns';
 import { Skeleton } from '@/components/ui/skeleton';
 
 export default function DispensaryDashboard() {
@@ -32,24 +32,17 @@ export default function DispensaryDashboard() {
   const itemsQuery = useMemoFirebase(() => firestore ? collection(firestore, 'items') : null, [firestore]);
   const { data: allItems, isLoading: isLoadingItems } = useCollection<Item>(itemsQuery);
 
-  const todaysBillsQuery = useMemoFirebase(
+  const dispensaryBillsQuery = useMemoFirebase(
     () => {
         if (!firestore) return null;
-        const today = new Date();
-        today.setHours(0, 0, 0, 0);
-        const tomorrow = new Date(today);
-        tomorrow.setDate(tomorrow.getDate() + 1);
-        
         return query(
             collection(firestore, 'billings'),
-            where('dispensingLocationId', '==', 'dispensary'),
-            where('date', '>=', today.toISOString()),
-            where('date', '<', tomorrow.toISOString())
+            where('dispensingLocationId', '==', 'dispensary')
         )
     },
     [firestore]
   );
-  const { data: todaysBills, isLoading: isLoadingBills } = useCollection<Bill>(todaysBillsQuery);
+  const { data: dispensaryBills, isLoading: isLoadingBills } = useCollection<Bill>(dispensaryBillsQuery);
 
   // --- Calculations ---
   const { totalItems, nearExpiryItems, lowStockItemsCount, todaysSales } = React.useMemo(() => {
@@ -81,7 +74,9 @@ export default function DispensaryDashboard() {
         return count;
     }, 0);
 
-    const sales = todaysBills?.reduce((sum, bill) => sum + bill.grandTotal, 0) || 0;
+    const sales = dispensaryBills
+        ?.filter(bill => isToday(parseISO(bill.date)))
+        .reduce((sum, bill) => sum + bill.grandTotal, 0) || 0;
 
     return {
         totalItems: stockStats.itemIds.size,
@@ -89,7 +84,7 @@ export default function DispensaryDashboard() {
         lowStockItemsCount: lowStockCount,
         todaysSales: sales
     }
-  }, [dispensaryStocks, allItems, todaysBills]);
+  }, [dispensaryStocks, allItems, dispensaryBills]);
 
   const isLoading = isLoadingStock || isLoadingBills || isLoadingItems;
 

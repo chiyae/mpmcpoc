@@ -6,15 +6,29 @@ import { Button } from '@/components/ui/button';
 import { FilePlus2, List, Scale, FileText } from 'lucide-react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { BuildProcurementListDialog } from '@/components/build-procurement-list-dialog';
-import type { Item } from '@/lib/types';
+import type { Item, Vendor } from '@/lib/types';
+import { useCollection, useFirestore, useMemoFirebase } from '@/firebase';
+import { collection } from 'firebase/firestore';
+import { CompareVendorPricesDialog } from '@/components/compare-vendor-prices-dialog';
 
 export default function ProcurementPage() {
+  const firestore = useFirestore();
   const [procurementList, setProcurementList] = React.useState<Item[]>([]);
   const [isBuildListOpen, setIsBuildListOpen] = React.useState(false);
+  const [isComparePricesOpen, setIsComparePricesOpen] = React.useState(false);
+
+  const vendorsQuery = useMemoFirebase(() => firestore ? collection(firestore, 'vendors') : null, [firestore]);
+  const { data: vendors, isLoading: areVendorsLoading } = useCollection<Vendor>(vendorsQuery);
 
   const handleListBuilt = (selectedItems: Item[]) => {
     setProcurementList(selectedItems);
     setIsBuildListOpen(false);
+  }
+
+  const handleOpenCompareDialog = () => {
+    if (procurementList.length > 0) {
+      setIsComparePricesOpen(true);
+    }
   }
 
   return (
@@ -54,7 +68,7 @@ export default function ProcurementPage() {
         </Card>
 
         {/* Step 2: Compare Vendor Prices */}
-        <Card>
+        <Card className={procurementList.length === 0 ? 'bg-muted/50' : ''}>
           <CardHeader>
              <div className="flex items-center gap-4">
                <div className="bg-primary/10 p-3 rounded-full">
@@ -72,14 +86,14 @@ export default function ProcurementPage() {
             </CardDescription>
           </CardContent>
           <CardFooter>
-            <Button disabled={procurementList.length === 0}>
+            <Button onClick={handleOpenCompareDialog} disabled={procurementList.length === 0}>
               Compare Prices ({procurementList.length} items)
             </Button>
           </CardFooter>
         </Card>
 
         {/* Step 3: Generate & Manage LPOs */}
-        <Card>
+        <Card className="bg-muted/50">
           <CardHeader>
              <div className="flex items-center gap-4">
                <div className="bg-primary/10 p-3 rounded-full">
@@ -130,6 +144,23 @@ export default function ProcurementPage() {
             <BuildProcurementListDialog 
                 onConfirm={handleListBuilt} 
                 initialSelectedItems={procurementList}
+            />
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={isComparePricesOpen} onOpenChange={setIsComparePricesOpen}>
+        <DialogContent className="max-w-6xl">
+            <DialogHeader>
+                <DialogTitle>Compare Vendor Prices</DialogTitle>
+                <DialogDescription>
+                    Enter the unit price from each vendor for the items below. The best price will be highlighted.
+                </DialogDescription>
+            </DialogHeader>
+            <CompareVendorPricesDialog 
+                items={procurementList}
+                vendors={vendors || []}
+                isLoading={areVendorsLoading}
+                onConfirm={() => setIsComparePricesOpen(false)}
             />
         </DialogContent>
       </Dialog>

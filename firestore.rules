@@ -83,10 +83,10 @@ service cloud.firestore {
        ============================ */
 
     match /billings/{billingId} {
-      // EMPTY-SAFE: UI can always load
+      // Allow empty reads so UI can load
       allow list, read: if isAuthenticated();
 
-      // SECURE: only authorized roles can modify data
+      // Writes remain role-restricted
       allow create, update, delete: if isCashier() || isAdmin();
     }
 
@@ -95,10 +95,7 @@ service cloud.firestore {
        ============================ */
 
     match /stocks/{stockId} {
-      // EMPTY-SAFE: UI can always load
       allow list, read: if isAuthenticated();
-      
-      // SECURE: only authorized roles can modify data
       allow write: if isPharmacy() || isAdmin();
     }
 
@@ -107,10 +104,7 @@ service cloud.firestore {
        ============================ */
 
     match /internalOrders/{orderId} {
-      // EMPTY-SAFE: UI can always load
       allow list, read: if isAuthenticated();
-
-      // SECURE: only authorized roles can modify data
       allow create: if isPharmacy() || isAdmin();
       allow update, delete: if isAdmin();
     }

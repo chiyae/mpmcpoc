@@ -1,3 +1,4 @@
+
 import type { ReactNode } from "react";
 import Link from "next/link";
 import {
@@ -14,7 +15,6 @@ import {
 import { Home, Package, Truck, LineChart, Settings, LogOut, ClipboardCheck } from "lucide-react";
 import Logo from "@/components/logo";
 import DashboardHeader from "@/components/dashboard-header";
-import LogoutButton from "@/components/logout-button";
 
 
 export default function BulkStoreLayout({ children }: { children: ReactNode }) {

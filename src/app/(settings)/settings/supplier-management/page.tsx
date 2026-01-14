@@ -10,9 +10,9 @@ import {
   CardHeader,
   CardTitle,
 } from '@/components/ui/card';
-import type { Vendor } from '@/lib/types';
+import type { Item, Vendor } from '@/lib/types';
 import { useCollection, useFirestore, useMemoFirebase } from '@/firebase';
-import { collection, addDoc } from 'firebase/firestore';
+import { collection, doc, setDoc } from 'firebase/firestore';
 import { Skeleton } from '@/components/ui/skeleton';
 import {
     Table,
@@ -32,6 +32,7 @@ import {
 } from '@/components/ui/dialog';
 import { useToast } from '@/hooks/use-toast';
 import { AddVendorForm } from '@/components/add-vendor-form';
+import { EditVendorForm } from '@/components/edit-vendor-form';
 
 export default function SupplierManagementPage() {
   const { toast } = useToast();
@@ -43,19 +44,28 @@ export default function SupplierManagementPage() {
   );
   const { data: vendors, isLoading: areVendorsLoading } = useCollection<Vendor>(vendorsCollectionQuery);
   
-  const [isAddVendorOpen, setIsAddVendorOpen] = React.useState(false);
-  const [isClient, setIsClient] = React.useState(false);
+  const itemsCollectionQuery = useMemoFirebase(
+    () => (firestore ? collection(firestore, 'items') : null),
+    [firestore]
+  );
+  const { data: allItems, isLoading: areItemsLoading } = useCollection<Item>(itemsCollectionQuery);
 
+  const [isAddVendorOpen, setIsAddVendorOpen] = React.useState(false);
+  const [isEditVendorOpen, setIsEditVendorOpen] = React.useState(false);
+  const [selectedVendor, setSelectedVendor] = React.useState<Vendor | null>(null);
+  
+  const [isClient, setIsClient] = React.useState(false);
   React.useEffect(() => {
     setIsClient(true);
   }, []);
   
-  const isLoading = areVendorsLoading;
+  const isLoading = areVendorsLoading || areItemsLoading;
 
   const handleVendorAdded = async (vendorData: Omit<Vendor, 'id'>) => {
     if (!firestore) return;
     try {
-      await addDoc(collection(firestore, 'vendors'), vendorData);
+      const newVendorRef = doc(collection(firestore, 'vendors'));
+      await setDoc(newVendorRef, { ...vendorData, id: newVendorRef.id });
       setIsAddVendorOpen(false);
       toast({
           title: "Vendor Added",
@@ -69,6 +79,31 @@ export default function SupplierManagementPage() {
             description: "Failed to add vendor. Please try again."
         })
     }
+  }
+  
+  const handleVendorUpdated = async (vendorId: string, vendorData: Omit<Vendor, 'id'>) => {
+    if (!firestore) return;
+    try {
+      const vendorRef = doc(firestore, 'vendors', vendorId);
+      await setDoc(vendorRef, vendorData, { merge: true });
+      setIsEditVendorOpen(false);
+      toast({
+          title: "Vendor Updated",
+          description: `Successfully updated ${vendorData.name}.`
+      })
+    } catch(error) {
+        console.error("Error updating vendor:", error);
+        toast({
+            variant: "destructive",
+            title: "Error",
+            description: "Failed to update vendor. Please try again."
+        })
+    }
+  }
+
+  const handleOpenEditDialog = (vendor: Vendor) => {
+    setSelectedVendor(vendor);
+    setIsEditVendorOpen(true);
   }
 
   return (
@@ -92,7 +127,11 @@ export default function SupplierManagementPage() {
                           Fill out the form below to add a new vendor.
                       </DialogDescription>
                   </DialogHeader>
-                  <AddVendorForm onVendorAdded={handleVendorAdded} />
+                  <AddVendorForm 
+                    onVendorAdded={handleVendorAdded} 
+                    allItems={allItems || []}
+                    isLoadingItems={areItemsLoading}
+                  />
               </DialogContent>
           </Dialog>
         )}
@@ -111,13 +150,14 @@ export default function SupplierManagementPage() {
                 <TableRow>
                     <TableHead>Vendor Name</TableHead>
                     <TableHead>Contact</TableHead>
-                    <TableHead>Actions</TableHead>
+                    <TableHead>Items Supplied</TableHead>
+                    <TableHead className="text-right">Actions</TableHead>
                 </TableRow>
             </TableHeader>
             <TableBody>
                 {isLoading && Array.from({ length: 3 }).map((_, i) => (
                     <TableRow key={i}>
-                        <TableCell colSpan={3}><Skeleton className="h-8 w-full" /></TableCell>
+                        <TableCell colSpan={4}><Skeleton className="h-8 w-full" /></TableCell>
                     </TableRow>
                 ))}
                 {!isLoading && vendors && vendors.map(vendor => (
@@ -130,7 +170,10 @@ export default function SupplierManagementPage() {
                             </div>
                         </TableCell>
                         <TableCell>
-                            <Button variant="ghost" size="sm">Edit</Button>
+                           {vendor.supplies?.length || 0} items
+                        </TableCell>
+                        <TableCell className="text-right">
+                            <Button variant="ghost" size="sm" onClick={() => handleOpenEditDialog(vendor)}>Edit</Button>
                         </TableCell>
                     </TableRow>
                 ))}
@@ -141,6 +184,25 @@ export default function SupplierManagementPage() {
           )}
         </CardContent>
       </Card>
+
+      {selectedVendor && isClient && (
+         <Dialog open={isEditVendorOpen} onOpenChange={setIsEditVendorOpen}>
+            <DialogContent className="sm:max-w-2xl">
+                <DialogHeader>
+                    <DialogTitle>Edit Supplier: {selectedVendor.name}</DialogTitle>
+                    <DialogDescription>
+                        Update the details and supplied items for this vendor.
+                    </DialogDescription>
+                </DialogHeader>
+                <EditVendorForm 
+                    vendor={selectedVendor}
+                    onVendorUpdated={handleVendorUpdated}
+                    allItems={allItems || []}
+                    isLoadingItems={areItemsLoading}
+                 />
+            </DialogContent>
+        </Dialog>
+      )}
     </div>
   );
 }

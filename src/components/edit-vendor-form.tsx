@@ -20,6 +20,7 @@ import { Popover, PopoverContent, PopoverTrigger } from './ui/popover';
 import { cn } from '@/lib/utils';
 import { CaretSortIcon, CheckIcon } from '@radix-ui/react-icons';
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem } from './ui/command';
+import { useEffect } from 'react';
 
 const formSchema = z.object({
   name: z.string().min(2, { message: 'Vendor name must be at least 2 characters.' }),
@@ -29,8 +30,9 @@ const formSchema = z.object({
   supplies: z.array(z.string()).optional(),
 });
 
-type AddVendorFormProps = {
-  onVendorAdded: (vendor: Omit<Vendor, 'id'>) => void;
+type EditVendorFormProps = {
+  vendor: Vendor;
+  onVendorUpdated: (vendorId: string, vendor: Omit<Vendor, 'id'>) => void;
   allItems: Item[];
   isLoadingItems: boolean;
 };
@@ -42,23 +44,28 @@ function formatItemName(item: Item) {
     return name;
 }
 
-export function AddVendorForm({ onVendorAdded, allItems, isLoadingItems }: AddVendorFormProps) {
+export function EditVendorForm({ vendor, onVendorUpdated, allItems, isLoadingItems }: EditVendorFormProps) {
   const [isSubmitting, setIsSubmitting] = React.useState(false);
   
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
-    defaultValues: {
-      name: '',
-      email: '',
-      contactPerson: '',
-      phone: '',
-      supplies: [],
-    },
   });
+
+  useEffect(() => {
+    if (vendor) {
+        form.reset({
+            name: vendor.name,
+            email: vendor.email,
+            contactPerson: vendor.contactPerson || '',
+            phone: vendor.phone || '',
+            supplies: vendor.supplies || [],
+        });
+    }
+  }, [vendor, form]);
 
   async function onSubmit(values: z.infer<typeof formSchema>) {
     setIsSubmitting(true);
-    await onVendorAdded(values);
+    await onVendorUpdated(vendor.id, values);
     setIsSubmitting(false);
   }
 
@@ -190,7 +197,7 @@ export function AddVendorForm({ onVendorAdded, allItems, isLoadingItems }: AddVe
 
         <div className="flex justify-end pt-4">
           <Button type="submit" disabled={isSubmitting}>
-            {isSubmitting ? 'Adding Vendor...' : 'Add Vendor'}
+            {isSubmitting ? 'Saving Changes...' : 'Save Changes'}
           </Button>
         </div>
       </form>

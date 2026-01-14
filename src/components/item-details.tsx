@@ -42,7 +42,7 @@ export function ItemDetails({ item }: ItemDetailsProps) {
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <div>
           <h3 className="text-lg font-semibold">{formatItemName(item)}</h3>
-          <p className="text-sm text-muted-foreground">{item.id}</p>
+          <p className="text-sm text-muted-foreground">{item.itemCode}</p>
         </div>
         <div className="flex flex-wrap items-start gap-2">
           <Badge variant="secondary">{item.category}</Badge>

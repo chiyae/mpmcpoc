@@ -182,10 +182,14 @@ export default function PatientBillingPage() {
           status: paymentMethod === 'Invoice' ? 'Unpaid' : 'Paid',
         },
         dispensingLocationId: billingLocationId,
+        isDispensed: false, // Bills are not dispensed by default
     };
 
     try {
-        await writeBatch(firestore).set(billRef, newBill).commit();
+        const batch = writeBatch(firestore);
+        batch.set(billRef, newBill);
+        await batch.commit();
+
         toast({
             title: "Bill Finalized",
             description: `Bill for ${patientName} has been generated.`,

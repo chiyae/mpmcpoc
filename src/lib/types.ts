@@ -46,7 +46,7 @@ export interface User {
   username: string; // email
   displayName: string;
   role: UserRole;
-  locationId: string; // e.g. 'bulk-store', 'dispensary', 'billing'
+  locationId: string; // e.g. 'bulk-store', 'dispensary', 'billing', 'all'
 }
 
 export interface Vendor {
@@ -98,7 +98,7 @@ export interface Bill {
   grandTotal: number;
   paymentDetails: PaymentDetails;
   dispensingLocationId: string;
-  isDispensed?: boolean; // New field
+  isDispensed: boolean;
 }
 
 export interface Service {

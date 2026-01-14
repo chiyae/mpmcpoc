@@ -3,33 +3,111 @@ rules_version = '2';
 
 service cloud.firestore {
   match /databases/{database}/documents {
-    
-    function isAdmin() {
-      // An admin's role is stored in their user document in Firestore.
-      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin';
+
+    /* ============================
+       AUTH & ROLE HELPERS
+       ============================ */
+
+    function isAuthenticated() {
+      return request.auth != null;
     }
 
-    match /users/{userId} {
-      // A user can always read their own document. This is required for isAdmin() to work.
-      allow get: if request.auth.uid == userId;
-      // Admins can perform any action on any user document.
-      allow list, update, create, delete: if isAdmin();
+    function userDocPath() {
+      return /databases/$(database)/documents/users/$(request.auth.uid);
     }
+
+    function hasUserDoc() {
+      return isAuthenticated() && exists(userDocPath());
+    }
+
+    function getUserRole() {
+      // Safe role resolution — NEVER throws
+      return hasUserDoc()
+        ? get(userDocPath()).data.role
+        : "none";
+    }
+
+    function isAdmin() {
+      return getUserRole() == "admin";
+    }
+
+    function isCashier() {
+      return getUserRole() == "cashier";
+    }
+
+    function isPharmacy() {
+      return getUserRole() == "pharmacy";
+    }
+
+    /* ============================
+       MASTER DATA (BOOT SAFE)
+       ============================ */
 
     match /items/{itemId} {
-      allow read, write: if request.auth != null;
+      allow read: if isAuthenticated();
+      allow write: if isAdmin();
     }
 
     match /vendors/{vendorId} {
-      allow read, write: if request.auth != null;
+      allow read: if isAuthenticated();
+      allow write: if isAdmin();
     }
 
     match /services/{serviceId} {
-        allow read, write: if request.auth != null;
+      allow read: if isAuthenticated();
+      allow write: if isAdmin();
     }
+
+    /* ============================
+       SETTINGS (STRICT)
+       ============================ */
 
     match /settings/{settingId} {
       allow read, write: if isAdmin();
     }
+
+    /* ============================
+       USERS (BOOTSTRAP SAFE)
+       ============================ */
+
+    match /users/{userId} {
+      // User can always read own profile (even first login)
+      allow get: if isAuthenticated() && request.auth.uid == userId;
+
+      // Admin capabilities
+      allow list, create, update, delete: if isAdmin();
+    }
+
+    /* ============================
+       BILLINGS (EMPTY SAFE)
+       ============================ */
+
+    match /billings/{billingId} {
+      // Allow empty reads so UI can load
+      allow list, read: if isCashier() || isAdmin();
+
+      // Writes remain role-restricted
+      allow create, update, delete: if isCashier() || isAdmin();
+    }
+
+    /* ============================
+       STOCKS (EMPTY SAFE)
+       ============================ */
+
+    match /stocks/{stockId} {
+      allow list, read: if isPharmacy() || isAdmin();
+      allow write: if isPharmacy() || isAdmin();
+    }
+
+    /* ============================
+       INTERNAL ORDERS (EMPTY SAFE)
+       ============================ */
+
+    match /internalOrders/{orderId} {
+      allow list, read: if isPharmacy() || isAdmin();
+      allow create: if isPharmacy() || isAdmin();
+      allow update, delete: if isAdmin();
+    }
+
   }
 }

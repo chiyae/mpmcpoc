@@ -5,6 +5,7 @@ import * as React from 'react';
 import {
   CaretSortIcon,
   ChevronDownIcon,
+  DotsHorizontalIcon
 } from '@radix-ui/react-icons';
 import {
   ColumnDef,
@@ -47,6 +48,8 @@ import Link from 'next/link';
 import { useCollection, useFirestore, useMemoFirebase } from '@/firebase';
 import { collection, doc, query, setDoc, where } from 'firebase/firestore';
 import { Skeleton } from '@/components/ui/skeleton';
+import { ItemDetails } from '@/components/item-details';
+
 
 type DispensaryStockItem = Item & {
   stockData: Stock;
@@ -68,6 +71,9 @@ export default function DispensaryInventoryPage() {
   const [columnVisibility, setColumnVisibility] = React.useState<VisibilityState>({});
   const [rowSelection, setRowSelection] = React.useState({});
   const [isRequestStockOpen, setIsRequestStockOpen] = React.useState(false);
+
+  const [selectedItem, setSelectedItem] = React.useState<DispensaryStockItem | null>(null);
+  const [isDetailsOpen, setIsDetailsOpen] = React.useState(false);
 
   // --- Data Fetching ---
   const itemsQuery = useMemoFirebase(() => firestore ? collection(firestore, 'items') : null, [firestore]);
@@ -115,6 +121,11 @@ export default function DispensaryInventoryPage() {
         console.error("Failed to submit stock request:", error);
         toast({ variant: 'destructive', title: "Submission Failed", description: "Could not submit the stock request." });
     }
+  };
+
+  const handleOpenDetails = (item: DispensaryStockItem) => {
+    setSelectedItem(item);
+    setIsDetailsOpen(true);
   };
 
   const columns: ColumnDef<DispensaryStockItem>[] = [
@@ -205,6 +216,12 @@ export default function DispensaryInventoryPage() {
         return <Badge variant={badgeVariant}>{new Date(expiryDate).toLocaleDateString()}</Badge>;
   
       },
+    },
+    {
+      id: 'actions',
+      cell: ({ row }) => (
+        <Button variant="ghost" onClick={() => handleOpenDetails(row.original)}>View</Button>
+      ),
     },
   ];
 
@@ -374,6 +391,16 @@ export default function DispensaryInventoryPage() {
             </Button>
             </div>
       </div>
+       {selectedItem && (
+        <Dialog open={isDetailsOpen} onOpenChange={setIsDetailsOpen}>
+          <DialogContent className="sm:max-w-xl">
+            <DialogHeader>
+              <DialogTitle>Item Details</DialogTitle>
+            </DialogHeader>
+            <ItemDetails item={{...selectedItem, stock: selectedItem.stockData}} />
+          </DialogContent>
+        </Dialog>
+      )}
     </div>
   );
 }

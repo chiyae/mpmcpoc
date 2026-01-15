@@ -194,8 +194,8 @@ export default function PatientBillingPage() {
         await batch.commit();
 
         toast({
-            title: "Bill Finalized",
-            description: `Bill for ${patientName} has been generated.`,
+            title: paymentMethod === 'Invoice' ? "Invoice Finalized" : "Bill Finalized",
+            description: `A new document for ${patientName} has been generated.`,
         });
 
         // Reset state
@@ -214,6 +214,8 @@ export default function PatientBillingPage() {
         });
     }
   };
+  
+  const finalizeButtonText = paymentMethod === 'Invoice' ? 'Finalize & Generate Invoice' : 'Finalize & Generate Bill';
 
   return (
     <div className="space-y-6">
@@ -400,10 +402,12 @@ export default function PatientBillingPage() {
                 )}
             </div>
             <Button size="lg" onClick={handleFinalizeBill} disabled={!canFinalize}>
-                Finalize & Generate Bill
+                {finalizeButtonText}
             </Button>
         </CardFooter>
       </Card>
     </div>
   );
 }
+
+    

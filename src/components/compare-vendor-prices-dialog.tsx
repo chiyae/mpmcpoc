@@ -48,10 +48,16 @@ export function CompareVendorPricesDialog({ items, vendors, isLoading, onConfirm
     }
     
     const relevantVendors = React.useMemo(() => {
-        const itemIds = new Set(items.map(i => i.id));
-        return vendors.filter(vendor => 
-            vendor.supplies?.some(suppliedItemId => itemIds.has(suppliedItemId))
-        );
+        const itemIdsOnList = new Set(items.map(i => i.id));
+        const relevantVendorIds = new Set<string>();
+        
+        vendors.forEach(vendor => {
+            if (vendor.supplies?.some(suppliedItemId => itemIdsOnList.has(suppliedItemId))) {
+                relevantVendorIds.add(vendor.id);
+            }
+        });
+
+        return vendors.filter(vendor => relevantVendorIds.has(vendor.id));
     }, [items, vendors]);
     
     const getBestPriceForItem = (itemId: string): number | null => {

@@ -72,11 +72,6 @@ export default function LocalPurchaseOrdersPage() {
     }
   }
 
-  const handlePrint = () => {
-    window.print();
-  };
-
-
   const columns: ColumnDef<LocalPurchaseOrder>[] = [
     {
       accessorKey: 'lpoNumber',
@@ -220,7 +215,7 @@ export default function LocalPurchaseOrdersPage() {
                   <div className="p-6 pb-0 no-print">
                       <DialogHeader>
                           <DialogTitle>LPO Details: {selectedLpo.lpoNumber}</DialogTitle>
-                          <DialogDescription>Review the LPO and update its status.</DialogDescription>
+                          <DialogDescription>Review the LPO and update its status. Use your browser's print function (Ctrl/Cmd+P) to print.</DialogDescription>
                       </DialogHeader>
                   </div>
                   <LpoDocument lpo={selectedLpo} />
@@ -229,7 +224,7 @@ export default function LocalPurchaseOrdersPage() {
                           {selectedLpo.status === 'Draft' && (
                               <Button variant="destructive" onClick={() => handleUpdateStatus(selectedLpo.id, 'Rejected')} disabled={isUpdating}>Reject</Button>
                           )}
-                           <Button variant="secondary" onClick={handlePrint}>
+                           <Button variant="secondary" disabled>
                               <Printer className="mr-2 h-4 w-4" />
                               Print LPO
                           </Button>

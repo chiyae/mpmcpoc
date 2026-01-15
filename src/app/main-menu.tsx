@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Building, Pill, DollarSign } from 'lucide-react';
+import { Building, Pill, DollarSign, Wrench } from 'lucide-react';
 
 export default function MainMenu() {
     return (
@@ -12,7 +12,7 @@ export default function MainMenu() {
             <p className="text-muted-foreground">Please select a module to continue.</p>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6 max-w-4xl">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 max-w-6xl">
             <Link href="/bulk-store/dashboard" passHref>
                 <Card className="hover:bg-accent hover:text-accent-foreground transition-colors">
                 <CardHeader className="flex flex-col items-center justify-center text-center">
@@ -50,6 +50,20 @@ export default function MainMenu() {
                 <CardContent>
                     <p className="text-sm text-center text-muted-foreground">
                     Create patient bills, manage invoices, and view financial reports.
+                    </p>
+                </CardContent>
+                </Card>
+            </Link>
+            
+             <Link href="#" passHref>
+                <Card className="hover:bg-accent hover:text-accent-foreground transition-colors">
+                <CardHeader className="flex flex-col items-center justify-center text-center">
+                    <Wrench className="h-12 w-12 mb-4 text-primary" />
+                    <CardTitle>Tools</CardTitle>
+                </CardHeader>
+                <CardContent>
+                    <p className="text-sm text-center text-muted-foreground">
+                    Access application tools and utilities.
                     </p>
                 </CardContent>
                 </Card>

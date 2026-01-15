@@ -36,7 +36,8 @@ export function LpoDocument({ lpo }: LpoDocumentProps) {
           body * {
             visibility: hidden;
           }
-          .printable-area, .printable-area * {
+          .printable-area,
+          .printable-area * {
             visibility: visible;
           }
           .printable-area {
@@ -44,9 +45,14 @@ export function LpoDocument({ lpo }: LpoDocumentProps) {
             left: 0;
             top: 0;
             width: 100%;
+            height: auto;
+            padding: 1.5rem;
+            margin: 0;
+            border: none;
+            box-shadow: none;
           }
           .no-print {
-            display: none;
+            display: none !important;
           }
         }
       `}</style>

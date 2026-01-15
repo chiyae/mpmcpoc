@@ -3,7 +3,6 @@
 
 import * as React from 'react';
 import { useRouter } from 'next/navigation';
-import Link from 'next/link';
 import {
   CaretSortIcon,
   ChevronDownIcon,
@@ -22,7 +21,6 @@ import {
 } from '@tanstack/react-table';
 
 import { Button } from '@/components/ui/button';
-import { Checkbox } from '@/components/ui/checkbox';
 import {
   DropdownMenu,
   DropdownMenuCheckboxItem,
@@ -73,7 +71,6 @@ export default function DispensaryInventoryPage() {
   const [sorting, setSorting] = React.useState<SortingState>([]);
   const [columnFilters, setColumnFilters] = React.useState<ColumnFiltersState>([]);
   const [columnVisibility, setColumnVisibility] = React.useState<VisibilityState>({});
-  const [rowSelection, setRowSelection] = React.useState({});
   
   const [selectedItem, setSelectedItem] = React.useState<DispensaryStockItem | null>(null);
   const [isDetailsOpen, setIsDetailsOpen] = React.useState(false);
@@ -130,28 +127,6 @@ export default function DispensaryInventoryPage() {
   };
 
   const columns: ColumnDef<DispensaryStockItem>[] = [
-    {
-      id: 'select',
-      header: ({ table }) => (
-        <Checkbox
-          checked={
-            table.getIsAllPageRowsSelected() ||
-            (table.getIsSomePageRowsSelected() && 'indeterminate')
-          }
-          onCheckedChange={(value) => table.toggleAllPageRowsSelected(!!value)}
-          aria-label="Select all"
-        />
-      ),
-      cell: ({ row }) => (
-        <Checkbox
-          checked={row.getIsSelected()}
-          onCheckedChange={(value) => row.toggleSelected(!!value)}
-          aria-label="Select row"
-        />
-      ),
-      enableSorting: false,
-      enableHiding: false,
-    },
     {
       accessorKey: 'genericName',
       header: ({ column }) => {
@@ -236,16 +211,13 @@ export default function DispensaryInventoryPage() {
     getSortedRowModel: getSortedRowModel(),
     getFilteredRowModel: getFilteredRowModel(),
     onColumnVisibilityChange: setColumnVisibility,
-    onRowSelectionChange: setRowSelection,
     state: {
       sorting,
       columnFilters,
       columnVisibility,
-      rowSelection,
     },
   });
 
-  const selectedItems = table.getFilteredSelectedRowModel().rows.map(row => row.original);
   const isLoading = isLoadingItems || isLoadingStock || isUserLoading;
 
   return (
@@ -265,12 +237,6 @@ export default function DispensaryInventoryPage() {
                     Start Stock Take
                 </Button>
                 
-                <Button asChild disabled={isLoading || !(userProfile?.role === 'pharmacy' || userProfile?.role === 'admin') || selectedItems.length === 0}>
-                  <Link href={`/dispensary/request-stock?items=${selectedItems.map(item => item.stockData.itemId).join(',')}`}>
-                    Request New Stock ({selectedItems.length})
-                  </Link>
-                </Button>
-
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
                       <Button variant="outline" className="ml-auto">
@@ -355,8 +321,7 @@ export default function DispensaryInventoryPage() {
         </div>
         <div className="flex items-center justify-end space-x-2 py-4">
             <div className="flex-1 text-sm text-muted-foreground">
-            {table.getFilteredSelectedRowModel().rows.length} of{' '}
-            {table.getFilteredRowModel().rows.length} row(s) selected.
+            {table.getFilteredRowModel().rows.length} row(s).
             </div>
             <div className="space-x-2">
             <Button

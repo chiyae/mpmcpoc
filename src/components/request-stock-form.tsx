@@ -16,6 +16,7 @@ import { Input } from "@/components/ui/input"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "./ui/table"
 import { ScrollArea } from "./ui/scroll-area"
 import { DialogFooter } from "./ui/dialog"
+import { Plus } from "lucide-react"
 
 type ItemForRequest = {
     id: string;
@@ -34,9 +35,10 @@ type RequestStockFormProps = {
   selectedItems: ItemForRequest[];
   onSubmit: (items: { itemId: string; quantity: number }[]) => void;
   onCancel: () => void;
+  onAddItem: () => void;
 }
 
-export function RequestStockForm({ selectedItems, onSubmit, onCancel }: RequestStockFormProps) {
+export function RequestStockForm({ selectedItems, onSubmit, onCancel, onAddItem }: RequestStockFormProps) {
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
     defaultValues: {
@@ -47,8 +49,20 @@ export function RequestStockForm({ selectedItems, onSubmit, onCancel }: RequestS
       })),
     },
   })
+  
+  // This effect ensures the form is updated if selectedItems changes (e.g. adding more manually)
+  React.useEffect(() => {
+    form.reset({
+        items: selectedItems.map(item => ({
+            itemId: item.id,
+            itemName: item.name,
+            quantity: form.getValues(`items.${form.getValues('items').findIndex(i => i.itemId === item.id)}.quantity`) || 1,
+        }))
+    });
+  }, [selectedItems, form]);
 
-  const { fields } = useFieldArray({
+
+  const { fields, remove } = useFieldArray({
     control: form.control,
     name: "items",
   });
@@ -91,9 +105,15 @@ export function RequestStockForm({ selectedItems, onSubmit, onCancel }: RequestS
             </TableBody>
           </Table>
         </ScrollArea>
-        <DialogFooter>
-          <Button type="button" variant="outline" onClick={onCancel}>Cancel</Button>
-          <Button type="submit">Submit Request</Button>
+        <DialogFooter className="sm:justify-between">
+           <Button type="button" variant="ghost" onClick={onAddItem}>
+                <Plus className="mr-2 h-4 w-4"/>
+                Add More Items
+            </Button>
+          <div className="flex gap-2">
+            <Button type="button" variant="outline" onClick={onCancel}>Cancel</Button>
+            <Button type="submit">Submit Request</Button>
+          </div>
         </DialogFooter>
       </form>
     </Form>

@@ -38,6 +38,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { useSettings } from '@/context/settings-provider';
 import { useToast } from '@/hooks/use-toast';
 import { LpoDocument } from '@/components/procurement/lpo-document';
+import { Printer } from 'lucide-react';
 
 
 export default function LocalPurchaseOrdersPage() {
@@ -70,6 +71,10 @@ export default function LocalPurchaseOrdersPage() {
         setIsUpdating(false);
     }
   }
+
+  const handlePrint = () => {
+    window.print();
+  };
 
 
   const columns: ColumnDef<LocalPurchaseOrder>[] = [
@@ -125,99 +130,130 @@ export default function LocalPurchaseOrdersPage() {
   });
 
   return (
-    <div className="w-full space-y-6">
-       <header className="space-y-1.5">
-            <h1 className="text-3xl font-bold tracking-tight">Local Purchase Orders</h1>
-            <p className="text-muted-foreground">
-                View, track, and manage all generated LPOs.
-            </p>
-        </header>
+    <>
+    <style jsx global>{`
+        @media print {
+          body * {
+            visibility: hidden;
+          }
+          .printable-area,
+          .printable-area * {
+            visibility: visible;
+          }
+          .printable-area {
+            position: absolute;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: auto;
+            padding: 1.5rem;
+            margin: 0;
+            border: none;
+            box-shadow: none;
+          }
+          .no-print {
+            display: none !important;
+          }
+        }
+      `}</style>
+      <div className="w-full space-y-6 no-print">
+        <header className="space-y-1.5">
+              <h1 className="text-3xl font-bold tracking-tight">Local Purchase Orders</h1>
+              <p className="text-muted-foreground">
+                  View, track, and manage all generated LPOs.
+              </p>
+          </header>
 
-      <div className="rounded-md border">
-        <Table>
-          <TableHeader>
-            {table.getHeaderGroups().map((headerGroup) => (
-              <TableRow key={headerGroup.id}>
-                {headerGroup.headers.map((header) => (
-                  <TableHead key={header.id}>
-                    {header.isPlaceholder
-                      ? null
-                      : flexRender(
-                          header.column.columnDef.header,
-                          header.getContext()
-                        )}
-                  </TableHead>
-                ))}
-              </TableRow>
-            ))}
-          </TableHeader>
-          <TableBody>
-            {isLoading && Array.from({ length: 5 }).map((_, i) => (
-                <TableRow key={i}><TableCell colSpan={columns.length}><Skeleton className="h-8 w-full" /></TableCell></TableRow>
-            ))}
-            {!isLoading && table.getRowModel().rows?.length ? (
-              table.getRowModel().rows.map((row) => (
-                <TableRow key={row.id}>
-                  {row.getVisibleCells().map((cell) => (
-                    <TableCell key={cell.id}>
-                      {flexRender(
-                        cell.column.columnDef.cell,
-                        cell.getContext()
-                      )}
-                    </TableCell>
+        <div className="rounded-md border">
+          <Table>
+            <TableHeader>
+              {table.getHeaderGroups().map((headerGroup) => (
+                <TableRow key={headerGroup.id}>
+                  {headerGroup.headers.map((header) => (
+                    <TableHead key={header.id}>
+                      {header.isPlaceholder
+                        ? null
+                        : flexRender(
+                            header.column.columnDef.header,
+                            header.getContext()
+                          )}
+                    </TableHead>
                   ))}
                 </TableRow>
-              ))
-            ) : null}
-            {!isLoading && !table.getRowModel().rows.length ? (
-              <TableRow>
-                <TableCell
-                  colSpan={columns.length}
-                  className="h-24 text-center"
-                >
-                  No LPOs have been generated yet.
-                </TableCell>
-              </TableRow>
-            ) : null}
-          </TableBody>
-        </Table>
-      </div>
+              ))}
+            </TableHeader>
+            <TableBody>
+              {isLoading && Array.from({ length: 5 }).map((_, i) => (
+                  <TableRow key={i}><TableCell colSpan={columns.length}><Skeleton className="h-8 w-full" /></TableCell></TableRow>
+              ))}
+              {!isLoading && table.getRowModel().rows?.length ? (
+                table.getRowModel().rows.map((row) => (
+                  <TableRow key={row.id}>
+                    {row.getVisibleCells().map((cell) => (
+                      <TableCell key={cell.id}>
+                        {flexRender(
+                          cell.column.columnDef.cell,
+                          cell.getContext()
+                        )}
+                      </TableCell>
+                    ))}
+                  </TableRow>
+                ))
+              ) : null}
+              {!isLoading && !table.getRowModel().rows.length ? (
+                <TableRow>
+                  <TableCell
+                    colSpan={columns.length}
+                    className="h-24 text-center"
+                  >
+                    No LPOs have been generated yet.
+                  </TableCell>
+                </TableRow>
+              ) : null}
+            </TableBody>
+          </Table>
+        </div>
 
-       {selectedLpo && (
-        <Dialog open={isLpoOpen} onOpenChange={setIsLpoOpen}>
-            <DialogContent className="sm:max-w-4xl p-0">
-                <div className="p-6 pb-0 no-print">
-                    <DialogHeader>
-                        <DialogTitle>LPO Details: {selectedLpo.lpoNumber}</DialogTitle>
-                        <DialogDescription>Review the LPO and update its status.</DialogDescription>
-                    </DialogHeader>
-                </div>
-                <LpoDocument lpo={selectedLpo} />
-                 <DialogFooter className="sm:justify-between p-6 pt-0 no-print">
-                    <div className="flex gap-2">
-                        {selectedLpo.status === 'Draft' && (
-                            <Button variant="outline" onClick={() => handleUpdateStatus(selectedLpo.id, 'Rejected')} disabled={isUpdating}>Reject</Button>
-                        )}
-                    </div>
-                    <div className="flex gap-2">
-                        <DialogClose asChild>
-                            <Button variant="outline">Close</Button>
-                        </DialogClose>
-                        {selectedLpo.status === 'Draft' && (
-                            <Button onClick={() => handleUpdateStatus(selectedLpo.id, 'Sent')} disabled={isUpdating}>
-                                {isUpdating ? 'Updating...' : 'Mark as Sent'}
-                            </Button>
-                        )}
-                        {selectedLpo.status === 'Sent' && (
-                            <Button onClick={() => handleUpdateStatus(selectedLpo.id, 'Completed')} disabled={isUpdating}>
-                                {isUpdating ? 'Updating...' : 'Mark as Completed'}
-                            </Button>
-                        )}
-                    </div>
-                </DialogFooter>
-            </DialogContent>
-        </Dialog>
-      )}
-    </div>
+        {selectedLpo && (
+          <Dialog open={isLpoOpen} onOpenChange={setIsLpoOpen}>
+              <DialogContent className="sm:max-w-4xl p-0">
+                  <div className="p-6 pb-0 no-print">
+                      <DialogHeader>
+                          <DialogTitle>LPO Details: {selectedLpo.lpoNumber}</DialogTitle>
+                          <DialogDescription>Review the LPO and update its status.</DialogDescription>
+                      </DialogHeader>
+                  </div>
+                  <LpoDocument lpo={selectedLpo} />
+                  <DialogFooter className="sm:justify-between p-6 pt-0 no-print">
+                      <div className="flex gap-2">
+                          {selectedLpo.status === 'Draft' && (
+                              <Button variant="destructive" onClick={() => handleUpdateStatus(selectedLpo.id, 'Rejected')} disabled={isUpdating}>Reject</Button>
+                          )}
+                           <Button variant="secondary" onClick={handlePrint}>
+                              <Printer className="mr-2 h-4 w-4" />
+                              Print LPO
+                          </Button>
+                      </div>
+                      <div className="flex gap-2">
+                          <DialogClose asChild>
+                              <Button variant="outline">Close</Button>
+                          </DialogClose>
+                          {selectedLpo.status === 'Draft' && (
+                              <Button onClick={() => handleUpdateStatus(selectedLpo.id, 'Sent')} disabled={isUpdating}>
+                                  {isUpdating ? 'Updating...' : 'Mark as Sent'}
+                              </Button>
+                          )}
+                          {selectedLpo.status === 'Sent' && (
+                              <Button onClick={() => handleUpdateStatus(selectedLpo.id, 'Completed')} disabled={isUpdating}>
+                                  {isUpdating ? 'Updating...' : 'Mark as Completed'}
+                              </Button>
+                          )}
+                      </div>
+                  </DialogFooter>
+              </DialogContent>
+          </Dialog>
+        )}
+      </div>
+    </>
   );
 }

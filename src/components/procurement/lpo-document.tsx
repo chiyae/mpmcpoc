@@ -2,7 +2,6 @@
 'use client';
 
 import * as React from 'react';
-import { Button } from '@/components/ui/button';
 import {
   Table,
   TableBody,
@@ -15,7 +14,6 @@ import { Badge } from '@/components/ui/badge';
 import type { LocalPurchaseOrder } from '@/lib/types';
 import { format } from 'date-fns';
 import { useSettings } from '@/context/settings-provider';
-import { Printer } from 'lucide-react';
 import Logo from '../logo';
 
 interface LpoDocumentProps {
@@ -25,38 +23,8 @@ interface LpoDocumentProps {
 export function LpoDocument({ lpo }: LpoDocumentProps) {
   const { settings, formatCurrency } = useSettings();
 
-  const handlePrint = () => {
-    window.print();
-  };
-
   return (
     <div className="bg-background rounded-lg shadow-lg p-8 max-w-4xl mx-auto printable-area">
-      <style jsx global>{`
-        @media print {
-          body * {
-            visibility: hidden;
-          }
-          .printable-area,
-          .printable-area * {
-            visibility: visible;
-          }
-          .printable-area {
-            position: absolute;
-            left: 0;
-            top: 0;
-            width: 100%;
-            height: auto;
-            padding: 1.5rem;
-            margin: 0;
-            border: none;
-            box-shadow: none;
-          }
-          .no-print {
-            display: none !important;
-          }
-        }
-      `}</style>
-
       {/* Header */}
       <header className="flex justify-between items-start mb-8">
         <div>
@@ -126,14 +94,6 @@ export function LpoDocument({ lpo }: LpoDocumentProps) {
                 <p className="text-2xl font-bold">{formatCurrency(lpo.grandTotal)}</p>
             </div>
         </div>
-      </div>
-
-      {/* Print Button */}
-      <div className="mt-8 text-center no-print">
-        <Button onClick={handlePrint}>
-          <Printer className="mr-2 h-4 w-4" />
-          Print LPO
-        </Button>
       </div>
     </div>
   );

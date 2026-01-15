@@ -41,7 +41,7 @@ import { Badge } from '@/components/ui/badge';
 import type { InternalOrder, Item, Stock, StockTakeSession } from '@/lib/types';
 import { differenceInDays, parseISO } from 'date-fns';
 import { useToast } from "@/hooks/use-toast";
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { RequestStockForm } from '@/components/request-stock-form';
 import { ClipboardList } from 'lucide-react';
 import { useCollection, useFirestore, useMemoFirebase } from '@/firebase';
@@ -289,26 +289,9 @@ export default function DispensaryInventoryPage() {
                     <ClipboardList className="mr-2 h-4 w-4" />
                     Start Stock Take
                 </Button>
-                <Dialog open={isRequestStockOpen} onOpenChange={setIsRequestStockOpen}>
-                  <DialogTrigger asChild>
-                    <Button disabled={selectedItems.length === 0}>
-                      Request New Stock Transfer ({selectedItems.length})
-                    </Button>
-                  </DialogTrigger>
-                  <DialogContent className="sm:max-w-2xl">
-                    <DialogHeader>
-                      <DialogTitle>Request New Stock Transfer</DialogTitle>
-                      <DialogDescription>
-                        Specify the quantities you need from the bulk store.
-                      </DialogDescription>
-                    </DialogHeader>
-                    <RequestStockForm 
-                      selectedItems={selectedItems.map(item => ({...item, name: formatItemName(item)}))} 
-                      onSubmit={handleRequestStock} 
-                      onCancel={() => setIsRequestStockOpen(false)}
-                    />
-                  </DialogContent>
-                </Dialog>
+                <Button disabled={selectedItems.length === 0} onClick={() => setIsRequestStockOpen(true)}>
+                    Request New Stock Transfer ({selectedItems.length})
+                </Button>
                 <DropdownMenu>
                 <DropdownMenuTrigger asChild>
                     <Button variant="outline" className="ml-auto">
@@ -415,6 +398,23 @@ export default function DispensaryInventoryPage() {
             </Button>
             </div>
       </div>
+
+       <Dialog open={isRequestStockOpen} onOpenChange={setIsRequestStockOpen}>
+            <DialogContent className="sm:max-w-2xl">
+            <DialogHeader>
+                <DialogTitle>Request New Stock Transfer</DialogTitle>
+                <DialogDescription>
+                Specify the quantities you need from the bulk store.
+                </DialogDescription>
+            </DialogHeader>
+            <RequestStockForm 
+                selectedItems={selectedItems.map(item => ({...item, name: formatItemName(item)}))} 
+                onSubmit={handleRequestStock} 
+                onCancel={() => setIsRequestStockOpen(false)}
+            />
+            </DialogContent>
+        </Dialog>
+
        {selectedItem && (
         <Dialog open={isDetailsOpen} onOpenChange={setIsDetailsOpen}>
           <DialogContent className="sm:max-w-xl">
@@ -428,3 +428,5 @@ export default function DispensaryInventoryPage() {
     </div>
   );
 }
+
+    

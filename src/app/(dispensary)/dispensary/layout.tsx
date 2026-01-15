@@ -57,6 +57,14 @@ export default function DispensaryLayout({ children }: { children: ReactNode }) 
               </SidebarMenuButton>
             </SidebarMenuItem>
             <SidebarMenuItem>
+              <SidebarMenuButton asChild tooltip="Internal Orders">
+                <Link href="/dispensary/internal-orders">
+                  <History />
+                  <span>Internal Orders</span>
+                </Link>
+              </SidebarMenuButton>
+            </SidebarMenuItem>
+            <SidebarMenuItem>
               <SidebarMenuButton asChild tooltip="Dispense">
                 <Link href="/dispensary/dispense">
                   <Pill />
@@ -77,14 +85,6 @@ export default function DispensaryLayout({ children }: { children: ReactNode }) 
                 <Link href="/dispensary/stock-take-history">
                   <History />
                   <span>Stock Take History</span>
-                </Link>
-              </SidebarMenuButton>
-            </SidebarMenuItem>
-            <SidebarMenuItem>
-              <SidebarMenuButton asChild tooltip="Internal Orders" disabled>
-                <Link href="#">
-                  <Truck />
-                  <span>Internal Orders</span>
                 </Link>
               </SidebarMenuButton>
             </SidebarMenuItem>

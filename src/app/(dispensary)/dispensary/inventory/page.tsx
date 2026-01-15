@@ -38,13 +38,13 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
-import type { InternalOrder, Item, Stock, StockTakeSession } from '@/lib/types';
+import type { InternalOrder, Item, Stock, StockTakeSession, User } from '@/lib/types';
 import { differenceInDays, parseISO } from 'date-fns';
 import { useToast } from "@/hooks/use-toast";
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { RequestStockForm } from '@/components/request-stock-form';
 import { ClipboardList } from 'lucide-react';
-import { useCollection, useFirestore, useMemoFirebase } from '@/firebase';
+import { useCollection, useDoc, useFirestore, useMemoFirebase, useUser } from '@/firebase';
 import { collection, doc, query, setDoc, where } from 'firebase/firestore';
 import { Skeleton } from '@/components/ui/skeleton';
 import { ItemDetails } from '@/components/item-details';
@@ -65,6 +65,10 @@ export default function DispensaryInventoryPage() {
   const { toast } = useToast();
   const firestore = useFirestore();
   const router = useRouter();
+  const { user: authUser } = useUser();
+
+  const userDocRef = useMemoFirebase(() => (firestore && authUser) ? doc(firestore, 'users', authUser.uid) : null, [firestore, authUser]);
+  const { data: userProfile, isLoading: isUserLoading } = useDoc<User>(userDocRef);
 
   const [sorting, setSorting] = React.useState<SortingState>([]);
   const [columnFilters, setColumnFilters] = React.useState<ColumnFiltersState>([]);
@@ -271,7 +275,9 @@ export default function DispensaryInventoryPage() {
   });
 
   const selectedItems = table.getFilteredSelectedRowModel().rows.map(row => row.original);
-  const isLoading = isLoadingItems || isLoadingStock;
+  const isLoading = isLoadingItems || isLoadingStock || isUserLoading;
+
+  const canRequestStock = userProfile?.role === 'pharmacy' || userProfile?.role === 'admin';
 
   return (
     <div className="w-full">
@@ -289,9 +295,11 @@ export default function DispensaryInventoryPage() {
                     <ClipboardList className="mr-2 h-4 w-4" />
                     Start Stock Take
                 </Button>
-                <Button disabled={selectedItems.length === 0} onClick={() => setIsRequestStockOpen(true)}>
-                    Request New Stock ({selectedItems.length})
-                </Button>
+                {canRequestStock && (
+                  <Button disabled={selectedItems.length === 0} onClick={() => setIsRequestStockOpen(true)}>
+                      Request New Stock ({selectedItems.length})
+                  </Button>
+                )}
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
                       <Button variant="outline" className="ml-auto">
@@ -427,5 +435,4 @@ export default function DispensaryInventoryPage() {
       )}
     </div>
   );
-
-    
+}

@@ -81,6 +81,15 @@ service cloud.firestore {
     }
 
     /* ============================
+       PROCUREMENT
+       ============================ */
+
+    match /procurementSessions/{sessionId} {
+        // Users can manage their own procurement sessions. Admins can manage all.
+        allow read, write: if isAuthenticated() && (isAdmin() || isPharmacy());
+    }
+
+    /* ============================
        BILLINGS
        ============================ */
 
@@ -127,3 +136,5 @@ service cloud.firestore {
 
   }
 }
+
+    

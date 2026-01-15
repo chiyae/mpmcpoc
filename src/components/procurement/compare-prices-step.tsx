@@ -12,7 +12,8 @@ import { Skeleton } from '../ui/skeleton';
 import { useSettings } from '@/context/settings-provider';
 
 interface ComparePricesStepProps {
-  procurementList: Item[];
+  procurementListIds: string[];
+  initialQuotes: Record<string, Record<string, number>>;
   onComplete: (vendorQuotes: Record<string, Record<string, number>>) => void;
   onBack: () => void;
 }
@@ -22,16 +23,24 @@ function formatItemName(item: Item) {
     if (item.brandName) name += ` (${item.brandName})`;
     if (item.strengthValue) name += ` ${item.strengthValue}${item.strengthUnit}`;
     return name;
-  }
+}
 
-export function ComparePricesStep({ procurementList, onComplete, onBack }: ComparePricesStepProps) {
+export function ComparePricesStep({ procurementListIds, initialQuotes, onComplete, onBack }: ComparePricesStepProps) {
     const firestore = useFirestore();
     const { currency } = useSettings();
 
-    const [vendorQuotes, setVendorQuotes] = React.useState<Record<string, Record<string, number>>>({});
+    const [vendorQuotes, setVendorQuotes] = React.useState(initialQuotes);
 
     const vendorsCollectionQuery = useMemoFirebase(() => (firestore ? collection(firestore, 'vendors') : null), [firestore]);
     const { data: allVendors, isLoading: areVendorsLoading } = useCollection<Vendor>(vendorsCollectionQuery);
+    
+    const itemsCollectionQuery = useMemoFirebase(() => (firestore ? collection(firestore, 'items') : null), [firestore]);
+    const { data: allItems, isLoading: areItemsLoading } = useCollection<Item>(itemsCollectionQuery);
+
+    const procurementList = React.useMemo(() => {
+        if (!allItems) return [];
+        return procurementListIds.map(id => allItems.find(item => item.id === id)).filter((item): item is Item => !!item);
+    }, [allItems, procurementListIds]);
 
     const handlePriceChange = (itemId: string, vendorId: string, price: string) => {
         const priceValue = parseFloat(price);
@@ -39,7 +48,7 @@ export function ComparePricesStep({ procurementList, onComplete, onBack }: Compa
             ...prev,
             [itemId]: {
                 ...prev[itemId],
-                [vendorId]: isNaN(priceValue) ? -1 : priceValue // Use -1 or another flag for invalid numbers
+                [vendorId]: isNaN(priceValue) ? -1 : priceValue
             }
         }));
     };
@@ -54,7 +63,7 @@ export function ComparePricesStep({ procurementList, onComplete, onBack }: Compa
         return Math.min(...validPrices);
     }
 
-    const isLoading = areVendorsLoading;
+    const isLoading = areVendorsLoading || areItemsLoading;
 
     return (
         <Card>
@@ -77,13 +86,19 @@ export function ComparePricesStep({ procurementList, onComplete, onBack }: Compa
                             </TableRow>
                         </TableHeader>
                         <TableBody>
-                            {procurementList.map(item => {
+                            {isLoading && Array.from({length: procurementListIds.length}).map((_,i) => (
+                                <TableRow key={i}>
+                                    <TableCell><Skeleton className="h-8 w-full"/></TableCell>
+                                    <TableCell><Skeleton className="h-8 w-full"/></TableCell>
+                                    <TableCell><Skeleton className="h-8 w-full"/></TableCell>
+                                </TableRow>
+                            ))}
+                            {!isLoading && procurementList.map(item => {
                                 const bestPrice = getBestPriceForItem(item.id);
                                 return (
                                     <TableRow key={item.id}>
                                         <TableCell className="font-medium">{formatItemName(item)}</TableCell>
-                                        {isLoading && Array.from({length: 3}).map((_, i) => <TableCell key={i}><Skeleton className="h-8 w-full"/></TableCell>)}
-                                        {!isLoading && allVendors?.map(vendor => {
+                                        {allVendors?.map(vendor => {
                                             const currentPrice = vendorQuotes[item.id]?.[vendor.id];
                                             const isBestPrice = currentPrice !== undefined && currentPrice >= 0 && currentPrice === bestPrice;
 
@@ -93,6 +108,7 @@ export function ComparePricesStep({ procurementList, onComplete, onBack }: Compa
                                                         type="number"
                                                         placeholder={currency}
                                                         className={`w-28 mx-auto text-right ${isBestPrice ? 'bg-green-100 dark:bg-green-900 border-green-500' : ''}`}
+                                                        defaultValue={currentPrice && currentPrice >= 0 ? currentPrice : ''}
                                                         onChange={(e) => handlePriceChange(item.id, vendor.id, e.target.value)}
                                                         min="0"
                                                         step="0.01"

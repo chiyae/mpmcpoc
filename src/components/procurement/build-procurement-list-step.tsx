@@ -1,3 +1,4 @@
+
 'use client';
 
 import * as React from 'react';
@@ -6,15 +7,14 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Table, TableBody, TableCell, TableRow } from '@/components/ui/table';
 import { useCollection, useFirestore, useMemoFirebase } from '@/firebase';
-import { collection, query, where } from 'firebase/firestore';
+import { collection } from 'firebase/firestore';
 import type { Item, Stock } from '@/lib/types';
 import { Skeleton } from '../ui/skeleton';
 import { PlusCircle, Trash2 } from 'lucide-react';
 import { ManuallyAddItemDialog } from './manually-add-item-dialog';
-import { Separator } from '../ui/separator';
 
 interface BuildProcurementListStepProps {
-  initialList: Item[];
+  initialList: string[]; // Now takes array of item IDs
   onComplete: (procurementList: Item[]) => void;
 }
 
@@ -34,8 +34,19 @@ export function BuildProcurementListStep({ initialList, onComplete }: BuildProcu
   const stockCollectionQuery = useMemoFirebase(() => (firestore ? collection(firestore, 'stocks') : null), [firestore]);
   const { data: allStock, isLoading: areStockLoading } = useCollection<Stock>(stockCollectionQuery);
   
-  const [currentList, setCurrentList] = React.useState<Item[]>(initialList);
+  const [currentList, setCurrentList] = React.useState<Item[]>([]);
   const [isManualAddOpen, setIsManualAddOpen] = React.useState(false);
+
+  // Effect to hydrate currentList from initialList IDs when allItems is available
+  React.useEffect(() => {
+    if (allItems && initialList.length > 0) {
+      const hydratedList = initialList
+        .map(id => allItems.find(item => item.id === id))
+        .filter((item): item is Item => !!item);
+      setCurrentList(hydratedList);
+    }
+  }, [allItems, initialList]);
+
 
   const isLoading = areItemsLoading || areStockLoading;
 
@@ -113,7 +124,8 @@ export function BuildProcurementListStep({ initialList, onComplete }: BuildProcu
             <ScrollArea className="h-96 rounded-md border">
                  <Table>
                     <TableBody>
-                        {currentList.length === 0 && <TableRow><TableCell className="h-96 text-center text-muted-foreground">Add items from the low stock list or manually.</TableCell></TableRow>}
+                        {isLoading && currentList.length === 0 && <TableRow><TableCell className="h-96 text-center text-muted-foreground">Loading...</TableCell></TableRow>}
+                        {!isLoading && currentList.length === 0 && <TableRow><TableCell className="h-96 text-center text-muted-foreground">Add items from the low stock list or manually.</TableCell></TableRow>}
                         {currentList.map(item => (
                             <TableRow key={item.id}>
                                 <TableCell className="font-medium">{formatItemName(item)}</TableCell>
@@ -146,3 +158,5 @@ export function BuildProcurementListStep({ initialList, onComplete }: BuildProcu
     </>
   );
 }
+
+    

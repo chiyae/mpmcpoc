@@ -1,3 +1,4 @@
+
 'use client';
 import * as React from 'react';
 import { Button } from '@/components/ui/button';
@@ -9,10 +10,13 @@ import { useCollection, useFirestore, useMemoFirebase } from '@/firebase';
 import { collection } from 'firebase/firestore';
 import { useSettings } from '@/context/settings-provider';
 import { Skeleton } from '../ui/skeleton';
+import { Input } from '../ui/input';
 
 interface FinalizeLpoStepProps {
-  procurementList: Item[];
+  procurementListIds: string[];
   vendorQuotes: Record<string, Record<string, number>>;
+  initialQuantities: Record<string, number>;
+  onQuantitiesChange: (quantities: Record<string, number>) => void;
   onBack: () => void;
   onReset: () => void;
 }
@@ -31,15 +35,51 @@ function formatItemName(item: Item) {
   return name;
 }
 
-export function FinalizeLpoStep({ procurementList, vendorQuotes, onBack, onReset }: FinalizeLpoStepProps) {
+export function FinalizeLpoStep({ 
+    procurementListIds, 
+    vendorQuotes, 
+    initialQuantities,
+    onQuantitiesChange,
+    onBack, 
+    onReset 
+}: FinalizeLpoStepProps) {
   const firestore = useFirestore();
   const { formatCurrency } = useSettings();
 
+  const [quantities, setQuantities] = React.useState(initialQuantities);
+  
+  React.useEffect(() => {
+    // Debounce the onQuantitiesChange callback
+    const handler = setTimeout(() => {
+        onQuantitiesChange(quantities);
+    }, 500); // 500ms debounce delay
+
+    return () => {
+        clearTimeout(handler);
+    };
+  }, [quantities, onQuantitiesChange]);
+
   const vendorsCollectionQuery = useMemoFirebase(() => (firestore ? collection(firestore, 'vendors') : null), [firestore]);
   const { data: allVendors, isLoading: areVendorsLoading } = useCollection<Vendor>(vendorsCollectionQuery);
+  
+  const itemsCollectionQuery = useMemoFirebase(() => (firestore ? collection(firestore, 'items') : null), [firestore]);
+  const { data: allItems, isLoading: areItemsLoading } = useCollection<Item>(itemsCollectionQuery);
+
+  const procurementList = React.useMemo(() => {
+    if (!allItems) return [];
+    return procurementListIds.map(id => allItems.find(item => item.id === id)).filter((item): item is Item => !!item);
+  }, [allItems, procurementListIds]);
+
+  const handleQuantityChange = (itemId: string, newQuantity: string) => {
+    const qty = parseInt(newQuantity, 10);
+    setQuantities(prev => ({
+        ...prev,
+        [itemId]: isNaN(qty) ? 0 : qty
+    }));
+  }
 
   const draftLpos = React.useMemo(() => {
-    if (areVendorsLoading || !allVendors) return [];
+    if (areVendorsLoading || !allVendors || areItemsLoading) return [];
 
     const lpoGroups: Record<string, DraftLpo> = {};
 
@@ -68,8 +108,7 @@ export function FinalizeLpoStep({ procurementList, vendorQuotes, onBack, onReset
           };
         }
         
-        // For now, quantity is hardcoded to 1. This will be editable later.
-        const quantity = 1; 
+        const quantity = quantities[item.id] || 1; 
         const total = quantity * bestPrice;
 
         lpoGroups[bestVendorId].items.push({
@@ -86,10 +125,11 @@ export function FinalizeLpoStep({ procurementList, vendorQuotes, onBack, onReset
 
     return Object.values(lpoGroups);
 
-  }, [procurementList, vendorQuotes, allVendors, areVendorsLoading]);
+  }, [procurementList, vendorQuotes, allVendors, areVendorsLoading, areItemsLoading, quantities]);
 
+  const isLoading = areVendorsLoading || areItemsLoading;
 
-  if (areVendorsLoading) {
+  if (isLoading) {
     return (
         <Card>
             <CardHeader><Skeleton className="h-8 w-1/2" /></CardHeader>
@@ -104,7 +144,7 @@ export function FinalizeLpoStep({ procurementList, vendorQuotes, onBack, onReset
         <CardTitle>Step 3: Review and Finalize LPOs</CardTitle>
         <CardDescription>
           Based on the best prices, the following draft Local Purchase Orders (LPOs) will be generated.
-          Review the items for each vendor and finalize the procurement.
+          Adjust quantities as needed before confirming.
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
@@ -130,7 +170,7 @@ export function FinalizeLpoStep({ procurementList, vendorQuotes, onBack, onReset
                         <TableHeader>
                             <TableRow>
                                 <TableHead>Item</TableHead>
-                                <TableHead className="text-center">Quantity</TableHead>
+                                <TableHead className="w-28 text-center">Quantity</TableHead>
                                 <TableHead className="text-right">Unit Price</TableHead>
                                 <TableHead className="text-right">Total</TableHead>
                             </TableRow>
@@ -139,7 +179,15 @@ export function FinalizeLpoStep({ procurementList, vendorQuotes, onBack, onReset
                             {lpo.items.map(item => (
                                 <TableRow key={item.itemId}>
                                     <TableCell className="font-medium">{item.itemName}</TableCell>
-                                    <TableCell className="text-center">{item.quantity}</TableCell>
+                                    <TableCell>
+                                        <Input 
+                                            type="number"
+                                            className="w-24 mx-auto text-center"
+                                            value={quantities[item.itemId] || '1'}
+                                            onChange={(e) => handleQuantityChange(item.itemId, e.target.value)}
+                                            min="1"
+                                        />
+                                    </TableCell>
                                     <TableCell className="text-right">{formatCurrency(item.unitPrice)}</TableCell>
                                     <TableCell className="text-right font-semibold">{formatCurrency(item.total)}</TableCell>
                                 </TableRow>
@@ -166,3 +214,5 @@ export function FinalizeLpoStep({ procurementList, vendorQuotes, onBack, onReset
     </Card>
   );
 }
+
+    

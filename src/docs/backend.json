@@ -355,6 +355,42 @@
         }
       },
       "required": ["id", "clinicName", "currency"]
+    },
+    "ProcurementSession": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "title": "ProcurementSession",
+        "type": "object",
+        "description": "Represents a saved state of a procurement assistant workflow.",
+        "properties": {
+            "id": {
+                "type": "string",
+                "description": "Unique identifier for the procurement session."
+            },
+            "createdAt": {
+                "type": "string",
+                "format": "date-time",
+                "description": "The date and time the session was created."
+            },
+            "status": {
+                "type": "string",
+                "enum": ["Draft", "Completed"],
+                "description": "The current status of the procurement session."
+            },
+            "procurementList": {
+                "type": "array",
+                "items": { "type": "string" },
+                "description": "An array of item IDs included in the procurement list for this session."
+            },
+            "vendorQuotes": {
+                "type": "object",
+                "description": "A nested object storing vendor prices. Format: { itemId: { vendorId: price } }.",
+                "additionalProperties": {
+                    "type": "object",
+                    "additionalProperties": { "type": "number" }
+                }
+            }
+        },
+        "required": ["id", "createdAt", "status", "procurementList", "vendorQuotes"]
     }
   },
   "auth": {
@@ -419,6 +455,13 @@
         "definition": {
           "schema": { "$ref": "#/entities/ClinicSettings" },
           "description": "Stores application-wide settings. Only a single document with a known ID should exist here (e.g., 'clinic')."
+        }
+      },
+      {
+        "path": "/procurementSessions/{sessionId}",
+        "definition": {
+            "schema": { "$ref": "#/entities/ProcurementSession" },
+            "description": "Stores saved procurement assistant sessions."
         }
       }
     ],

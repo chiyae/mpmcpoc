@@ -107,6 +107,14 @@ export interface Service {
 }
 
 // Procurement Tool Types
+export interface ProcurementSession {
+    id: string;
+    createdAt: string; // ISO date-time string
+    status: 'Draft' | 'Completed';
+    procurementList: string[]; // Array of item IDs
+    vendorQuotes: Record<string, Record<string, number>>; // { [itemId]: { [vendorId]: price } }
+    lpoQuantities: Record<string, number>; // { [itemId]: quantity }
+}
 export interface ProcurementItemDetail extends Item {
   vendorPrices: { vendorId: string; price: number }[];
 }

@@ -80,7 +80,7 @@ export default function InternalOrderManagementPage() {
     setIsViewOrderOpen(true);
   };
   
-  const handleUpdateOrderStatus = async (orderId: string, status: OrderStatus) => {
+  const handleUpdateOrderStatus = async (orderId: string, status: 'Issued' | 'Rejected') => {
     if (!firestore || !selectedOrder) return;
     setIsProcessing(true);
 
@@ -154,16 +154,14 @@ export default function InternalOrderManagementPage() {
         }
 
 
-    } else { // Handle Approve and Reject
+    } else { // Handle Reject
         try {
             await setDoc(orderRef, { status }, { merge: true });
             toast({
                 title: "Order Status Updated",
                 description: `Order ${orderId} has been marked as ${status}.`
             });
-            if (status !== 'Approved') {
-                setIsViewOrderOpen(false);
-            }
+            setIsViewOrderOpen(false);
         } catch(error) {
             console.error("Error updating order:", error);
             toast({ variant: 'destructive', title: 'Error', description: 'Could not update the order status.' });
@@ -383,11 +381,8 @@ export default function InternalOrderManagementPage() {
                     <Button variant="outline">Close</Button>
                 </DialogClose>
                 {selectedOrder.status === 'Pending' && (
-                    <Button onClick={() => handleUpdateOrderStatus(selectedOrder.id, 'Approved')} disabled={isProcessing}>Approve</Button>
-                )}
-                 {selectedOrder.status === 'Approved' && (
                     <Button onClick={() => handleUpdateOrderStatus(selectedOrder.id, 'Issued')} disabled={isProcessing}>
-                        {isProcessing ? 'Issuing...' : 'Issue Stock'}
+                       {isProcessing ? 'Issuing...' : 'Approve & Issue Stock'}
                     </Button>
                 )}
             </div>

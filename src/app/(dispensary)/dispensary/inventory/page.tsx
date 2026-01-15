@@ -3,6 +3,7 @@
 
 import * as React from 'react';
 import { useRouter } from 'next/navigation';
+import Link from 'next/link';
 import {
   CaretSortIcon,
   ChevronDownIcon,
@@ -38,11 +39,10 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
-import type { InternalOrder, Item, Stock, StockTakeSession, User } from '@/lib/types';
+import type { Item, Stock, StockTakeSession, User } from '@/lib/types';
 import { differenceInDays, parseISO } from 'date-fns';
 import { useToast } from "@/hooks/use-toast";
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
-import { RequestStockForm } from '@/components/request-stock-form';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { ClipboardList } from 'lucide-react';
 import { useCollection, useDoc, useFirestore, useMemoFirebase, useUser } from '@/firebase';
 import { collection, doc, query, setDoc, where } from 'firebase/firestore';
@@ -75,7 +75,6 @@ export default function DispensaryInventoryPage() {
   const [columnVisibility, setColumnVisibility] = React.useState<VisibilityState>({});
   const [rowSelection, setRowSelection] = React.useState({});
   
-  const [isRequestStockOpen, setIsRequestStockOpen] = React.useState(false);
   const [selectedItem, setSelectedItem] = React.useState<DispensaryStockItem | null>(null);
   const [isDetailsOpen, setIsDetailsOpen] = React.useState(false);
 
@@ -98,34 +97,6 @@ export default function DispensaryInventoryPage() {
     }).filter(item => item.genericName); 
   }, [allItems, dispensaryStocks]);
 
-
-  const handleRequestStock = async (items: { itemId: string; quantity: number }[]) => {
-    if (!firestore) return;
-
-    const orderId = `IO-${Date.now()}`;
-    const internalOrderRef = doc(firestore, 'internalOrders', orderId);
-    
-    const newOrder: InternalOrder = {
-        id: orderId,
-        date: new Date().toISOString(),
-        requestingLocationId: 'dispensary',
-        status: 'Pending',
-        items,
-    }
-
-    try {
-        await setDoc(internalOrderRef, newOrder);
-        setIsRequestStockOpen(false);
-        table.resetRowSelection();
-        toast({
-          title: "Stock Request Submitted",
-          description: `Order #${newOrder.id} has been sent to the bulk store for processing.`,
-        });
-    } catch (error) {
-        console.error("Failed to submit stock request:", error);
-        toast({ variant: 'destructive', title: "Submission Failed", description: "Could not submit the stock request." });
-    }
-  };
 
   const handleStartStockTake = async () => {
     if (!firestore) return;
@@ -294,11 +265,10 @@ export default function DispensaryInventoryPage() {
                     Start Stock Take
                 </Button>
                 
-                <Button 
-                    onClick={() => setIsRequestStockOpen(true)}
-                    disabled={isLoading || !(userProfile?.role === 'pharmacy' || userProfile?.role === 'admin') || selectedItems.length === 0}
-                >
+                <Button asChild disabled={isLoading || !(userProfile?.role === 'pharmacy' || userProfile?.role === 'admin') || selectedItems.length === 0}>
+                  <Link href={`/dispensary/request-stock?items=${selectedItems.map(item => item.id).join(',')}`}>
                     Request New Stock ({selectedItems.length})
+                  </Link>
                 </Button>
 
                 <DropdownMenu>
@@ -407,22 +377,6 @@ export default function DispensaryInventoryPage() {
             </Button>
             </div>
       </div>
-
-       <Dialog open={isRequestStockOpen} onOpenChange={setIsRequestStockOpen}>
-            <DialogContent className="sm:max-w-2xl">
-                <DialogHeader>
-                    <DialogTitle>Request New Stock Transfer</DialogTitle>
-                    <DialogDescription>
-                    Specify the quantities you need from the bulk store.
-                    </DialogDescription>
-                </DialogHeader>
-                <RequestStockForm 
-                    selectedItems={selectedItems.map(item => ({...item, name: formatItemName(item)}))} 
-                    onSubmit={handleRequestStock} 
-                    onCancel={() => setIsRequestStockOpen(false)}
-                />
-            </DialogContent>
-        </Dialog>
 
        {selectedItem && (
         <Dialog open={isDetailsOpen} onOpenChange={setIsDetailsOpen}>

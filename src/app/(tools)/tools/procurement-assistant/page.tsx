@@ -45,11 +45,13 @@ export default function ProcurementAssistantPage() {
   }, [sessionData]);
 
   // Function to save the current state to Firestore
-  const saveSession = async (data: Partial<ProcurementSession>) => {
+  const saveSession = async (data: Partial<ProcurementSession>, showToast: boolean = false) => {
     if (!sessionDocRef) return;
     try {
       await setDoc(sessionDocRef, data, { merge: true });
-      toast({ title: "Progress Saved", description: "Your procurement session has been saved." });
+      if (showToast) {
+        toast({ title: "Progress Saved", description: "Your procurement session has been saved." });
+      }
     } catch (error) {
       console.error("Failed to save session:", error);
       toast({ variant: "destructive", title: "Save Failed", description: "Could not save your progress." });
@@ -67,7 +69,7 @@ export default function ProcurementAssistantPage() {
             onComplete={async (list) => {
               const itemIds = list.map(item => item.id);
               setProcurementList(itemIds);
-              await saveSession({ procurementList: itemIds });
+              await saveSession({ procurementList: itemIds }, true);
               setCurrentStep(1);
             }}
         />
@@ -82,7 +84,7 @@ export default function ProcurementAssistantPage() {
         initialQuotes={vendorQuotes}
         onComplete={async (quotes) => {
             setVendorQuotes(quotes);
-            await saveSession({ vendorQuotes: quotes });
+            await saveSession({ vendorQuotes: quotes }, true);
             setCurrentStep(2);
         }}
         onBack={() => setCurrentStep(0)}
@@ -98,7 +100,7 @@ export default function ProcurementAssistantPage() {
         initialQuantities={lpoQuantities}
         onQuantitiesChange={async (quantities) => {
             setLpoQuantities(quantities);
-            await saveSession({ lpoQuantities: quantities });
+            await saveSession({ lpoQuantities: quantities }, false); // Do not show toast on quantity change
         }}
         onBack={() => setCurrentStep(1)}
         onReset={() => {

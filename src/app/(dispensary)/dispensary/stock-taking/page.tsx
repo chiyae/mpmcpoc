@@ -36,7 +36,7 @@ import {
   AlertDialogTrigger,
 } from '@/components/ui/alert-dialog';
 import { useCollection, useDoc, useFirestore, useMemoFirebase } from '@/firebase';
-import { collection, doc, query, where, writeBatch, setDoc } from 'firebase/firestore';
+import { collection, doc, query, where, writeBatch, setDoc, getDocs } from 'firebase/firestore';
 import { Skeleton } from '@/components/ui/skeleton';
 import { format } from 'date-fns';
 
@@ -75,8 +75,8 @@ export default function StockTakingPage() {
         const itemsQuery = collection(firestore, 'items');
         
         const [stockSnapshot, itemsSnapshot] = await Promise.all([
-          writeBatch(firestore), // We're not using getDocsFromCache, so this is just a placeholder to satisfy Promise.all type
-          firestore.collection('items').get(),
+          getDocs(stockQuery),
+          getDocs(itemsQuery),
         ]);
         
         const allItems = itemsSnapshot.docs.map(d => ({ id: d.id, ...d.data() })) as Item[];
@@ -106,10 +106,10 @@ export default function StockTakingPage() {
       }
     };
     
-    if (sessionData && stockTakeItems?.length === 0) {
+    if (sessionData && !areItemsLoading && stockTakeItems?.length === 0) {
       createStockTakeList();
     }
-  }, [sessionData, stockTakeItems, firestore, itemsRef]);
+  }, [sessionData, stockTakeItems, areItemsLoading, firestore, itemsRef]);
 
 
   React.useEffect(() => {
@@ -146,31 +146,29 @@ export default function StockTakingPage() {
   const isLoading = isSessionLoading || areItemsLoading;
 
   const handleFinalizeStockTake = async () => {
-    if (!firestore || !stockTakeItems || !sessionRef) return;
+    if (!firestore || !stockTakeItems || !sessionRef || !sessionData) return;
     
     const batch = writeBatch(firestore);
 
     // 1. Update the actual stock collection
-    stockTakeItems.forEach(item => {
+    for (const item of stockTakeItems) {
         if(item.variance !== 0) {
-             const stockRefQuery = query(
+            const stockRefQuery = query(
                 collection(firestore, 'stocks'), 
                 where('itemId', '==', item.itemId),
                 where('batchId', '==', item.batchId),
-                where('locationId', '==', sessionData?.locationId)
+                where('locationId', '==', sessionData.locationId)
             );
+            
+            const snapshot = await getDocs(stockRefQuery);
 
-            // This is a bit simplified. We assume a single stock doc per item/batch/location.
-            // A real app might need to get the doc ID differently.
-             firestore.collection('stocks').where('itemId', '==', item.itemId).where('batchId', '==', item.batchId).get().then((snapshot) => {
-                if(!snapshot.empty) {
-                    const stockDocId = snapshot.docs[0].id;
-                    const stockRef = doc(firestore, 'stocks', stockDocId);
-                    batch.update(stockRef, { currentStockQuantity: item.physicalQty });
-                }
-             });
+            if(!snapshot.empty) {
+                const stockDocId = snapshot.docs[0].id;
+                const stockRef = doc(firestore, 'stocks', stockDocId);
+                batch.update(stockRef, { currentStockQuantity: item.physicalQty });
+            }
         }
-    });
+    }
 
     // 2. Mark the session as completed
     batch.update(sessionRef, { status: 'Completed' });
@@ -265,7 +263,7 @@ export default function StockTakingPage() {
         <CardFooter className="flex justify-end">
             <AlertDialog>
             <AlertDialogTrigger asChild>
-                <Button disabled={!hasPendingChanges || isLoading}>Finalize & Update Stock</Button>
+                <Button disabled={hasPendingChanges || isLoading}>Finalize & Update Stock</Button>
             </AlertDialogTrigger>
             <AlertDialogContent>
                 <AlertDialogHeader>

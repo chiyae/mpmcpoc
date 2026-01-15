@@ -166,7 +166,7 @@ export default function LocalPurchaseOrdersPage() {
       {isPrintPreview && selectedLpo && (
         <div className="print-preview-mode">
           <header className="sticky top-0 z-20 bg-background/80 backdrop-blur-sm p-4 border-b no-print flex justify-between items-center">
-            <p className="font-semibold">Print Preview: Use your browser's print function (Ctrl/Cmd + P).</p>
+            <p className="font-semibold text-sm">Print Preview: Use your browser's print function (Ctrl/Cmd + P) to print or save as PDF.</p>
             <Button variant="outline" onClick={() => setIsPrintPreview(false)}>
               <X className="mr-2 h-4 w-4" />
               Close Preview

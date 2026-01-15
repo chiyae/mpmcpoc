@@ -43,7 +43,7 @@ import {
 import { Badge } from '@/components/ui/badge';
 import type { Item, GenerateLpoOutput, Lpo, Vendor, Stock } from '@/lib/types';
 import { format } from 'date-fns';
-import { AddItemForm } from '@/components/add-item-form';
+import { ItemForm } from '@/components/item-form';
 import {
   Dialog,
   DialogContent,
@@ -67,7 +67,7 @@ type BulkStoreInventoryItem = Item & {
 };
 
 
-function formatItemName(item: Item) {
+function formatItemName(item: Item | Omit<Item, 'id' | 'itemCode'>) {
   let name = item.genericName;
   if (item.brandName) name += ` (${item.brandName})`;
   if (item.strengthValue) name += ` ${item.strengthValue}${item.strengthUnit}`;
@@ -151,7 +151,7 @@ export default function BulkStoreInventoryPage() {
                 reorderLevel: item.reorderLevel,
                 usageHistory: [] // Note: usage history is not tracked yet
             })),
-            vendors: vendors.map(v => ({ id: v.id, name: v.name, supplies: v.supplies || []}))
+            vendors: vendors.map(v => ({ id: v.id, name: v.name }))
         }
         const lpo = await generateLpo(lpoInput);
         setGeneratedLpo(lpo);
@@ -418,7 +418,7 @@ export default function BulkStoreInventoryPage() {
                         Fill in the details below to add a new item to the master inventory list.
                       </DialogDescription>
                     </DialogHeader>
-                    <AddItemForm onAddItem={handleAddItem} />
+                    <ItemForm onSubmit={handleAddItem} />
                   </DialogContent>
                 </Dialog>
                 <DropdownMenu>
@@ -616,3 +616,7 @@ export default function BulkStoreInventoryPage() {
     </div>
   );
 }
+
+    
+
+    

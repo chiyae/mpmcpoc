@@ -617,4 +617,3 @@ export default function BulkStoreInventoryPage() {
   );
 }
 
-    

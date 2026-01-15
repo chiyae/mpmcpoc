@@ -85,13 +85,18 @@ export default function DispensaryInventoryPage() {
   const inventoryData: DispensaryStockItem[] = React.useMemo(() => {
     if (!allItems || !dispensaryStocks) return [];
     
-    return dispensaryStocks.map(stock => {
+    const medicineStock = dispensaryStocks.filter(stock => {
+        const itemInfo = allItems.find(item => item.id === stock.itemId);
+        return itemInfo && itemInfo.category === 'Medicine';
+    });
+
+    return medicineStock.map(stock => {
       const itemInfo = allItems.find(item => item.id === stock.itemId);
       return {
         ...itemInfo,
         stockData: stock,
       } as DispensaryStockItem;
-    }).filter(item => item.genericName && item.category === 'Medicine'); // Only show items that are medicines
+    }).filter(item => item.id); // Filter out any items that couldn't be found
   }, [allItems, dispensaryStocks]);
 
 
@@ -312,7 +317,7 @@ export default function DispensaryInventoryPage() {
                     colSpan={columns.length}
                     className="h-24 text-center"
                     >
-                    No items in dispensary inventory.
+                    No medicines in dispensary inventory.
                     </TableCell>
                 </TableRow>
                 ) : null}

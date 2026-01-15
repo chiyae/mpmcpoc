@@ -291,7 +291,7 @@ export default function DispensaryInventoryPage() {
                 </Button>
                 <Dialog open={isRequestStockOpen} onOpenChange={setIsRequestStockOpen}>
                   <DialogTrigger asChild>
-                    <Button disabled={selectedItems.length === 0} onClick={() => setIsRequestStockOpen(true)}>
+                    <Button disabled={selectedItems.length === 0}>
                       Request New Stock Transfer ({selectedItems.length})
                     </Button>
                   </DialogTrigger>

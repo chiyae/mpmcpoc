@@ -25,7 +25,7 @@ const prompt = ai.definePrompt({
 
   **Analysis Criteria:**
   1.  **Order Quantity:** For each item, recommend an order quantity. This should be enough to get back above the reorder level, considering the recent usage history. A simple rule is to order enough to last for another 30-60 days based on recent average daily usage.
-  2.  **Vendor Selection:** For each item, you must select the best vendor from the provided list. A vendor can only be selected for an item if they supply it (check the vendor's 'supplies' array). If multiple vendors supply the same item, you can choose one, but try to consolidate orders with fewer vendors if possible to simplify logistics.
+  2.  **Vendor Selection:** For each item, you must select the best vendor from the provided list. Try to consolidate orders with fewer vendors if possible to simplify logistics.
   3.  **Reasoning:** Briefly explain your choice of quantity and vendor for each item.
   4.  **LPO Details:** Generate a unique LPO ID and provide a high-level summary of the order.
 
@@ -42,7 +42,6 @@ const prompt = ai.definePrompt({
   **Available Vendors:**
   {{#each vendors}}
   - Vendor: {{name}} (ID: {{id}})
-    - Supplies Item IDs: {{#each supplies}}{{.}}, {{/each}}
   {{/each}}
 
   Please generate the LPO in the required JSON format.
@@ -62,3 +61,5 @@ const lpoGenerationFlow = ai.defineFlow(
     return output!;
   }
 );
+
+    

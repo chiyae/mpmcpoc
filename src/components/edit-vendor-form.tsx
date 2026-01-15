@@ -15,11 +15,7 @@ import {
   FormMessage,
 } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
-import type { Item, Vendor } from '@/lib/types';
-import { Popover, PopoverContent, PopoverTrigger } from './ui/popover';
-import { cn } from '@/lib/utils';
-import { CaretSortIcon, CheckIcon } from '@radix-ui/react-icons';
-import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem } from './ui/command';
+import type { Vendor } from '@/lib/types';
 import { useEffect } from 'react';
 
 const formSchema = z.object({
@@ -27,24 +23,14 @@ const formSchema = z.object({
   email: z.string().email({ message: 'Please enter a valid email.' }),
   contactPerson: z.string().optional(),
   phone: z.string().optional(),
-  supplies: z.array(z.string()).optional(),
 });
 
 type EditVendorFormProps = {
   vendor: Vendor;
   onVendorUpdated: (vendorId: string, vendor: Omit<Vendor, 'id'>) => void;
-  allItems: Item[];
-  isLoadingItems: boolean;
 };
 
-function formatItemName(item: Item) {
-    let name = item.genericName;
-    if (item.brandName) name += ` (${item.brandName})`;
-    if (item.strengthValue) name += ` ${item.strengthValue}${item.strengthUnit}`;
-    return name;
-}
-
-export function EditVendorForm({ vendor, onVendorUpdated, allItems, isLoadingItems }: EditVendorFormProps) {
+export function EditVendorForm({ vendor, onVendorUpdated }: EditVendorFormProps) {
   const [isSubmitting, setIsSubmitting] = React.useState(false);
   
   const form = useForm<z.infer<typeof formSchema>>({
@@ -58,7 +44,6 @@ export function EditVendorForm({ vendor, onVendorUpdated, allItems, isLoadingIte
             email: vendor.email,
             contactPerson: vendor.contactPerson || '',
             phone: vendor.phone || '',
-            supplies: vendor.supplies || [],
         });
     }
   }, [vendor, form]);
@@ -129,72 +114,6 @@ export function EditVendorForm({ vendor, onVendorUpdated, allItems, isLoadingIte
             />
         </div>
 
-        <FormField
-          control={form.control}
-          name="supplies"
-          render={({ field }) => (
-            <FormItem className="flex flex-col">
-              <FormLabel>Items Supplied</FormLabel>
-              <Popover>
-                <PopoverTrigger asChild>
-                  <FormControl>
-                    <Button
-                      variant="outline"
-                      role="combobox"
-                      className={cn(
-                        "w-full justify-between",
-                        !field.value?.length && "text-muted-foreground"
-                      )}
-                    >
-                      {field.value?.length ? `${field.value.length} items selected` : "Select items"}
-                      <CaretSortIcon className="ml-2 h-4 w-4 shrink-0 opacity-50" />
-                    </Button>
-                  </FormControl>
-                </PopoverTrigger>
-                <PopoverContent className="w-[--radix-popover-trigger-width] p-0">
-                  <Command>
-                    <CommandInput
-                      placeholder="Search items..."
-                      className="h-9"
-                    />
-                    <CommandEmpty>No items found.</CommandEmpty>
-                    <CommandGroup>
-                      {allItems.map((item) => (
-                        <CommandItem
-                          value={item.id}
-                          key={item.id}
-                          onSelect={() => {
-                            const selected = field.value || [];
-                            const isSelected = selected.includes(item.id);
-                            form.setValue(
-                              "supplies",
-                              isSelected
-                                ? selected.filter((id) => id !== item.id)
-                                : [...selected, item.id]
-                            );
-                          }}
-                        >
-                           {formatItemName(item)}
-                          <CheckIcon
-                            className={cn(
-                              "ml-auto h-4 w-4",
-                              (field.value || []).includes(item.id)
-                                ? "opacity-100"
-                                : "opacity-0"
-                            )}
-                          />
-                        </CommandItem>
-                      ))}
-                    </CommandGroup>
-                  </Command>
-                </PopoverContent>
-              </Popover>
-              <FormMessage />
-            </FormItem>
-          )}
-        />
-
-
         <div className="flex justify-end pt-4">
           <Button type="submit" disabled={isSubmitting}>
             {isSubmitting ? 'Saving Changes...' : 'Save Changes'}
@@ -204,3 +123,5 @@ export function EditVendorForm({ vendor, onVendorUpdated, allItems, isLoadingIte
     </Form>
   );
 }
+
+    

@@ -55,7 +55,6 @@ export interface Vendor {
   contactPerson?: string;
   email: string;
   phone?: string;
-  supplies?: string[]; // Array of item IDs
 }
 
 export interface InternalOrderItem {
@@ -147,7 +146,6 @@ const LowStockItemSchema = z.object({
 const VendorForLpoSchema = z.object({
   id: z.string().describe('The unique vendor ID.'),
   name: z.string().describe('The name of the vendor.'),
-  supplies: z.array(z.string()).describe('An array of item IDs that this vendor supplies.'),
 });
 
 export const GenerateLpoInputSchema = z.object({
@@ -176,3 +174,5 @@ export type GenerateLpoOutput = z.infer<typeof GenerateLpoOutputSchema>;
 export interface Lpo extends GenerateLpoOutput {
   status: 'Pending' | 'Approved' | 'Rejected' | 'Completed';
 }
+
+    

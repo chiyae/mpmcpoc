@@ -44,11 +44,6 @@ export default function SupplierManagementPage() {
   );
   const { data: vendors, isLoading: areVendorsLoading } = useCollection<Vendor>(vendorsCollectionQuery);
   
-  const itemsCollectionQuery = useMemoFirebase(
-    () => (firestore ? collection(firestore, 'items') : null),
-    [firestore]
-  );
-  const { data: allItems, isLoading: areItemsLoading } = useCollection<Item>(itemsCollectionQuery);
 
   const [isAddVendorOpen, setIsAddVendorOpen] = React.useState(false);
   const [isEditVendorOpen, setIsEditVendorOpen] = React.useState(false);
@@ -59,7 +54,7 @@ export default function SupplierManagementPage() {
     setIsClient(true);
   }, []);
   
-  const isLoading = areVendorsLoading || areItemsLoading;
+  const isLoading = areVendorsLoading;
 
   const handleVendorAdded = async (vendorData: Omit<Vendor, 'id'>) => {
     if (!firestore) return;
@@ -112,7 +107,7 @@ export default function SupplierManagementPage() {
         <header className="space-y-1.5">
             <h1 className="text-3xl font-bold tracking-tight">Supplier Management</h1>
             <p className="text-muted-foreground">
-              Add, view, and manage suppliers and the items they provide.
+              Add, view, and manage suppliers.
             </p>
         </header>
         {isClient && (
@@ -120,7 +115,7 @@ export default function SupplierManagementPage() {
               <DialogTrigger asChild>
                   <Button>Add New Vendor</Button>
               </DialogTrigger>
-              <DialogContent className="sm:max-w-2xl">
+              <DialogContent className="sm:max-w-md">
                   <DialogHeader>
                       <DialogTitle>Add New Supplier</DialogTitle>
                       <DialogDescription>
@@ -129,8 +124,6 @@ export default function SupplierManagementPage() {
                   </DialogHeader>
                   <AddVendorForm 
                     onVendorAdded={handleVendorAdded} 
-                    allItems={allItems || []}
-                    isLoadingItems={areItemsLoading}
                   />
               </DialogContent>
           </Dialog>
@@ -150,14 +143,13 @@ export default function SupplierManagementPage() {
                 <TableRow>
                     <TableHead>Vendor Name</TableHead>
                     <TableHead>Contact</TableHead>
-                    <TableHead>Items Supplied</TableHead>
                     <TableHead className="text-right">Actions</TableHead>
                 </TableRow>
             </TableHeader>
             <TableBody>
                 {isLoading && Array.from({ length: 3 }).map((_, i) => (
                     <TableRow key={i}>
-                        <TableCell colSpan={4}><Skeleton className="h-8 w-full" /></TableCell>
+                        <TableCell colSpan={3}><Skeleton className="h-8 w-full" /></TableCell>
                     </TableRow>
                 ))}
                 {!isLoading && vendors && vendors.map(vendor => (
@@ -168,9 +160,6 @@ export default function SupplierManagementPage() {
                                 <span className="text-sm">{vendor.email}</span>
                                 <span className="text-xs text-muted-foreground">{vendor.contactPerson} ({vendor.phone})</span>
                             </div>
-                        </TableCell>
-                        <TableCell>
-                           {vendor.supplies?.length || 0} items
                         </TableCell>
                         <TableCell className="text-right">
                             <Button variant="ghost" size="sm" onClick={() => handleOpenEditDialog(vendor)}>Edit</Button>
@@ -187,18 +176,16 @@ export default function SupplierManagementPage() {
 
       {selectedVendor && isClient && (
          <Dialog open={isEditVendorOpen} onOpenChange={setIsEditVendorOpen}>
-            <DialogContent className="sm:max-w-2xl">
+            <DialogContent className="sm:max-w-md">
                 <DialogHeader>
                     <DialogTitle>Edit Supplier: {selectedVendor.name}</DialogTitle>
                     <DialogDescription>
-                        Update the details and supplied items for this vendor.
+                        Update the details for this vendor.
                     </DialogDescription>
                 </DialogHeader>
                 <EditVendorForm 
                     vendor={selectedVendor}
                     onVendorUpdated={handleVendorUpdated}
-                    allItems={allItems || []}
-                    isLoadingItems={areItemsLoading}
                  />
             </DialogContent>
         </Dialog>
@@ -206,3 +193,5 @@ export default function SupplierManagementPage() {
     </div>
   );
 }
+
+    

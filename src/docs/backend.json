@@ -302,11 +302,6 @@
         "phone": {
           "type": "string",
           "description": "Contact phone number."
-        },
-        "supplies": {
-          "type": "array",
-          "items": { "type": "string" },
-          "description": "An array of item IDs that this vendor can supply."
         }
       },
       "required": ["id", "name", "email"]
@@ -430,3 +425,5 @@
     "reasoning": "The Firestore structure has been flattened to use top-level collections for each major entity: items, stocks, internalOrders, billings, users, vendors, services, and settings. This approach is straightforward, scalable, and simplifies security rules by removing the need for complex nested path checks and `get()` calls. Security and data access can be efficiently managed by querying collections directly and using denormalized fields (like `locationId` in the `stocks` collection) to filter data based on a user's role and assigned location."
   }
 }
+
+    

@@ -1,3 +1,4 @@
+
 'use client';
 import * as React from 'react';
 import { Button } from '@/components/ui/button';
@@ -31,14 +32,6 @@ export function ComparePricesStep({ procurementList, onComplete, onBack }: Compa
 
     const vendorsCollectionQuery = useMemoFirebase(() => (firestore ? collection(firestore, 'vendors') : null), [firestore]);
     const { data: allVendors, isLoading: areVendorsLoading } = useCollection<Vendor>(vendorsCollectionQuery);
-
-    const relevantVendors = React.useMemo(() => {
-        if (!allVendors || procurementList.length === 0) return [];
-        const itemIdsInList = new Set(procurementList.map(item => item.id));
-        return allVendors.filter(vendor => 
-            vendor.supplies?.some(suppliedItemId => itemIdsInList.has(suppliedItemId))
-        );
-    }, [allVendors, procurementList]);
 
     const handlePriceChange = (itemId: string, vendorId: string, price: string) => {
         const priceValue = parseFloat(price);
@@ -78,7 +71,7 @@ export function ComparePricesStep({ procurementList, onComplete, onBack }: Compa
                             <TableRow>
                                 <TableHead className="min-w-[250px]">Item Name</TableHead>
                                 {isLoading && <TableHead>Loading...</TableHead>}
-                                {!isLoading && relevantVendors.map(vendor => (
+                                {!isLoading && allVendors?.map(vendor => (
                                     <TableHead key={vendor.id} className="text-center">{vendor.name}</TableHead>
                                 ))}
                             </TableRow>
@@ -90,25 +83,20 @@ export function ComparePricesStep({ procurementList, onComplete, onBack }: Compa
                                     <TableRow key={item.id}>
                                         <TableCell className="font-medium">{formatItemName(item)}</TableCell>
                                         {isLoading && Array.from({length: 3}).map((_, i) => <TableCell key={i}><Skeleton className="h-8 w-full"/></TableCell>)}
-                                        {!isLoading && relevantVendors.map(vendor => {
-                                            const suppliesItem = vendor.supplies?.includes(item.id);
+                                        {!isLoading && allVendors?.map(vendor => {
                                             const currentPrice = vendorQuotes[item.id]?.[vendor.id];
-                                            const isBestPrice = suppliesItem && currentPrice !== undefined && currentPrice >= 0 && currentPrice === bestPrice;
+                                            const isBestPrice = currentPrice !== undefined && currentPrice >= 0 && currentPrice === bestPrice;
 
                                             return (
                                                 <TableCell key={vendor.id} className="text-center">
-                                                    {suppliesItem ? (
-                                                        <Input
-                                                            type="number"
-                                                            placeholder={currency}
-                                                            className={`w-28 mx-auto text-right ${isBestPrice ? 'bg-green-100 dark:bg-green-900 border-green-500' : ''}`}
-                                                            onChange={(e) => handlePriceChange(item.id, vendor.id, e.target.value)}
-                                                            min="0"
-                                                            step="0.01"
-                                                        />
-                                                    ) : (
-                                                        <span className="text-muted-foreground">-</span>
-                                                    )}
+                                                    <Input
+                                                        type="number"
+                                                        placeholder={currency}
+                                                        className={`w-28 mx-auto text-right ${isBestPrice ? 'bg-green-100 dark:bg-green-900 border-green-500' : ''}`}
+                                                        onChange={(e) => handlePriceChange(item.id, vendor.id, e.target.value)}
+                                                        min="0"
+                                                        step="0.01"
+                                                    />
                                                 </TableCell>
                                             )
                                         })}
@@ -118,8 +106,8 @@ export function ComparePricesStep({ procurementList, onComplete, onBack }: Compa
                         </TableBody>
                     </Table>
                 </div>
-                 {!isLoading && relevantVendors.length === 0 && (
-                    <p className="py-12 text-center text-muted-foreground">No vendors found that supply the selected items.</p>
+                 {!isLoading && (!allVendors || allVendors.length === 0) && (
+                    <p className="py-12 text-center text-muted-foreground">No vendors found. Please add vendors in the settings.</p>
                  )}
                 <div className="mt-6 flex justify-between">
                     <Button variant="outline" onClick={onBack}>Back</Button>
@@ -129,3 +117,5 @@ export function ComparePricesStep({ procurementList, onComplete, onBack }: Compa
         </Card>
     );
 }
+
+    

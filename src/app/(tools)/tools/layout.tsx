@@ -41,7 +41,7 @@ export default function ToolsLayout({ children }: { children: ReactNode }) {
               <SidebarMenuButton asChild tooltip="Procurement Assistant">
                 <Link href="/tools/procurement-assistant">
                   <ShoppingCart />
-                  <span>Procurement</span>
+                  <span>Procurement Assistant</span>
                 </Link>
               </SidebarMenuButton>
             </SidebarMenuItem>

@@ -43,12 +43,12 @@ export function CompareVendorPricesDialog({ items, vendors, isLoading, onConfirm
     }
     
     const relevantVendors = React.useMemo(() => {
-        if (!vendors || !items) return [];
+        if (isLoading || !vendors || !items) return [];
         const itemIdsOnList = new Set(items.map(i => i.id));
         return vendors.filter(vendor => 
             vendor.supplies && vendor.supplies.some(suppliedItemId => itemIdsOnList.has(suppliedItemId))
         );
-    }, [items, vendors]);
+    }, [items, vendors, isLoading]);
     
     const getBestPriceForItem = (itemId: string): number | null => {
         const itemQuotes = quotes[itemId];
@@ -95,7 +95,7 @@ export function CompareVendorPricesDialog({ items, vendors, isLoading, onConfirm
                         </TableRow>
                     </TableHeader>
                     <TableBody>
-                        {isLoading && Array.from({ length: 5 }).map((_, i) => (
+                        {isLoading && Array.from({ length: items.length || 5 }).map((_, i) => (
                             <TableRow key={i}><TableCell colSpan={relevantVendors.length + 2}><Skeleton className="h-10 w-full" /></TableCell></TableRow>
                         ))}
                         {!isLoading && items.map((item, index) => {

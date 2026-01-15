@@ -1,3 +1,4 @@
+
 import type { ReactNode } from "react";
 import Link from "next/link";
 import {
@@ -10,6 +11,7 @@ import {
   SidebarMenuButton,
   SidebarFooter,
   SidebarInset,
+  SidebarRail,
 } from "@/components/ui/sidebar";
 import { Home, DollarSign, FileText, Settings, LogOut, LineChart } from "lucide-react";
 import Logo from "@/components/logo";
@@ -21,7 +23,8 @@ export default function BillingLayout({ children }: { children: ReactNode }) {
   
   return (
     <SidebarProvider>
-      <Sidebar>
+      <Sidebar collapsible="icon">
+        <SidebarRail />
         <SidebarHeader>
           <Link href="/">
             <Logo />

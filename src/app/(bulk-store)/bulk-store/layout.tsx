@@ -11,6 +11,7 @@ import {
   SidebarMenuButton,
   SidebarFooter,
   SidebarInset,
+  SidebarRail,
 } from "@/components/ui/sidebar";
 import { Home, Package, Truck, LineChart, Settings, LogOut, ClipboardCheck } from "lucide-react";
 import Logo from "@/components/logo";
@@ -22,7 +23,8 @@ export default function BulkStoreLayout({ children }: { children: ReactNode }) {
   
   return (
     <SidebarProvider>
-      <Sidebar>
+      <Sidebar collapsible="icon">
+        <SidebarRail />
         <SidebarHeader>
           <Link href="/">
             <Logo />

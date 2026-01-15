@@ -11,6 +11,7 @@ import {
   SidebarMenuButton,
   SidebarFooter,
   SidebarInset,
+  SidebarRail,
 } from "@/components/ui/sidebar";
 import { Home, Users, Package, Truck, Settings, HandHeart } from "lucide-react";
 import Logo from "@/components/logo";
@@ -21,7 +22,8 @@ export default function SettingsLayout({ children }: { children: ReactNode }) {
   
   return (
     <SidebarProvider>
-      <Sidebar>
+      <Sidebar collapsible="icon">
+        <SidebarRail />
         <SidebarHeader>
           <Link href="/">
             <Logo />

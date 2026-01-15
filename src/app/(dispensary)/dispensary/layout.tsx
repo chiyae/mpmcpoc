@@ -1,3 +1,4 @@
+
 import type { ReactNode } from "react";
 import Link from "next/link";
 import {
@@ -10,6 +11,7 @@ import {
   SidebarMenuButton,
   SidebarFooter,
   SidebarInset,
+  SidebarRail,
 } from "@/components/ui/sidebar";
 import { Home, Package, Truck, LineChart, Settings, LogOut, Pill, ClipboardList } from "lucide-react";
 import Logo from "@/components/logo";
@@ -21,7 +23,8 @@ export default function DispensaryLayout({ children }: { children: ReactNode }) 
   
   return (
     <SidebarProvider>
-      <Sidebar>
+      <Sidebar collapsible="icon">
+        <SidebarRail />
         <SidebarHeader>
           <Link href="/">
             <Logo />

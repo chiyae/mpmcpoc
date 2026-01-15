@@ -14,7 +14,6 @@ import { Badge } from '@/components/ui/badge';
 import type { LocalPurchaseOrder } from '@/lib/types';
 import { format } from 'date-fns';
 import { useSettings } from '@/context/settings-provider';
-import { FileImage } from 'lucide-react';
 
 interface LpoDocumentProps {
   lpo: LocalPurchaseOrder;
@@ -27,18 +26,12 @@ export function LpoDocument({ lpo }: LpoDocumentProps) {
     <div className="bg-background rounded-lg shadow-lg p-8 max-w-4xl mx-auto printable-area">
       {/* Header */}
       <header className="flex justify-between items-start mb-8 pb-4 border-b">
-        <div className="flex items-start gap-4">
-            <div className="flex flex-col items-center justify-center h-16 w-16 bg-muted rounded text-muted-foreground">
-                <FileImage className="h-8 w-8" />
-                <span className="text-xs">Logo</span>
-            </div>
-            <div>
-                 <h1 className="text-2xl font-bold text-primary">{settings?.clinicName || 'Your Clinic Name'}</h1>
-                 <p className="text-sm text-muted-foreground">{settings?.clinicAddress}</p>
-                 <p className="text-sm text-muted-foreground">
-                    Tel: {settings?.clinicPhone} | Email: info@mpingu.med
-                 </p>
-            </div>
+        <div>
+            <h1 className="text-2xl font-bold text-primary">{settings?.clinicName || 'Your Clinic Name'}</h1>
+            <p className="text-sm text-muted-foreground">{settings?.clinicAddress}</p>
+            <p className="text-sm text-muted-foreground">
+            Tel: {settings?.clinicPhone} | Email: info@mpingu.med
+            </p>
         </div>
         <div className="text-right">
           <h2 className="text-5xl font-bold uppercase tracking-wider text-muted-foreground">LPO</h2>

@@ -37,7 +37,8 @@ import { collection, doc, writeBatch } from 'firebase/firestore';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useSettings } from '@/context/settings-provider';
 import { useToast } from '@/hooks/use-toast';
-import { ScrollArea } from '@/components/ui/scroll-area';
+import { LpoDocument } from '@/components/procurement/lpo-document';
+
 
 export default function LocalPurchaseOrdersPage() {
   const firestore = useFirestore();
@@ -184,66 +185,38 @@ export default function LocalPurchaseOrdersPage() {
 
        {selectedLpo && (
         <Dialog open={isLpoOpen} onOpenChange={setIsLpoOpen}>
-        <DialogContent className="sm:max-w-3xl">
-          <DialogHeader>
-            <DialogTitle>LPO Details: {selectedLpo.lpoNumber}</DialogTitle>
-            <DialogDescription>
-                To: {selectedLpo.vendorName} | Status: <Badge variant={selectedLpo.status === 'Completed' ? 'default' : selectedLpo.status === 'Rejected' ? 'destructive' : 'secondary'} className="capitalize">{selectedLpo.status}</Badge>
-            </DialogDescription>
-          </DialogHeader>
-            <div className="space-y-4">
-                <ScrollArea className="max-h-96">
-                    <Table>
-                      <TableHeader>
-                        <TableRow>
-                          <TableHead>Item Name</TableHead>
-                          <TableHead>Quantity</TableHead>
-                          <TableHead>Unit Price</TableHead>
-                          <TableHead className="text-right">Total</TableHead>
-                        </TableRow>
-                      </TableHeader>
-                      <TableBody>
-                        {selectedLpo.items.map((item) => {
-                            return (
-                              <TableRow key={item.itemId}>
-                                <TableCell className="font-medium">{item.itemName}</TableCell>
-                                <TableCell>{item.quantity}</TableCell>
-                                <TableCell>{formatCurrency(item.unitPrice)}</TableCell>
-                                <TableCell className="text-right">{formatCurrency(item.total)}</TableCell>
-                              </TableRow>
-                            );
-                        })}
-                      </TableBody>
-                    </Table>
-                </ScrollArea>
-                <div className="text-right text-lg font-bold">
-                    Grand Total: {formatCurrency(selectedLpo.grandTotal)}
+            <DialogContent className="sm:max-w-4xl p-0">
+                <div className="p-6 pb-0 no-print">
+                    <DialogHeader>
+                        <DialogTitle>LPO Details: {selectedLpo.lpoNumber}</DialogTitle>
+                        <DialogDescription>Review the LPO and update its status.</DialogDescription>
+                    </DialogHeader>
                 </div>
-            </div>
-          <DialogFooter className="sm:justify-between mt-4">
-            <div className="flex gap-2">
-                {selectedLpo.status === 'Draft' && (
-                    <Button variant="outline" onClick={() => handleUpdateStatus(selectedLpo.id, 'Rejected')} disabled={isUpdating}>Reject</Button>
-                )}
-            </div>
-            <div className="flex gap-2">
-                <DialogClose asChild>
-                    <Button variant="outline">Close</Button>
-                </DialogClose>
-                {selectedLpo.status === 'Draft' && (
-                    <Button onClick={() => handleUpdateStatus(selectedLpo.id, 'Sent')} disabled={isUpdating}>
-                        {isUpdating ? 'Updating...' : 'Mark as Sent'}
-                    </Button>
-                )}
-                 {selectedLpo.status === 'Sent' && (
-                    <Button onClick={() => handleUpdateStatus(selectedLpo.id, 'Completed')} disabled={isUpdating}>
-                        {isUpdating ? 'Updating...' : 'Mark as Completed'}
-                    </Button>
-                )}
-            </div>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+                <LpoDocument lpo={selectedLpo} />
+                 <DialogFooter className="sm:justify-between p-6 pt-0 no-print">
+                    <div className="flex gap-2">
+                        {selectedLpo.status === 'Draft' && (
+                            <Button variant="outline" onClick={() => handleUpdateStatus(selectedLpo.id, 'Rejected')} disabled={isUpdating}>Reject</Button>
+                        )}
+                    </div>
+                    <div className="flex gap-2">
+                        <DialogClose asChild>
+                            <Button variant="outline">Close</Button>
+                        </DialogClose>
+                        {selectedLpo.status === 'Draft' && (
+                            <Button onClick={() => handleUpdateStatus(selectedLpo.id, 'Sent')} disabled={isUpdating}>
+                                {isUpdating ? 'Updating...' : 'Mark as Sent'}
+                            </Button>
+                        )}
+                        {selectedLpo.status === 'Sent' && (
+                            <Button onClick={() => handleUpdateStatus(selectedLpo.id, 'Completed')} disabled={isUpdating}>
+                                {isUpdating ? 'Updating...' : 'Mark as Completed'}
+                            </Button>
+                        )}
+                    </div>
+                </DialogFooter>
+            </DialogContent>
+        </Dialog>
       )}
     </div>
   );

@@ -141,7 +141,7 @@ export function FinalizeLpoStep({
 
     // 1. Create LPO documents
     draftLpos.forEach((draftLpo) => {
-        const lpoId = `LPO-${Date.now()}-${draftLpo.vendorId.slice(0,4)}`;
+        const lpoId = `LPO-${String(Date.now()).slice(-6)}`;
         const lpoRef = doc(firestore, 'localPurchaseOrders', lpoId);
         
         const newLpo: LocalPurchaseOrder = {

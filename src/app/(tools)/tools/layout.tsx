@@ -12,7 +12,7 @@ import {
   SidebarFooter,
   SidebarInset,
 } from "@/components/ui/sidebar";
-import { Home, Wrench, ShoppingCart, ListChecks } from "lucide-react";
+import { Home, Wrench, ShoppingCart, ListChecks, ClipboardCheck } from "lucide-react";
 import Logo from "@/components/logo";
 import DashboardHeader from "@/components/dashboard-header";
 
@@ -46,10 +46,10 @@ export default function ToolsLayout({ children }: { children: ReactNode }) {
               </SidebarMenuButton>
             </SidebarMenuItem>
             <SidebarMenuItem>
-              <SidebarMenuButton asChild tooltip="Procurement Assistant">
-                <Link href="/tools/procurement-assistant">
-                  <ShoppingCart />
-                  <span>Procurement Assistant</span>
+              <SidebarMenuButton asChild tooltip="Local Purchase Orders">
+                <Link href="/tools/local-purchase-orders">
+                  <ClipboardCheck />
+                  <span>LPOs</span>
                 </Link>
               </SidebarMenuButton>
             </SidebarMenuItem>
@@ -68,5 +68,3 @@ export default function ToolsLayout({ children }: { children: ReactNode }) {
     </SidebarProvider>
   );
 }
-
-    

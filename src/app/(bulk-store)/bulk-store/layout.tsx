@@ -57,8 +57,8 @@ export default function BulkStoreLayout({ children }: { children: ReactNode }) {
               </SidebarMenuButton>
             </SidebarMenuItem>
             <SidebarMenuItem>
-              <SidebarMenuButton asChild tooltip="Reports" disabled>
-                <Link href="#">
+              <SidebarMenuButton asChild tooltip="Reports">
+                <Link href="/bulk-store/reports">
                   <LineChart />
                   <span>Reports</span>
                 </Link>

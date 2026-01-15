@@ -89,8 +89,8 @@ export default function DispensaryLayout({ children }: { children: ReactNode }) 
               </SidebarMenuButton>
             </SidebarMenuItem>
             <SidebarMenuItem>
-              <SidebarMenuButton asChild tooltip="Reports" disabled>
-                <Link href="#">
+              <SidebarMenuButton asChild tooltip="Reports">
+                <Link href="/dispensary/reports">
                   <LineChart />
                   <span>Reports</span>
                 </Link>

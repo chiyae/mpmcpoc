@@ -167,12 +167,11 @@ export default function PatientBillingPage() {
     const billId = `BILL-${Date.now()}`;
     const billRef = doc(firestore, 'billings', billId);
 
-    const newBill: Bill = {
+    const newBill: Omit<Bill, 'prescriptionNumber'> & { prescriptionNumber?: string } = {
         id: billId,
         date: new Date().toISOString(),
         patientName,
         billType,
-        prescriptionNumber: billType === 'OPD' ? prescriptionNumber : undefined,
         items: billItems,
         grandTotal,
         paymentDetails: {
@@ -184,6 +183,10 @@ export default function PatientBillingPage() {
         dispensingLocationId: billingLocationId,
         isDispensed: false, // Bills are not dispensed by default
     };
+
+    if (billType === 'OPD') {
+      newBill.prescriptionNumber = prescriptionNumber;
+    }
 
     try {
         const batch = writeBatch(firestore);

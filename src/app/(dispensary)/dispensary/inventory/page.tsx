@@ -91,7 +91,7 @@ export default function DispensaryInventoryPage() {
         ...itemInfo,
         stockData: stock,
       } as DispensaryStockItem;
-    }).filter(item => item.genericName); 
+    }).filter(item => item.genericName && item.category === 'Medicine'); // Only show items that are medicines
   }, [allItems, dispensaryStocks]);
 
 
@@ -356,5 +356,3 @@ export default function DispensaryInventoryPage() {
     </div>
   );
 }
-
-    

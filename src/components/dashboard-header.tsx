@@ -10,10 +10,10 @@ import { Button } from "@/components/ui/button"
 import { ThemeToggle } from "./theme-toggle"
 import { ArrowLeft, Home, LogOut, Settings } from "lucide-react"
 import Link from "next/link"
-import Logo from "./logo"
 import { useEffect, useState } from "react";
 import { useAuth } from "@/firebase";
 import { useRouter } from "next/navigation";
+import { useSidebar } from "./ui/sidebar";
 
 type DashboardHeaderProps = {
     title: string;
@@ -83,6 +83,7 @@ function HeaderActions({ user }: { user: DashboardHeaderProps['user'] }) {
 export default function DashboardHeader({ title, user }: DashboardHeaderProps) {
     const [mounted, setMounted] = useState(false);
     const router = useRouter();
+    const { isMobile } = useSidebar();
 
     useEffect(() => {
         setMounted(true);
@@ -94,25 +95,25 @@ export default function DashboardHeader({ title, user }: DashboardHeaderProps) {
         return (
              <header className="sticky top-0 z-10 flex h-16 items-center gap-4 border-b bg-background/80 px-4 backdrop-blur-sm md:px-6">
                 <SidebarTrigger className="md:hidden" />
-                 <div className="hidden md:block">
-                    <Logo />
-                </div>
                  <h1 className="text-lg font-semibold md:text-2xl">{title}</h1>
              </header>
         );
     }
+    
+    // For the main menu page, we don't show the back button.
+    const isMainMenu = title === "Main Menu";
 
     return (
         <header className="sticky top-0 z-10 flex h-16 items-center gap-4 border-b bg-background/80 px-4 backdrop-blur-sm md:px-6">
-            <SidebarTrigger className="md:hidden" />
-            <div className="hidden md:block">
-                <Logo />
-            </div>
+            <SidebarTrigger />
+            
+            {!isMainMenu && !isMobile && (
+                 <Button variant="ghost" size="icon" onClick={() => router.back()} className="h-8 w-8">
+                    <ArrowLeft className="h-5 w-5" />
+                    <span className="sr-only">Back</span>
+                </Button>
+            )}
 
-            <Button variant="ghost" size="icon" onClick={() => router.back()} className="h-8 w-8">
-                <ArrowLeft className="h-5 w-5" />
-                <span className="sr-only">Back</span>
-            </Button>
             <h1 className="text-lg font-semibold md:text-2xl">{title}</h1>
 
             <HeaderActions user={user} />

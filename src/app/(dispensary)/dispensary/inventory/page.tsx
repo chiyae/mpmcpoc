@@ -266,7 +266,7 @@ export default function DispensaryInventoryPage() {
                 </Button>
                 
                 <Button asChild disabled={isLoading || !(userProfile?.role === 'pharmacy' || userProfile?.role === 'admin') || selectedItems.length === 0}>
-                  <Link href={`/dispensary/request-stock?items=${selectedItems.map(item => item.id).join(',')}`}>
+                  <Link href={`/dispensary/request-stock?items=${selectedItems.map(item => item.stockData.itemId).join(',')}`}>
                     Request New Stock ({selectedItems.length})
                   </Link>
                 </Button>

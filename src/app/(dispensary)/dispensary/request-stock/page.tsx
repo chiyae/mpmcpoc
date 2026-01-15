@@ -73,7 +73,7 @@ export default function RequestStockPage() {
         const totalDispensaryStock = dispensaryStocks
             .filter(s => s.itemId === item.id)
             .reduce((sum, s) => sum + s.currentStockQuantity, 0);
-        return totalDispensaryStock < item.reorderLevel;
+        return totalDispensaryStock < item.dispensaryReorderLevel;
     }).map(item => ({ 
         id: item.id, 
         name: formatItemName(item),
@@ -214,3 +214,5 @@ export default function RequestStockPage() {
     </div>
   );
 }
+
+    

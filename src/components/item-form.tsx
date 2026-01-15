@@ -38,7 +38,8 @@ const formSchema = z.object({
   packageSizeUnit: z.string().optional(),
   category: z.enum(["Medicine", "Medical Supply", "Consumable"]),
   unitOfMeasure: z.string().min(1, "Unit of measure is required."),
-  reorderLevel: z.coerce.number().int().nonnegative(),
+  dispensaryReorderLevel: z.coerce.number().int().nonnegative(),
+  bulkStoreReorderLevel: z.coerce.number().int().nonnegative(),
   unitCost: z.coerce.number().nonnegative(),
   sellingPrice: z.coerce.number().nonnegative(),
 }).refine(data => {
@@ -81,7 +82,8 @@ export function ItemForm({ item, onSubmit }: ItemFormProps) {
       genericName: "",
       brandName: "",
       unitOfMeasure: "",
-      reorderLevel: 0,
+      dispensaryReorderLevel: 0,
+      bulkStoreReorderLevel: 0,
       unitCost: 0,
       sellingPrice: 0,
       strengthValue: '' as any,
@@ -107,7 +109,8 @@ export function ItemForm({ item, onSubmit }: ItemFormProps) {
             packageSizeUnit: item.packageSizeUnit || "",
             category: item.category,
             unitOfMeasure: item.unitOfMeasure,
-            reorderLevel: item.reorderLevel,
+            dispensaryReorderLevel: item.dispensaryReorderLevel,
+            bulkStoreReorderLevel: item.bulkStoreReorderLevel,
             unitCost: item.unitCost,
             sellingPrice: item.sellingPrice,
         });
@@ -315,13 +318,13 @@ export function ItemForm({ item, onSubmit }: ItemFormProps) {
           />
         </div>
         
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <FormField
             control={form.control}
-            name="reorderLevel"
+            name="dispensaryReorderLevel"
             render={({ field }) => (
               <FormItem>
-                <FormLabel>Reorder Level</FormLabel>
+                <FormLabel>Dispensary Reorder Level</FormLabel>
                 <FormControl>
                   <Input type="number" {...field} />
                 </FormControl>
@@ -329,6 +332,22 @@ export function ItemForm({ item, onSubmit }: ItemFormProps) {
               </FormItem>
             )}
           />
+           <FormField
+            control={form.control}
+            name="bulkStoreReorderLevel"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Bulk Store Reorder Level</FormLabel>
+                <FormControl>
+                  <Input type="number" {...field} />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
            <FormField
             control={form.control}
             name="unitCost"
@@ -366,3 +385,5 @@ export function ItemForm({ item, onSubmit }: ItemFormProps) {
     </Form>
   )
 }
+
+    

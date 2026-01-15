@@ -55,8 +55,12 @@ export function ItemDetails({ item }: ItemDetailsProps) {
           <p className="font-medium">{item.stock?.currentStockQuantity ?? 'N/A'}</p>
         </div>
         <div>
-          <p className="text-muted-foreground">Reorder Level</p>
-          <p className="font-medium">{item.reorderLevel}</p>
+          <p className="text-muted-foreground">Dispensary Reorder</p>
+          <p className="font-medium">{item.dispensaryReorderLevel}</p>
+        </div>
+        <div>
+          <p className="text-muted-foreground">Bulk Store Reorder</p>
+          <p className="font-medium">{item.bulkStoreReorderLevel}</p>
         </div>
         <div>
           <p className="text-muted-foreground">Unit of Measure</p>
@@ -84,3 +88,5 @@ export function ItemDetails({ item }: ItemDetailsProps) {
     </div>
   );
 }
+
+    

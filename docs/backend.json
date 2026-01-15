@@ -60,9 +60,13 @@
           "type": "string",
           "description": "The base unit for transactions (e.g., tablet, bottle, box)."
         },
-        "reorderLevel": {
+        "dispensaryReorderLevel": {
           "type": "number",
-          "description": "Reorder level for the item."
+          "description": "Reorder level for the item in the dispensary."
+        },
+        "bulkStoreReorderLevel": {
+          "type": "number",
+          "description": "Reorder level for the item in the bulk store."
         },
         "unitCost": {
           "type": "number",
@@ -80,47 +84,17 @@
         "formulation",
         "category",
         "unitOfMeasure",
-        "reorderLevel",
+        "dispensaryReorderLevel",
+        "bulkStoreReorderLevel",
         "unitCost",
         "sellingPrice"
-      ]
-    },
-    "Batch": {
-      "$schema": "http://json-schema.org/draft-07/schema#",
-      "title": "Batch",
-      "type": "object",
-      "description": "Represents a specific batch of an item with its batch number and expiry date.",
-      "properties": {
-        "id": {
-          "type": "string",
-          "description": "Unique identifier for the Batch entity."
-        },
-        "itemId": {
-          "type": "string",
-          "description": "Reference to Item. (Relationship: Item 1:N Batch)"
-        },
-        "batchNumber": {
-          "type": "string",
-          "description": "Batch number for the item."
-        },
-        "expiryDate": {
-          "type": "string",
-          "description": "Expiry date of the batch.",
-          "format": "date-time"
-        }
-      },
-      "required": [
-        "id",
-        "itemId",
-        "batchNumber",
-        "expiryDate"
       ]
     },
     "Stock": {
       "$schema": "http://json-schema.org/draft-07/schema#",
       "title": "Stock",
       "type": "object",
-      "description": "Represents the stock level of an item batch at a specific location.",
+      "description": "Represents the stock level of a specific batch of an item at a specific location.",
       "properties": {
         "id": {
           "type": "string",
@@ -128,24 +102,24 @@
         },
         "itemId": {
           "type": "string",
-          "description": "Denormalized reference to Item ID."
+          "description": "Denormalized reference to the Item's ID."
         },
         "batchId": {
           "type": "string",
-          "description": "Reference to Batch."
+          "description": "A unique identifier for the batch (e.g., a batch number)."
         },
         "locationId": {
           "type": "string",
-          "description": "Reference to Location (e.g. 'dispensary' or 'bulk-store')."
+          "description": "The ID of the location where this stock is held (e.g., 'dispensary', 'bulk-store')."
         },
         "currentStockQuantity": {
           "type": "number",
-          "description": "Current stock quantity of the item at the location."
+          "description": "The current quantity of this item batch at this location."
         },
-         "expiryDate": {
+        "expiryDate": {
           "type": "string",
-          "description": "Denormalized expiry date of the batch.",
-          "format": "date"
+          "format": "date-time",
+          "description": "The expiry date of this specific batch."
         }
       },
       "required": [
@@ -157,31 +131,11 @@
         "expiryDate"
       ]
     },
-    "Location": {
-      "$schema": "http://json-schema.org/draft-07/schema#",
-      "title": "Location",
-      "type": "object",
-      "description": "Represents a storage location (Bulk Store or Dispensary).",
-      "properties": {
-        "id": {
-          "type": "string",
-          "description": "Unique identifier for the Location entity."
-        },
-        "locationName": {
-          "type": "string",
-          "description": "Name of the location (Bulk Store or Dispensary)."
-        }
-      },
-      "required": [
-        "id",
-        "locationName"
-      ]
-    },
     "InternalOrder": {
       "$schema": "http://json-schema.org/draft-07/schema#",
       "title": "InternalOrder",
       "type": "object",
-      "description": "Represents an internal order from the Dispensary to the Bulk Store.",
+      "description": "Represents an internal order from one location (e.g., Dispensary) to another (e.g., Bulk Store).",
       "properties": {
         "id": {
           "type": "string",
@@ -194,19 +148,20 @@
         },
         "status": {
           "type": "string",
-          "description": "Status of the order (Pending, Approved, Issued)."
+          "description": "Status of the order (Pending, Approved, Issued, Rejected)."
         },
         "requestingLocationId": {
           "type": "string",
-          "description": "ID of the location placing the order."
+          "description": "ID of the location placing the order (e.g., 'dispensary')."
         },
         "items": {
           "type": "array",
+          "description": "A list of items requested in the order.",
           "items": {
             "type": "object",
             "properties": {
-              "itemId": { "type": "string" },
-              "quantity": { "type": "number" }
+              "itemId": { "type": "string", "description": "The ID of the requested item." },
+              "quantity": { "type": "number", "description": "The quantity of the item requested." }
             },
             "required": ["itemId", "quantity"]
           }
@@ -224,7 +179,7 @@
       "$schema": "http://json-schema.org/draft-07/schema#",
       "title": "Billing",
       "type": "object",
-      "description": "Represents a patient bill for dispensed items.",
+      "description": "Represents a patient bill for dispensed items and services.",
       "properties": {
         "id": {
           "type": "string",
@@ -241,11 +196,18 @@
         },
         "dispensingLocationId": {
           "type": "string",
-          "description": "The Location where dispensing occurred."
+          "description": "The Location where dispensing occurred (e.g., 'dispensary')."
         },
         "isDispensed": {
           "type": "boolean",
           "description": "Flag to indicate if the items have been given to the patient."
+        },
+        "billType": {
+            "type": "string",
+            "enum": ["Walk-in", "OPD"]
+        },
+        "prescriptionNumber": {
+            "type": "string"
         },
          "grandTotal": {
           "type": "number"
@@ -291,7 +253,7 @@
       "properties": {
         "id": {
           "type": "string",
-          "description": "Unique identifier for the User entity."
+          "description": "Unique identifier for the User entity (matches Firebase Auth UID)."
         },
         "username": {
           "type": "string",
@@ -308,7 +270,7 @@
         },
         "locationId": {
           "type": "string",
-          "description": "Location this user is assigned to (e.g. 'dispensary', 'bulk-store')."
+          "description": "Location this user is assigned to (e.g., 'dispensary', 'bulk-store', 'all')."
         }
       },
       "required": [
@@ -349,52 +311,6 @@
       },
       "required": ["id", "name", "email"]
     },
-    "StockTransfer": {
-      "$schema": "http://json-schema.org/draft-07/schema#",
-      "title": "StockTransfer",
-      "type": "object",
-      "description": "Represents a transfer of stock between locations.",
-      "properties": {
-        "id": {
-          "type": "string",
-          "description": "Unique identifier for the StockTransfer entity."
-        },
-        "itemId": {
-          "type": "string",
-          "description": "Reference to Item. (Relationship: Item 1:N StockTransfer)"
-        },
-        "fromLocationId": {
-          "type": "string",
-          "description": "Reference to Location. Location stock is transferred from. (Relationship: Location 1:N StockTransfer as From Location)"
-        },
-        "toLocationId": {
-          "type": "string",
-          "description": "Reference to Location. Location stock is transferred to. (Relationship: Location 1:N StockTransfer as To Location)"
-        },
-        "quantityTransferred": {
-          "type": "number",
-          "description": "Quantity of stock transferred."
-        },
-        "date": {
-          "type": "string",
-          "description": "Date and time of the stock transfer.",
-          "format": "date-time"
-        },
-        "batchId": {
-          "type": "string",
-          "description": "Reference to Batch. Batch of transferred item (Relationship: Batch 1:N StockTransfer)"
-        }
-      },
-      "required": [
-        "id",
-        "itemId",
-        "fromLocationId",
-        "toLocationId",
-        "quantityTransferred",
-        "date",
-        "batchId"
-      ]
-    },
     "Service": {
       "$schema": "http://json-schema.org/draft-07/schema#",
       "title": "Service",
@@ -424,7 +340,7 @@
       "properties": {
         "id": {
           "type": "string",
-          "description": "Unique identifier for the settings document."
+          "description": "Unique identifier for the settings document (should be a singleton, e.g., 'clinic')."
         },
         "clinicName": {
           "type": "string",
@@ -444,6 +360,107 @@
         }
       },
       "required": ["id", "clinicName", "currency"]
+    },
+    "ProcurementSession": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "title": "ProcurementSession",
+        "type": "object",
+        "description": "Represents a saved state of a procurement assistant workflow.",
+        "properties": {
+            "id": {
+                "type": "string",
+                "description": "Unique identifier for the procurement session."
+            },
+            "createdAt": {
+                "type": "string",
+                "format": "date-time",
+                "description": "The date and time the session was created."
+            },
+            "status": {
+                "type": "string",
+                "enum": ["Draft", "Completed"],
+                "description": "The current status of the procurement session."
+            },
+            "procurementList": {
+                "type": "array",
+                "items": { "type": "string" },
+                "description": "An array of item IDs included in the procurement list for this session."
+            },
+            "vendorQuotes": {
+                "type": "object",
+                "description": "A nested object storing vendor prices. Format: { itemId: { vendorId: price } }.",
+                "additionalProperties": {
+                    "type": "object",
+                    "additionalProperties": { "type": "number" }
+                }
+            },
+            "lpoQuantities": {
+                "type": "object",
+                "description": "A map of item IDs to their order quantities. Format: { itemId: quantity }.",
+                "additionalProperties": { "type": "number" }
+            }
+        },
+        "required": ["id", "createdAt", "status", "procurementList", "vendorQuotes", "lpoQuantities"]
+    },
+    "LocalPurchaseOrder": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "title": "LocalPurchaseOrder",
+        "type": "object",
+        "description": "Represents a formal purchase order to be sent to a vendor.",
+        "properties": {
+            "id": { "type": "string" },
+            "lpoNumber": { "type": "string" },
+            "vendorId": { "type": "string" },
+            "vendorName": { "type": "string" },
+            "date": { "type": "string", "format": "date-time" },
+            "items": {
+                "type": "array",
+                "items": {
+                    "type": "object",
+                    "properties": {
+                        "itemId": { "type": "string" },
+                        "itemName": { "type": "string" },
+                        "quantity": { "type": "number" },
+                        "unitPrice": { "type": "number" },
+                        "total": { "type": "number" }
+                    },
+                    "required": ["itemId", "itemName", "quantity", "unitPrice", "total"]
+                }
+            },
+            "grandTotal": { "type": "number" },
+            "status": { "type": "string", "enum": ["Draft", "Sent", "Completed", "Rejected"] }
+        },
+        "required": ["id", "lpoNumber", "vendorId", "vendorName", "date", "items", "grandTotal", "status"]
+    },
+    "StockTakeSession": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "title": "StockTakeSession",
+        "type": "object",
+        "description": "Represents a single stock-taking event.",
+        "properties": {
+            "id": { "type": "string" },
+            "date": { "type": "string", "format": "date-time" },
+            "locationId": { "type": "string" },
+            "status": { "type": "string", "enum": ["Ongoing", "Completed"] }
+        },
+        "required": ["id", "date", "locationId", "status"]
+    },
+    "StockTakeItem": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "title": "StockTakeItem",
+        "type": "object",
+        "description": "Represents a single item counted during a stock-take session.",
+        "properties": {
+            "id": { "type": "string" },
+            "itemId": { "type": "string" },
+            "itemName": { "type": "string" },
+            "batchId": { "type": "string" },
+            "expiryDate": { "type": "string" },
+            "systemQty": { "type": "number" },
+            "physicalQty": { "type": "number" },
+            "variance": { "type": "number" }
+        },
+        "required": ["id", "itemId", "itemName", "batchId", "systemQty", "physicalQty", "variance"]
     }
   },
   "auth": {
@@ -509,8 +526,38 @@
           "schema": { "$ref": "#/entities/ClinicSettings" },
           "description": "Stores application-wide settings. Only a single document with a known ID should exist here (e.g., 'clinic')."
         }
+      },
+      {
+        "path": "/procurementSessions/{sessionId}",
+        "definition": {
+            "schema": { "$ref": "#/entities/ProcurementSession" },
+            "description": "Stores saved procurement assistant sessions."
+        }
+      },
+      {
+        "path": "/localPurchaseOrders/{lpoId}",
+        "definition": {
+            "schema": { "$ref": "#/entities/LocalPurchaseOrder" },
+            "description": "Stores generated Local Purchase Orders."
+        }
+      },
+      {
+          "path": "/stockTakeSessions/{sessionId}",
+          "definition": {
+              "schema": { "$ref": "#/entities/StockTakeSession" },
+              "description": "Stores records of stock-take events."
+          }
+      },
+      {
+          "path": "/stockTakeSessions/{sessionId}/items/{itemId}",
+          "definition": {
+              "schema": { "$ref": "#/entities/StockTakeItem" },
+              "description": "Stores the individual items counted in a stock-take session."
+          }
       }
     ],
-    "reasoning": "The Firestore structure is simplified to use top-level collections for each major entity: items, stocks, internalOrders, billings, users, vendors, services, and settings. This approach is straightforward and scalable. We will use denormalization within documents (e.g., storing `itemId` in the `stocks` collection) and query-based security rules to enforce access control, rather than relying on complex nested paths. For instance, a user's access to stock information will be determined by matching their assigned `locationId` with the `locationId` in the `stocks` documents, which is an efficient and secure pattern."
+    "reasoning": "The Firestore structure has been flattened to use top-level collections for each major entity: items, stocks, internalOrders, billings, users, vendors, services, and settings. This approach is straightforward, scalable, and simplifies security rules by removing the need for complex nested path checks and `get()` calls. Security and data access can be efficiently managed by querying collections directly and using denormalized fields (like `locationId` in the `stocks` collection) to filter data based on a user's role and assigned location."
   }
 }
+
+    

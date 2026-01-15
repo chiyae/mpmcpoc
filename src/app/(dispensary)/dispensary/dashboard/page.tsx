@@ -69,7 +69,7 @@ export default function DispensaryDashboard() {
     const lowStockCount = allItems.reduce((count, item) => {
         const stockForThisItem = dispensaryStocks.filter(s => s.itemId === item.id);
         const totalQuantity = stockForThisItem.reduce((sum, s) => sum + s.currentStockQuantity, 0);
-        if (totalQuantity < item.reorderLevel) {
+        if (totalQuantity < item.dispensaryReorderLevel) {
             return count + 1;
         }
         return count;
@@ -167,3 +167,5 @@ export default function DispensaryDashboard() {
     </div>
   );
 }
+
+    

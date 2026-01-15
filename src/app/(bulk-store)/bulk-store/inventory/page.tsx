@@ -135,7 +135,7 @@ export default function BulkStoreInventoryPage() {
     setIsGeneratingLpo(true);
     setGeneratedLpo(null);
 
-    const lowStockItems = inventoryData.filter(item => (item.stock?.currentStockQuantity ?? 0) < item.reorderLevel);
+    const lowStockItems = inventoryData.filter(item => (item.stock?.currentStockQuantity ?? 0) < item.bulkStoreReorderLevel);
 
     if (lowStockItems.length === 0 || !vendors || vendors.length === 0) {
         setIsGeneratingLpo(false);
@@ -148,7 +148,7 @@ export default function BulkStoreInventoryPage() {
                 id: item.id,
                 name: formatItemName(item),
                 quantity: item.stock?.currentStockQuantity ?? 0,
-                reorderLevel: item.reorderLevel,
+                reorderLevel: item.bulkStoreReorderLevel,
                 usageHistory: [] // Note: usage history is not tracked yet
             })),
             vendors: vendors.map(v => ({ id: v.id, name: v.name }))
@@ -315,8 +315,8 @@ export default function BulkStoreInventoryPage() {
       accessorFn: row => row.stock?.currentStockQuantity ?? 0,
       cell: ({ row }) => {
         const quantity = row.original.stock?.currentStockQuantity ?? 0;
-        const { reorderLevel } = row.original;
-        const isLowStock = quantity < reorderLevel;
+        const { bulkStoreReorderLevel } = row.original;
+        const isLowStock = quantity < bulkStoreReorderLevel;
   
         return (
           <div className="text-right font-medium">
@@ -616,7 +616,5 @@ export default function BulkStoreInventoryPage() {
     </div>
   );
 }
-
-    
 
     

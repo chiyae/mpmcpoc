@@ -27,7 +27,8 @@ export interface Item {
   packageSizeUnit?: string;
   category: ItemCategory;
   unitOfMeasure: string;
-  reorderLevel: number;
+  dispensaryReorderLevel: number;
+  bulkStoreReorderLevel: number;
   unitCost: number;
   sellingPrice: number;
 }
@@ -202,3 +203,5 @@ export type GenerateLpoOutput = z.infer<typeof GenerateLpoOutputSchema>;
 export interface Lpo extends GenerateLpoOutput {
   status: 'Pending' | 'Approved' | 'Rejected' | 'Completed';
 }
+
+    

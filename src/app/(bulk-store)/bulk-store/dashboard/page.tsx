@@ -43,7 +43,7 @@ export default function BulkStoreDashboard() {
         const stockForThisItem = bulkStocks.filter(s => s.itemId === item.id);
         const totalQuantity = stockForThisItem.reduce((sum, s) => sum + s.currentStockQuantity, 0);
 
-        if (totalQuantity < item.reorderLevel) {
+        if (totalQuantity < item.bulkStoreReorderLevel) {
             return count + 1;
         }
         return count;
@@ -121,3 +121,5 @@ export default function BulkStoreDashboard() {
     </div>
   );
 }
+
+    

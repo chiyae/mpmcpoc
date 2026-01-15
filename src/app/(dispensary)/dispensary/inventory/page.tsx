@@ -155,8 +155,8 @@ export default function DispensaryInventoryPage() {
       accessorFn: row => row.stockData.currentStockQuantity,
       cell: ({ row }) => {
         const quantity = row.original.stockData.currentStockQuantity;
-        const { reorderLevel } = row.original;
-        const isLowStock = reorderLevel && quantity < reorderLevel;
+        const { dispensaryReorderLevel } = row.original;
+        const isLowStock = dispensaryReorderLevel && quantity < dispensaryReorderLevel;
   
         return (
           <div className="text-right font-medium">
@@ -356,3 +356,5 @@ export default function DispensaryInventoryPage() {
     </div>
   );
 }
+
+    

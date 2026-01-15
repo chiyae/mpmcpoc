@@ -1,3 +1,4 @@
+
 'use client';
 
 import * as React from 'react';
@@ -16,12 +17,6 @@ type CompareVendorPricesDialogProps = {
     vendors: Vendor[];
     isLoading: boolean;
     onConfirm: (quotes: Record<string, Record<string, number>>) => void;
-}
-
-type PriceQuote = {
-    itemId: string;
-    vendorId: string;
-    price: string;
 }
 
 function formatItemName(item: Item) {

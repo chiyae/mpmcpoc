@@ -10,7 +10,7 @@ import {
   CardHeader,
   CardTitle,
 } from '@/components/ui/card';
-import type { Item, Vendor } from '@/lib/types';
+import type { Vendor } from '@/lib/types';
 import { useCollection, useFirestore, useMemoFirebase } from '@/firebase';
 import { collection, doc, setDoc } from 'firebase/firestore';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -28,11 +28,9 @@ import {
     DialogDescription,
     DialogHeader,
     DialogTitle,
-    DialogTrigger,
 } from '@/components/ui/dialog';
 import { useToast } from '@/hooks/use-toast';
-import { AddVendorForm } from '@/components/add-vendor-form';
-import { EditVendorForm } from '@/components/edit-vendor-form';
+import { VendorForm } from '@/components/vendor-form';
 
 export default function SupplierManagementPage() {
   const { toast } = useToast();
@@ -45,8 +43,7 @@ export default function SupplierManagementPage() {
   const { data: vendors, isLoading: areVendorsLoading } = useCollection<Vendor>(vendorsCollectionQuery);
   
 
-  const [isAddVendorOpen, setIsAddVendorOpen] = React.useState(false);
-  const [isEditVendorOpen, setIsEditVendorOpen] = React.useState(false);
+  const [isDialogOpen, setIsDialogOpen] = React.useState(false);
   const [selectedVendor, setSelectedVendor] = React.useState<Vendor | null>(null);
   
   const [isClient, setIsClient] = React.useState(false);
@@ -56,49 +53,53 @@ export default function SupplierManagementPage() {
   
   const isLoading = areVendorsLoading;
 
-  const handleVendorAdded = async (vendorData: Omit<Vendor, 'id'>) => {
-    if (!firestore) return;
-    try {
-      const newVendorRef = doc(collection(firestore, 'vendors'));
-      await setDoc(newVendorRef, { ...vendorData, id: newVendorRef.id });
-      setIsAddVendorOpen(false);
-      toast({
-          title: "Vendor Added",
-          description: `Successfully added ${vendorData.name}.`
-      })
-    } catch(error) {
-        console.error("Error adding vendor:", error);
-        toast({
-            variant: "destructive",
-            title: "Error",
-            description: "Failed to add vendor. Please try again."
-        })
-    }
-  }
-  
-  const handleVendorUpdated = async (vendorId: string, vendorData: Omit<Vendor, 'id'>) => {
-    if (!firestore) return;
-    try {
-      const vendorRef = doc(firestore, 'vendors', vendorId);
-      await setDoc(vendorRef, vendorData, { merge: true });
-      setIsEditVendorOpen(false);
-      toast({
-          title: "Vendor Updated",
-          description: `Successfully updated ${vendorData.name}.`
-      })
-    } catch(error) {
-        console.error("Error updating vendor:", error);
-        toast({
-            variant: "destructive",
-            title: "Error",
-            description: "Failed to update vendor. Please try again."
-        })
-    }
+  const handleOpenDialog = (vendor: Vendor | null) => {
+    setSelectedVendor(vendor);
+    setIsDialogOpen(true);
   }
 
-  const handleOpenEditDialog = (vendor: Vendor) => {
-    setSelectedVendor(vendor);
-    setIsEditVendorOpen(true);
+  const handleCloseDialog = () => {
+    setIsDialogOpen(false);
+    setSelectedVendor(null);
+  }
+
+  const handleFormSubmit = async (vendorData: Omit<Vendor, 'id'>) => {
+    if (!firestore) return;
+    if (selectedVendor) { // Editing
+      try {
+        const vendorRef = doc(firestore, 'vendors', selectedVendor.id);
+        await setDoc(vendorRef, vendorData, { merge: true });
+        handleCloseDialog();
+        toast({
+            title: "Vendor Updated",
+            description: `Successfully updated ${vendorData.name}.`
+        })
+      } catch(error) {
+          console.error("Error updating vendor:", error);
+          toast({
+              variant: "destructive",
+              title: "Error",
+              description: "Failed to update vendor. Please try again."
+          })
+      }
+    } else { // Adding
+      try {
+        const newVendorRef = doc(collection(firestore, 'vendors'));
+        await setDoc(newVendorRef, { ...vendorData, id: newVendorRef.id });
+        handleCloseDialog();
+        toast({
+            title: "Vendor Added",
+            description: `Successfully added ${vendorData.name}.`
+        })
+      } catch(error) {
+          console.error("Error adding vendor:", error);
+          toast({
+              variant: "destructive",
+              title: "Error",
+              description: "Failed to add vendor. Please try again."
+          })
+      }
+    }
   }
 
   return (
@@ -111,22 +112,7 @@ export default function SupplierManagementPage() {
             </p>
         </header>
         {isClient && (
-          <Dialog open={isAddVendorOpen} onOpenChange={setIsAddVendorOpen}>
-              <DialogTrigger asChild>
-                  <Button>Add New Vendor</Button>
-              </DialogTrigger>
-              <DialogContent className="sm:max-w-md">
-                  <DialogHeader>
-                      <DialogTitle>Add New Supplier</DialogTitle>
-                      <DialogDescription>
-                          Fill out the form below to add a new vendor.
-                      </DialogDescription>
-                  </DialogHeader>
-                  <AddVendorForm 
-                    onVendorAdded={handleVendorAdded} 
-                  />
-              </DialogContent>
-          </Dialog>
+            <Button onClick={() => handleOpenDialog(null)}>Add New Vendor</Button>
         )}
       </div>
 
@@ -162,7 +148,7 @@ export default function SupplierManagementPage() {
                             </div>
                         </TableCell>
                         <TableCell className="text-right">
-                            <Button variant="ghost" size="sm" onClick={() => handleOpenEditDialog(vendor)}>Edit</Button>
+                            <Button variant="ghost" size="sm" onClick={() => handleOpenDialog(vendor)}>Edit</Button>
                         </TableCell>
                     </TableRow>
                 ))}
@@ -174,18 +160,18 @@ export default function SupplierManagementPage() {
         </CardContent>
       </Card>
 
-      {selectedVendor && isClient && (
-         <Dialog open={isEditVendorOpen} onOpenChange={setIsEditVendorOpen}>
+      {isClient && (
+         <Dialog open={isDialogOpen} onOpenChange={handleCloseDialog}>
             <DialogContent className="sm:max-w-md">
                 <DialogHeader>
-                    <DialogTitle>Edit Supplier: {selectedVendor.name}</DialogTitle>
+                    <DialogTitle>{selectedVendor ? `Edit Supplier: ${selectedVendor.name}`: 'Add New Supplier'}</DialogTitle>
                     <DialogDescription>
-                        Update the details for this vendor.
+                        {selectedVendor ? 'Update the details for this vendor.' : 'Fill out the form below to add a new vendor.'}
                     </DialogDescription>
                 </DialogHeader>
-                <EditVendorForm 
+                <VendorForm 
                     vendor={selectedVendor}
-                    onVendorUpdated={handleVendorUpdated}
+                    onSubmit={handleFormSubmit}
                  />
             </DialogContent>
         </Dialog>
@@ -193,5 +179,3 @@ export default function SupplierManagementPage() {
     </div>
   );
 }
-
-    

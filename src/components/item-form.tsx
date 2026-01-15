@@ -24,6 +24,7 @@ import {
 } from "@/components/ui/select"
 import type { Item } from "@/lib/types"
 import { useSettings } from "@/context/settings-provider"
+import { useEffect } from "react"
 
 const formSchema = z.object({
   genericName: z.string().min(2, "Generic name is required."),
@@ -67,11 +68,12 @@ const formSchema = z.object({
 });
 
 
-type AddItemFormProps = {
-  onAddItem: (item: Omit<Item, 'id' | 'itemCode'>) => Promise<void>;
+type ItemFormProps = {
+  item?: Item | null;
+  onSubmit: (data: Omit<Item, 'id' | 'itemCode'>) => Promise<void>;
 }
 
-export function AddItemForm({ onAddItem }: AddItemFormProps) {
+export function ItemForm({ item, onSubmit }: ItemFormProps) {
   const { currency } = useSettings();
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
@@ -82,32 +84,58 @@ export function AddItemForm({ onAddItem }: AddItemFormProps) {
       reorderLevel: 0,
       unitCost: 0,
       sellingPrice: 0,
-      strengthValue: '' as any, // Use empty string for controlled component
+      strengthValue: '' as any,
       strengthUnit: "",
-      concentrationValue: '' as any, // Use empty string for controlled component
+      concentrationValue: '' as any,
       concentrationUnit: "",
-      packageSizeValue: '' as any, // Use empty string for controlled component
+      packageSizeValue: '' as any,
       packageSizeUnit: "",
     },
   })
+
+  useEffect(() => {
+    if (item) {
+        form.reset({
+            genericName: item.genericName,
+            brandName: item.brandName || "",
+            formulation: item.formulation,
+            strengthValue: item.strengthValue || '' as any,
+            strengthUnit: item.strengthUnit || "",
+            concentrationValue: item.concentrationValue || '' as any,
+            concentrationUnit: item.concentrationUnit || "",
+            packageSizeValue: item.packageSizeValue || '' as any,
+            packageSizeUnit: item.packageSizeUnit || "",
+            category: item.category,
+            unitOfMeasure: item.unitOfMeasure,
+            reorderLevel: item.reorderLevel,
+            unitCost: item.unitCost,
+            sellingPrice: item.sellingPrice,
+        });
+    } else {
+        form.reset();
+    }
+  }, [item, form]);
 
   const formulation = useWatch({
     control: form.control,
     name: "formulation",
   });
 
-  async function onSubmit(values: z.infer<typeof formSchema>) {
-    await onAddItem(values);
-    form.reset();
+  async function handleFormSubmit(values: z.infer<typeof formSchema>) {
+    await onSubmit(values);
+    if (!item) { // only reset if it's a new item form
+        form.reset();
+    }
   }
 
   const isSolid = formulation === 'Tablet' || formulation === 'Capsule';
   const isLiquid = formulation === 'Syrup' || formulation === 'Injection';
   const isTopical = formulation === 'Cream' || formulation === 'Lotion';
+  const isEditing = !!item;
 
   return (
     <Form {...form}>
-      <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+      <form onSubmit={form.handleSubmit(handleFormSubmit)} className="space-y-4">
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <FormField
             control={form.control}
@@ -144,22 +172,22 @@ export function AddItemForm({ onAddItem }: AddItemFormProps) {
                 render={({ field }) => (
                 <FormItem>
                     <FormLabel>Formulation</FormLabel>
-                    <Select onValueChange={field.onChange} defaultValue={field.value}>
-                    <FormControl>
-                        <SelectTrigger>
-                        <SelectValue placeholder="Select a formulation" />
-                        </SelectTrigger>
-                    </FormControl>
-                    <SelectContent>
-                        <SelectItem value="Tablet">Tablet</SelectItem>
-                        <SelectItem value="Capsule">Capsule</SelectItem>
-                        <SelectItem value="Syrup">Syrup</SelectItem>
-                        <SelectItem value="Injection">Injection</SelectItem>
-                        <SelectItem value="Cream">Cream</SelectItem>
-                        <SelectItem value="Lotion">Lotion</SelectItem>
-                        <SelectItem value="Medical Supply">Medical Supply</SelectItem>
-                        <SelectItem value="Consumable">Consumable</SelectItem>
-                    </SelectContent>
+                     <Select onValueChange={field.onChange} value={field.value}>
+                        <FormControl>
+                            <SelectTrigger>
+                            <SelectValue placeholder="Select a formulation" />
+                            </SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                            <SelectItem value="Tablet">Tablet</SelectItem>
+                            <SelectItem value="Capsule">Capsule</SelectItem>
+                            <SelectItem value="Syrup">Syrup</SelectItem>
+                            <SelectItem value="Injection">Injection</SelectItem>
+                            <SelectItem value="Cream">Cream</SelectItem>
+                            <SelectItem value="Lotion">Lotion</SelectItem>
+                            <SelectItem value="Medical Supply">Medical Supply</SelectItem>
+                            <SelectItem value="Consumable">Consumable</SelectItem>
+                        </SelectContent>
                     </Select>
                     <FormMessage />
                 </FormItem>
@@ -171,7 +199,7 @@ export function AddItemForm({ onAddItem }: AddItemFormProps) {
                 render={({ field }) => (
                 <FormItem>
                     <FormLabel>Category</FormLabel>
-                    <Select onValueChange={field.onChange} defaultValue={field.value}>
+                    <Select onValueChange={field.onChange} value={field.value}>
                     <FormControl>
                         <SelectTrigger>
                         <SelectValue placeholder="Select a category" />
@@ -189,7 +217,7 @@ export function AddItemForm({ onAddItem }: AddItemFormProps) {
             />
         </div>
 
-        {(isSolid || (isTopical && !isLiquid)) && (
+        {(isSolid || isTopical) && (
             <div className="grid grid-cols-2 gap-4">
                 <FormField
                     control={form.control}
@@ -331,7 +359,7 @@ export function AddItemForm({ onAddItem }: AddItemFormProps) {
 
         <div className="flex justify-end pt-4">
             <Button type="submit" disabled={form.formState.isSubmitting}>
-              {form.formState.isSubmitting ? 'Adding...' : 'Add Item'}
+              {form.formState.isSubmitting ? (isEditing ? 'Saving...' : 'Adding...') : (isEditing ? 'Save Changes' : 'Add Item')}
             </Button>
         </div>
       </form>

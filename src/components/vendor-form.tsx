@@ -16,6 +16,7 @@ import {
 } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
 import type { Vendor } from '@/lib/types';
+import { useEffect } from 'react';
 
 const formSchema = z.object({
   name: z.string().min(2, { message: 'Vendor name must be at least 2 characters.' }),
@@ -24,11 +25,12 @@ const formSchema = z.object({
   phone: z.string().optional(),
 });
 
-type AddVendorFormProps = {
-  onVendorAdded: (vendor: Omit<Vendor, 'id'>) => void;
+type VendorFormProps = {
+  vendor?: Vendor | null;
+  onSubmit: (data: Omit<Vendor, 'id'>) => void;
 };
 
-export function AddVendorForm({ onVendorAdded }: AddVendorFormProps) {
+export function VendorForm({ vendor, onSubmit }: VendorFormProps) {
   const [isSubmitting, setIsSubmitting] = React.useState(false);
   
   const form = useForm<z.infer<typeof formSchema>>({
@@ -41,15 +43,30 @@ export function AddVendorForm({ onVendorAdded }: AddVendorFormProps) {
     },
   });
 
-  async function onSubmit(values: z.infer<typeof formSchema>) {
+  useEffect(() => {
+    if (vendor) {
+        form.reset({
+            name: vendor.name,
+            email: vendor.email,
+            contactPerson: vendor.contactPerson || '',
+            phone: vendor.phone || '',
+        });
+    } else {
+        form.reset();
+    }
+  }, [vendor, form]);
+
+  async function handleFormSubmit(values: z.infer<typeof formSchema>) {
     setIsSubmitting(true);
-    await onVendorAdded(values);
+    await onSubmit(values);
     setIsSubmitting(false);
   }
 
+  const isEditing = !!vendor;
+
   return (
     <Form {...form}>
-      <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+      <form onSubmit={form.handleSubmit(handleFormSubmit)} className="space-y-4">
         <div className="grid grid-cols-2 gap-4">
             <FormField
             control={form.control}
@@ -109,12 +126,10 @@ export function AddVendorForm({ onVendorAdded }: AddVendorFormProps) {
 
         <div className="flex justify-end pt-4">
           <Button type="submit" disabled={isSubmitting}>
-            {isSubmitting ? 'Adding Vendor...' : 'Add Vendor'}
+            {isSubmitting ? (isEditing ? 'Saving...' : 'Adding...') : (isEditing ? 'Save Changes' : 'Add Vendor')}
           </Button>
         </div>
       </form>
     </Form>
   );
 }
-
-    

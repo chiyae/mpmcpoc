@@ -53,11 +53,10 @@ import { useToast } from "@/hooks/use-toast";
 import { useCollection, useFirestore, useMemoFirebase } from '@/firebase';
 import { collection, doc, setDoc } from 'firebase/firestore';
 import { Skeleton } from '@/components/ui/skeleton';
-import { AddItemForm } from '@/components/add-item-form';
 import { useSettings } from '@/context/settings-provider';
-import { EditItemForm } from '@/components/edit-item-form';
+import { ItemForm } from '@/components/item-form';
 
-function formatItemName(item: Item) {
+function formatItemName(item: Item | Omit<Item, 'id' | 'itemCode'>) {
     let name = item.genericName;
     if (item.brandName) {
       name += ` (${item.brandName})`;
@@ -91,8 +90,7 @@ export default function ItemMasterPage() {
   const [columnVisibility, setColumnVisibility] = React.useState<VisibilityState>({});
   const [rowSelection, setRowSelection] = React.useState({});
   
-  const [isAddItemOpen, setIsAddItemOpen] = React.useState(false);
-  const [isEditItemOpen, setIsEditItemOpen] = React.useState(false);
+  const [isDialogOpen, setIsDialogOpen] = React.useState(false);
   const [selectedItem, setSelectedItem] = React.useState<Item | null>(null);
 
   const [isClient, setIsClient] = React.useState(false);
@@ -108,62 +106,67 @@ export default function ItemMasterPage() {
     });
   }
 
-  const handleOpenEditDialog = (item: Item) => {
+  const handleOpenDialog = (item: Item | null) => {
     setSelectedItem(item);
-    setIsEditItemOpen(true);
+    setIsDialogOpen(true);
+  }
+  
+  const handleCloseDialog = () => {
+    setIsDialogOpen(false);
+    setSelectedItem(null);
   }
 
-  const handleAddItem = async (itemData: Omit<Item, 'id' | 'itemCode'>) => {
+  const handleFormSubmit = async (itemData: Omit<Item, 'id' | 'itemCode'>) => {
     if (!firestore) return;
-    try {
-      // Auto-generate item code
-      const codePrefix = itemData.genericName.substring(0, 3).toUpperCase();
-      const codeSuffix = Math.floor(1000 + Math.random() * 9000);
-      const itemCode = `${codePrefix}${codeSuffix}`;
-      
-      const itemRef = doc(firestore, 'items', itemCode);
+    
+    if (selectedItem) { // Editing existing item
+        try {
+            const itemRef = doc(firestore, 'items', selectedItem.id);
+            await setDoc(itemRef, itemData, { merge: true });
+            handleCloseDialog();
+            toast({
+                title: "Item Updated",
+                description: `Successfully updated ${formatItemName(itemData as Item)}.`
+            })
+        } catch(error) {
+            console.error("Error updating item:", error);
+            toast({
+                variant: "destructive",
+                title: "Error",
+                description: "Failed to update item. Please try again."
+            })
+        }
+    } else { // Adding new item
+        try {
+          const codePrefix = itemData.genericName.substring(0, 3).toUpperCase();
+          const codeSuffix = Math.floor(1000 + Math.random() * 9000);
+          const itemCode = `${codePrefix}${codeSuffix}`;
+          
+          const itemRef = doc(firestore, 'items', itemCode);
 
-      const finalData: Item = {
-        ...itemData,
-        id: itemCode,
-        itemCode: itemCode,
-      }
-      await setDoc(itemRef, finalData);
+          const finalData: Item = {
+            ...itemData,
+            id: itemCode,
+            itemCode: itemCode,
+          }
+          await setDoc(itemRef, finalData);
 
-      setIsAddItemOpen(false);
-      toast({
-          title: "Item Added",
-          description: `Successfully added ${formatItemName(finalData)}.`
-      })
-    } catch(error) {
-        console.error("Error adding item:", error);
-        toast({
-            variant: "destructive",
-            title: "Error",
-            description: "Failed to add item. Please try again."
-        })
-    }
-  }
-
-  const handleUpdateItem = async (itemId: string, itemData: Omit<Item, 'id' | 'itemCode'>) => {
-    if (!firestore) return;
-    try {
-      const itemRef = doc(firestore, 'items', itemId);
-      await setDoc(itemRef, itemData, { merge: true });
-      setIsEditItemOpen(false);
-      toast({
-          title: "Item Updated",
-          description: `Successfully updated ${formatItemName(itemData as Item)}.`
-      })
-    } catch(error) {
-        console.error("Error updating item:", error);
-        toast({
-            variant: "destructive",
-            title: "Error",
-            description: "Failed to update item. Please try again."
-        })
+          handleCloseDialog();
+          toast({
+              title: "Item Added",
+              description: `Successfully added ${formatItemName(finalData)}.`
+          })
+        } catch(error) {
+            console.error("Error adding item:", error);
+            toast({
+                variant: "destructive",
+                title: "Error",
+                description: "Failed to add item. Please try again."
+            })
+        }
     }
   };
+
 
   const columns: ColumnDef<Item>[] = [
     {
@@ -236,7 +239,7 @@ export default function ItemMasterPage() {
                 Copy item Code
               </DropdownMenuItem>
               <DropdownMenuSeparator />
-              <DropdownMenuItem onClick={() => handleOpenEditDialog(item)}>
+              <DropdownMenuItem onClick={() => handleOpenDialog(item)}>
                 Edit item
               </DropdownMenuItem>
             </DropdownMenuContent>
@@ -287,20 +290,7 @@ export default function ItemMasterPage() {
             />
             <div className="flex items-center gap-2">
                 {isClient && (
-                  <Dialog open={isAddItemOpen} onOpenChange={setIsAddItemOpen}>
-                    <DialogTrigger asChild>
-                      <Button>Add New Item</Button>
-                    </DialogTrigger>
-                    <DialogContent className="sm:max-w-[625px]">
-                      <DialogHeader>
-                        <DialogTitle>Add New Master Item</DialogTitle>
-                        <DialogDescription>
-                          Define a new item that can be stocked in inventory. The item code will be generated automatically.
-                        </DialogDescription>
-                      </DialogHeader>
-                      <AddItemForm onAddItem={handleAddItem} />
-                    </DialogContent>
-                  </Dialog>
+                    <Button onClick={() => handleOpenDialog(null)}>Add New Item</Button>
                 )}
                 <DropdownMenu>
                 <DropdownMenuTrigger asChild>
@@ -413,18 +403,19 @@ export default function ItemMasterPage() {
             </Button>
             </div>
       </div>
-      {selectedItem && (
-        <Dialog open={isEditItemOpen} onOpenChange={setIsEditItemOpen}>
+      
+      {isClient && (
+        <Dialog open={isDialogOpen} onOpenChange={handleCloseDialog}>
             <DialogContent className="sm:max-w-[625px]">
                 <DialogHeader>
-                <DialogTitle>Edit Item: {formatItemName(selectedItem)}</DialogTitle>
+                <DialogTitle>{selectedItem ? `Edit Item: ${formatItemName(selectedItem)}` : 'Add New Master Item'}</DialogTitle>
                 <DialogDescription>
-                    Update the details for this item. The item code cannot be changed.
+                    {selectedItem ? 'Update the details for this item. The item code cannot be changed.' : 'Define a new item that can be stocked in inventory. The item code will be generated automatically.'}
                 </DialogDescription>
                 </DialogHeader>
-                <EditItemForm
+                <ItemForm
                     item={selectedItem}
-                    onUpdateItem={handleUpdateItem}
+                    onSubmit={handleFormSubmit}
                 />
             </DialogContent>
         </Dialog>
@@ -432,5 +423,3 @@ export default function ItemMasterPage() {
     </div>
   );
 }
-
-    

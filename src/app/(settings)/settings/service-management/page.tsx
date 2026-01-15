@@ -44,9 +44,8 @@ import { useToast } from "@/hooks/use-toast";
 import { useCollection, useFirestore, useMemoFirebase } from '@/firebase';
 import { collection, doc, setDoc } from 'firebase/firestore';
 import { Skeleton } from '@/components/ui/skeleton';
-import { AddServiceForm } from '@/components/add-service-form';
-import { EditServiceForm } from '@/components/edit-service-form';
 import { useSettings } from '@/context/settings-provider';
+import { ServiceForm } from '@/components/service-form';
 
 export default function ServiceManagementPage() {
   const { toast } = useToast();
@@ -60,8 +59,7 @@ export default function ServiceManagementPage() {
   const { data: services, isLoading, error } = useCollection<Service>(servicesCollectionQuery);
 
   const [sorting, setSorting] = React.useState<SortingState>([]);
-  const [isAddServiceOpen, setIsAddServiceOpen] = React.useState(false);
-  const [isEditServiceOpen, setIsEditServiceOpen] = React.useState(false);
+  const [isDialogOpen, setIsDialogOpen] = React.useState(false);
   const [selectedService, setSelectedService] = React.useState<Service | null>(null);
 
   const [isClient, setIsClient] = React.useState(false);
@@ -69,53 +67,56 @@ export default function ServiceManagementPage() {
     setIsClient(true);
   }, []);
 
-  const handleAddService = async (serviceData: Omit<Service, 'id'>) => {
-    if (!firestore) return;
-    try {
-      const serviceId = serviceData.name.toUpperCase().replace(/\s+/g, '-');
-      const serviceRef = doc(firestore, 'services', serviceId);
-      await setDoc(serviceRef, { ...serviceData, id: serviceId });
-      setIsAddServiceOpen(false);
-      toast({
-          title: "Service Added",
-          description: `Successfully added ${serviceData.name}.`
-      })
-    } catch(error) {
-        console.error("Error adding service:", error);
-        toast({
-            variant: "destructive",
-            title: "Error",
-            description: "Failed to add service. Please try again."
-        })
-    }
-  }
-
-  const handleOpenEditDialog = (service: Service) => {
+  const handleOpenDialog = (service: Service | null) => {
     setSelectedService(service);
-    setIsEditServiceOpen(true);
+    setIsDialogOpen(true);
   }
 
-  const handleUpdateService = async (serviceId: string, serviceData: Omit<Service, 'id'>) => {
-    if (!firestore) return;
-    try {
-      const serviceRef = doc(firestore, 'services', serviceId);
-      // We use setDoc with merge:true to be safe, which acts like an upsert.
-      await setDoc(serviceRef, serviceData, { merge: true });
-      setIsEditServiceOpen(false);
-      toast({
-          title: "Service Updated",
-          description: `Successfully updated ${serviceData.name}.`
-      })
-    } catch(error) {
-        console.error("Error updating service:", error);
-        toast({
-            variant: "destructive",
-            title: "Error",
-            description: "Failed to update service. Please try again."
-        })
-    }
-  };
+  const handleCloseDialog = () => {
+    setIsDialogOpen(false);
+    setSelectedService(null);
+  }
 
+  const handleFormSubmit = async (serviceData: Omit<Service, 'id'>) => {
+    if (!firestore) return;
+
+    if (selectedService) { // Editing
+      try {
+        const serviceRef = doc(firestore, 'services', selectedService.id);
+        await setDoc(serviceRef, serviceData, { merge: true });
+        handleCloseDialog();
+        toast({
+            title: "Service Updated",
+            description: `Successfully updated ${serviceData.name}.`
+        })
+      } catch(error) {
+          console.error("Error updating service:", error);
+          toast({
+              variant: "destructive",
+              title: "Error",
+              description: "Failed to update service. Please try again."
+          })
+      }
+    } else { // Adding
+      try {
+        const serviceId = serviceData.name.toUpperCase().replace(/\s+/g, '-');
+        const serviceRef = doc(firestore, 'services', serviceId);
+        await setDoc(serviceRef, { ...serviceData, id: serviceId });
+        handleCloseDialog();
+        toast({
+            title: "Service Added",
+            description: `Successfully added ${serviceData.name}.`
+        })
+      } catch(error) {
+          console.error("Error adding service:", error);
+          toast({
+              variant: "destructive",
+              title: "Error",
+              description: "Failed to add service. Please try again."
+          })
+      }
+    }
+  }
 
   const columns: ColumnDef<Service>[] = [
     {
@@ -157,7 +158,7 @@ export default function ServiceManagementPage() {
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end">
                 <DropdownMenuLabel>Actions</DropdownMenuLabel>
-                <DropdownMenuItem onClick={() => handleOpenEditDialog(service)}>
+                <DropdownMenuItem onClick={() => handleOpenDialog(service)}>
                   Edit service
                 </DropdownMenuItem>
               </DropdownMenuContent>
@@ -196,20 +197,7 @@ export default function ServiceManagementPage() {
                 <p className="text-muted-foreground">Define billable clinic services like consultation or lab fees.</p>
             </header>
             {isClient && (
-              <Dialog open={isAddServiceOpen} onOpenChange={setIsAddServiceOpen}>
-                  <DialogTrigger asChild>
-                  <Button>Add New Service</Button>
-                  </DialogTrigger>
-                  <DialogContent className="sm:max-w-[425px]">
-                  <DialogHeader>
-                      <DialogTitle>Add New Service</DialogTitle>
-                      <DialogDescription>
-                      Define a new billable service.
-                      </DialogDescription>
-                  </DialogHeader>
-                  <AddServiceForm onAddService={handleAddService} />
-                  </DialogContent>
-              </Dialog>
+                <Button onClick={() => handleOpenDialog(null)}>Add New Service</Button>
             )}
         </div>
         <div className="rounded-md border">
@@ -271,18 +259,18 @@ export default function ServiceManagementPage() {
             </Table>
         </div>
 
-        {selectedService && isClient && (
-            <Dialog open={isEditServiceOpen} onOpenChange={setIsEditServiceOpen}>
+        {isClient && (
+            <Dialog open={isDialogOpen} onOpenChange={handleCloseDialog}>
                 <DialogContent className="sm:max-w-[425px]">
                 <DialogHeader>
-                    <DialogTitle>Edit Service</DialogTitle>
+                    <DialogTitle>{selectedService ? 'Edit Service' : 'Add New Service'}</DialogTitle>
                     <DialogDescription>
-                        Update the details for {selectedService.name}.
+                        {selectedService ? `Update the details for ${selectedService.name}.` : 'Define a new billable service.'}
                     </DialogDescription>
                 </DialogHeader>
-                <EditServiceForm
+                <ServiceForm
                     service={selectedService}
-                    onUpdateService={handleUpdateService}
+                    onSubmit={handleFormSubmit}
                 />
                 </DialogContent>
             </Dialog>

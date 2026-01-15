@@ -38,7 +38,7 @@ export function LpoDocument({ lpo }: LpoDocumentProps) {
            <div className="mt-2 space-y-1 text-sm text-muted-foreground">
                 <p><span className="font-semibold">LPO #:</span> {lpo.lpoNumber}</p>
                 <p><span className="font-semibold">Date:</span> {format(new Date(lpo.date), 'dd/MM/yyyy')}</p>
-                 <p>
+                 <div>
                     <span className="font-semibold">Status:</span>
                     <Badge 
                         variant={lpo.status === 'Completed' ? 'default' : lpo.status === 'Rejected' ? 'destructive' : 'secondary'} 
@@ -46,7 +46,7 @@ export function LpoDocument({ lpo }: LpoDocumentProps) {
                     >
                         {lpo.status}
                     </Badge>
-                </p>
+                </div>
            </div>
         </div>
       </header>

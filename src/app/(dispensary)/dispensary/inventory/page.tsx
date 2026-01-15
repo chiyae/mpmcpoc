@@ -277,8 +277,6 @@ export default function DispensaryInventoryPage() {
   const selectedItems = table.getFilteredSelectedRowModel().rows.map(row => row.original);
   const isLoading = isLoadingItems || isLoadingStock || isUserLoading;
 
-  const canRequestStock = userProfile?.role === 'pharmacy' || userProfile?.role === 'admin';
-
   return (
     <div className="w-full">
         <div className="flex items-center justify-between py-4">
@@ -295,11 +293,14 @@ export default function DispensaryInventoryPage() {
                     <ClipboardList className="mr-2 h-4 w-4" />
                     Start Stock Take
                 </Button>
-                {canRequestStock && (
-                  <Button disabled={selectedItems.length === 0} onClick={() => setIsRequestStockOpen(true)}>
-                      Request New Stock ({selectedItems.length})
-                  </Button>
-                )}
+                
+                <Button 
+                    onClick={() => setIsRequestStockOpen(true)}
+                    disabled={isLoading || !(userProfile?.role === 'pharmacy' || userProfile?.role === 'admin') || selectedItems.length === 0}
+                >
+                    Request New Stock ({selectedItems.length})
+                </Button>
+
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
                       <Button variant="outline" className="ml-auto">

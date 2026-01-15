@@ -130,7 +130,9 @@ export default function InternalOrderManagementPage() {
                     // Create new stock record in dispensary
                     const newDispensaryStockRef = doc(collection(firestore, 'stocks'));
                     batch.set(newDispensaryStockRef, {
-                        ...bulkStockDoc,
+                        itemId: bulkStockDoc.itemId,
+                        batchId: bulkStockDoc.batchId,
+                        expiryDate: bulkStockDoc.expiryDate,
                         id: newDispensaryStockRef.id,
                         locationId: 'dispensary',
                         currentStockQuantity: requestedItem.quantity,
@@ -184,7 +186,7 @@ export default function InternalOrderManagementPage() {
           <CaretSortIcon className="ml-2 h-4 w-4" />
         </Button>
       ),
-      cell: ({ row }) => <div>{row.getValue('id')}</div>,
+      cell: ({ row }) => <div className="font-mono">{row.getValue('id')}</div>,
     },
     {
       accessorKey: 'date',
@@ -373,7 +375,7 @@ export default function InternalOrderManagementPage() {
           <DialogFooter className="sm:justify-between">
             <div>
               {selectedOrder.status === 'Pending' && (
-                <Button variant="destructive" onClick={() => handleUpdateOrderStatus(selectedOrder.id, 'Rejected')} disabled={isProcessing}>Reject</Button>
+                <Button variant="destructive" onClick={()={() => handleUpdateOrderStatus(selectedOrder.id, 'Rejected')} disabled={isProcessing}>Reject</Button>
               )}
             </div>
             <div className="flex gap-2">

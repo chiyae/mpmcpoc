@@ -117,17 +117,20 @@ export default function InternalOrderManagementPage() {
             // This is a simplified transfer logic. A real app would need to handle multiple batches, FIFO/FEFO etc.
             // Here we just deduct from the first available batch in bulk and add/update in dispensary.
             const bulkStockDoc = allStock?.find(s => s.itemId === requestedItem.itemId && s.locationId === 'bulk-store');
-            const dispensaryStockDoc = allStock?.find(s => s.itemId === requestedItem.itemId && s.locationId === 'dispensary' && s.batchId === bulkStockDoc?.batchId);
-
+            
             if (bulkStockDoc) {
+                // Find existing dispensary stock for the SAME BATCH
+                const dispensaryStockDoc = allStock?.find(s => s.itemId === requestedItem.itemId && s.locationId === 'dispensary' && s.batchId === bulkStockDoc.batchId);
+
                 const bulkStockRef = doc(firestore, 'stocks', bulkStockDoc.id);
                 batch.update(bulkStockRef, { currentStockQuantity: bulkStockDoc.currentStockQuantity - requestedItem.quantity });
                 
                 if (dispensaryStockDoc) {
+                    // If dispensary stock with the same batch exists, update it
                     const dispensaryStockRef = doc(firestore, 'stocks', dispensaryStockDoc.id);
                     batch.update(dispensaryStockRef, { currentStockQuantity: dispensaryStockDoc.currentStockQuantity + requestedItem.quantity });
                 } else {
-                    // Create new stock record in dispensary
+                    // Otherwise, create a new stock record in dispensary
                     const newDispensaryStockRef = doc(collection(firestore, 'stocks'));
                     batch.set(newDispensaryStockRef, {
                         itemId: bulkStockDoc.itemId,
@@ -375,7 +378,7 @@ export default function InternalOrderManagementPage() {
           <DialogFooter className="sm:justify-between">
             <div>
               {selectedOrder.status === 'Pending' && (
-                <Button variant="destructive" onClick={()={() => handleUpdateOrderStatus(selectedOrder.id, 'Rejected')} disabled={isProcessing}>Reject</Button>
+                <Button variant="destructive" onClick={() => handleUpdateOrderStatus(selectedOrder.id, 'Rejected')} disabled={isProcessing}>Reject</Button>
               )}
             </div>
             <div className="flex gap-2">

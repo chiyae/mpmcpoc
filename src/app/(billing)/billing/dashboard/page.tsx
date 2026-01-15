@@ -12,9 +12,10 @@ import {
 import { DollarSign, FileText, TrendingUp, User } from "lucide-react";
 import { useSettings } from '@/context/settings-provider';
 import { useCollection, useFirestore, useMemoFirebase } from '@/firebase';
-import { collection, query, where } from 'firebase/firestore';
+import { collection } from 'firebase/firestore';
 import type { Bill } from '@/lib/types';
 import { Skeleton } from '@/components/ui/skeleton';
+import { isThisMonth, parseISO } from 'date-fns';
 
 export default function BillingDashboard() {
   const { formatCurrency } = useSettings();
@@ -37,11 +38,7 @@ export default function BillingDashboard() {
       };
     }
     
-    const monthlyBills = bills.filter(bill => {
-        const billDate = new Date(bill.date);
-        const today = new Date();
-        return billDate.getMonth() === today.getMonth() && billDate.getFullYear() === today.getFullYear();
-    });
+    const monthlyBills = bills.filter(bill => isThisMonth(parseISO(bill.date)));
 
     const totalRevenue = monthlyBills.reduce((acc, bill) => acc + bill.grandTotal, 0);
     const outstandingInvoices = bills.filter(bill => bill.paymentDetails.status === 'Unpaid').length;

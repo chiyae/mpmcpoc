@@ -35,6 +35,7 @@ export default function DispensaryDashboard() {
   const dispensaryBillsQuery = useMemoFirebase(
     () => {
         if (!firestore) return null;
+        // Fetch all bills for the dispensary and filter by date on the client
         return query(
             collection(firestore, 'billings'),
             where('dispensingLocationId', '==', 'dispensary')

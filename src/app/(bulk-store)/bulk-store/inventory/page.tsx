@@ -60,7 +60,7 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { generateLpo } from '@/ai/flows/lpo-generation';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useCollection, useFirestore, useMemoFirebase } from '@/firebase';
-import { addDoc, collection, doc, setDoc, writeBatch } from 'firebase/firestore';
+import { addDoc, collection, doc, setDoc, writeBatch, query, where } from 'firebase/firestore';
 
 type BulkStoreInventoryItem = Item & {
   stock?: Stock; // Stock is now optional
@@ -86,7 +86,7 @@ export default function BulkStoreInventoryPage() {
   const { data: allItems, isLoading: isItemsLoading } = useCollection<Item>(itemsCollectionQuery);
 
   const stockCollectionQuery = useMemoFirebase(
-    () => (firestore ? collection(firestore, 'stocks') : null),
+    () => (firestore ? query(collection(firestore, 'stocks'), where('locationId', '==', 'bulk-store')) : null),
     [firestore]
   );
   const { data: allStock, isLoading: isStockLoading } = useCollection<Stock>(stockCollectionQuery);
@@ -121,7 +121,7 @@ export default function BulkStoreInventoryPage() {
     if (!allItems) return [];
     // This combines items with their stock information
     return allItems.map(item => {
-        const bulkStock = allStock?.find(s => s.itemId === item.id && s.locationId === 'bulk-store');
+        const bulkStock = allStock?.find(s => s.itemId === item.id);
         return {
             ...item,
             stock: bulkStock
@@ -312,6 +312,7 @@ export default function BulkStoreInventoryPage() {
     {
       accessorKey: 'stock.currentStockQuantity',
       header: () => <div className="text-right">Quantity</div>,
+      accessorFn: row => row.stock?.currentStockQuantity ?? 0,
       cell: ({ row }) => {
         const quantity = row.original.stock?.currentStockQuantity ?? 0;
         const { reorderLevel } = row.original;
@@ -333,6 +334,7 @@ export default function BulkStoreInventoryPage() {
      {
       accessorKey: 'stock.expiryDate',
       header: 'Expiry Date',
+      accessorFn: row => row.stock?.expiryDate,
       cell: ({ row }) => {
         const expiryDate = row.original.stock?.expiryDate;
         return <Badge variant={expiryDate ? 'secondary' : 'outline'}>{expiryDate ? format(new Date(expiryDate), 'dd/MM/yyyy') : 'N/A'}</Badge>;

@@ -91,7 +91,7 @@ export default function LoginPage() {
           title: 'Profile Creation Failed',
           description: error.message || 'Could not create your user profile on the server.',
         });
-        auth?.signOut();
+        if(auth) auth.signOut();
       }
     }
   }

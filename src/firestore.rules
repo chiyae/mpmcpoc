@@ -12,19 +12,16 @@ service cloud.firestore {
       return request.auth != null;
     }
 
-    function userDocPath() {
-      return /databases/$(database)/documents/users/$(request.auth.uid);
+    function getUserData() {
+      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data;
     }
-
-    function hasUserDoc() {
-      return isAuthenticated() && exists(userDocPath());
+    
+    function isUserDocOwner(userId) {
+      return request.auth.uid == userId;
     }
 
     function getUserRole() {
-      // Safe role resolution — NEVER throws
-      return hasUserDoc()
-        ? get(userDocPath()).data.role
-        : "none";
+      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role;
     }
 
     function isAdmin() {
@@ -38,9 +35,14 @@ service cloud.firestore {
     function isPharmacy() {
       return getUserRole() == "pharmacy";
     }
+    
+    function isAssignedToLocation(locationId) {
+      let userLocation = getUserData().locationId;
+      return userLocation == 'all' || userLocation == locationId;
+    }
 
     /* ============================
-       MASTER DATA (BOOT SAFE)
+       MASTER DATA
        ============================ */
 
     match /items/{itemId} {
@@ -59,53 +61,67 @@ service cloud.firestore {
     }
 
     /* ============================
-       SETTINGS (STRICT)
+       SETTINGS
        ============================ */
 
     match /settings/{settingId} {
-      allow read, write: if isAdmin();
+      // Allow read for all authenticated users so client can get currency settings
+      allow read: if isAuthenticated();
+      allow write: if isAdmin();
     }
 
     /* ============================
-       USERS (BOOTSTRAP SAFE)
+       USERS
        ============================ */
 
     match /users/{userId} {
-      // User can always read own profile (even first login)
-      allow get: if isAuthenticated() && request.auth.uid == userId;
-
-      // Admin capabilities
+      // User can read own doc. Admins can read/write any user doc.
+      allow get: if isAuthenticated() && isUserDocOwner(userId);
       allow list, create, update, delete: if isAdmin();
     }
 
     /* ============================
-       BILLINGS (EMPTY SAFE)
+       BILLINGS
        ============================ */
 
     match /billings/{billingId} {
-      // Allow empty reads so UI can load
-      allow list, read: if isCashier() || isAdmin();
-
-      // Writes remain role-restricted
-      allow create, update, delete: if isCashier() || isAdmin();
+      // Cashiers can read bills from their location. Admins can read all.
+      allow get: if isAuthenticated() && (isAdmin() || (isCashier() && isAssignedToLocation(resource.data.dispensingLocationId)));
+      allow list: if isAuthenticated() && (isAdmin() || isCashier());
+      
+      // Cashiers can create/update bills for their location.
+      allow create, update: if isAuthenticated() && (isAdmin() || (isCashier() && isAssignedToLocation(request.resource.data.dispensingLocationId)));
+      
+      // Only Admins can delete bills.
+      allow delete: if isAdmin();
     }
 
     /* ============================
-       STOCKS (EMPTY SAFE)
+       STOCKS
        ============================ */
 
     match /stocks/{stockId} {
-      allow list, read: if isPharmacy() || isAdmin();
-      allow write: if isPharmacy() || isAdmin();
+      // Pharmacy staff can read stock from their location. Admins can read all.
+      allow get: if isAuthenticated() && (isAdmin() || (isPharmacy() && isAssignedToLocation(resource.data.locationId)));
+      allow list: if isAuthenticated() && (isAdmin() || isPharmacy());
+      
+      // Pharmacy staff can write to stock in their location.
+      allow write: if isAuthenticated() && (isAdmin() || (isPharmacy() && isAssignedToLocation(request.resource.data.locationId)));
     }
 
     /* ============================
-       INTERNAL ORDERS (EMPTY SAFE)
+       INTERNAL ORDERS
        ============================ */
 
     match /internalOrders/{orderId} {
-      allow list, read: if isPharmacy() || isAdmin();
-      allow create: if isPharmacy() || isAdmin();
+       // Pharmacy staff can read orders from/to their location. Admins can read all.
+      allow get: if isAuthenticated() && (isAdmin() || (isPharmacy() && isAssignedToLocation(resource.data.requestingLocationId)));
+      allow list: if isAuthenticated() && (isAdmin() || isPharmacy());
+
+      // Pharmacy staff can create orders for their location.
+      allow create: if isAuthenticated() && (isAdmin() || (isPharmacy() && isAssignedToLocation(request.resource.data.requestingLocationId)));
+      
+      // Only Admins can update status or delete.
       allow update, delete: if isAdmin();
     }
 

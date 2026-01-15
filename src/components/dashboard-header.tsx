@@ -31,7 +31,7 @@ function HeaderActions({ user }: { user: DashboardHeaderProps['user'] }) {
 
     const handleLogout = async () => {
         if (auth) {
-        await auth.signOut();
+            await auth.signOut();
         }
         router.push('/login');
     };

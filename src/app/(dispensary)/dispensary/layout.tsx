@@ -13,7 +13,7 @@ import {
   SidebarInset,
   SidebarRail,
 } from "@/components/ui/sidebar";
-import { Home, Package, Truck, LineChart, Settings, LogOut, Pill, ClipboardList } from "lucide-react";
+import { Home, Package, Truck, LineChart, Settings, LogOut, Pill, ClipboardList, History } from "lucide-react";
 import Logo from "@/components/logo";
 import DashboardHeader from "@/components/dashboard-header";
 
@@ -61,6 +61,14 @@ export default function DispensaryLayout({ children }: { children: ReactNode }) 
                 <Link href="/dispensary/stock-taking">
                   <ClipboardList />
                   <span>Stock Taking</span>
+                </Link>
+              </SidebarMenuButton>
+            </SidebarMenuItem>
+             <SidebarMenuItem>
+              <SidebarMenuButton asChild tooltip="Stock Take History">
+                <Link href="/dispensary/stock-take-history">
+                  <History />
+                  <span>Stock Take History</span>
                 </Link>
               </SidebarMenuButton>
             </SidebarMenuItem>

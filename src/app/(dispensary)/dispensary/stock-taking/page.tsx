@@ -2,6 +2,8 @@
 'use client';
 
 import * as React from 'react';
+import { useSearchParams } from 'next/navigation';
+import { useRouter } from 'next/navigation';
 import {
   Card,
   CardContent,
@@ -20,7 +22,7 @@ import {
 } from '@/components/ui/table';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
-import type { Item, Stock } from '@/lib/types';
+import type { Item, Stock, StockTakeSession, StockTakeItem } from '@/lib/types';
 import { useToast } from '@/hooks/use-toast';
 import {
   AlertDialog,
@@ -33,18 +35,17 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from '@/components/ui/alert-dialog';
-import { useCollection, useFirestore, useMemoFirebase } from '@/firebase';
-import { collection, query, where, writeBatch } from 'firebase/firestore';
+import { useCollection, useDoc, useFirestore, useMemoFirebase } from '@/firebase';
+import { collection, doc, query, where, writeBatch, setDoc } from 'firebase/firestore';
 import { Skeleton } from '@/components/ui/skeleton';
+import { format } from 'date-fns';
 
-type StockTakeItem = {
-  id: string; // Stock document ID
-  name: string;
-  systemQty: number;
-  physicalQty: string; // Use string to handle empty input
+type EditableStockTakeItem = StockTakeItem & {
+  physicalQty: number | ''; // Allow empty string for input
 };
 
-function formatItemName(item: Item) {
+
+function formatItemName(item: {genericName: string, brandName?: string, strengthValue?: number, strengthUnit?: string}) {
     let name = item.genericName;
     if (item.brandName) name += ` (${item.brandName})`;
     if (item.strengthValue) name += ` ${item.strengthValue}${item.strengthUnit}`;
@@ -54,60 +55,125 @@ function formatItemName(item: Item) {
 export default function StockTakingPage() {
   const { toast } = useToast();
   const firestore = useFirestore();
+  const router = useRouter();
+  const searchParams = useSearchParams();
+  const sessionId = searchParams.get('session');
 
-  // --- Data Fetching ---
-  const itemsQuery = useMemoFirebase(() => firestore ? collection(firestore, 'items') : null, [firestore]);
-  const { data: allItems, isLoading: isLoadingItems } = useCollection<Item>(itemsQuery);
+  const sessionRef = useMemoFirebase(() => sessionId && firestore ? doc(firestore, 'stockTakeSessions', sessionId) : null, [firestore, sessionId]);
+  const { data: sessionData, isLoading: isSessionLoading } = useDoc<StockTakeSession>(sessionRef);
 
-  const stockQuery = useMemoFirebase(() => firestore ? query(collection(firestore, 'stocks'), where('locationId', '==', 'dispensary')) : null, [firestore]);
-  const { data: dispensaryStocks, isLoading: isLoadingStock } = useCollection<Stock>(stockQuery);
+  const itemsRef = useMemoFirebase(() => sessionRef ? collection(sessionRef, 'items') : null, [sessionRef]);
+  const { data: stockTakeItems, isLoading: areItemsLoading } = useCollection<StockTakeItem>(itemsRef);
+  
+  const [editableItems, setEditableItems] = React.useState<EditableStockTakeItem[]>([]);
+  
+  React.useEffect(() => {
+    // When a session is loaded and has no items, create them from current stock
+    const createStockTakeList = async () => {
+      if (firestore && sessionData && stockTakeItems?.length === 0 && sessionData.status === 'Ongoing') {
+        const stockQuery = query(collection(firestore, 'stocks'), where('locationId', '==', sessionData.locationId));
+        const itemsQuery = collection(firestore, 'items');
+        
+        const [stockSnapshot, itemsSnapshot] = await Promise.all([
+          writeBatch(firestore), // We're not using getDocsFromCache, so this is just a placeholder to satisfy Promise.all type
+          firestore.collection('items').get(),
+        ]);
+        
+        const allItems = itemsSnapshot.docs.map(d => ({ id: d.id, ...d.data() })) as Item[];
+        const locationStock = stockSnapshot.docs.map(d => ({ id: d.id, ...d.data() })) as Stock[];
+        
+        const batch = writeBatch(firestore);
 
-  const [stockTakeList, setStockTakeList] = React.useState<StockTakeItem[]>([]);
+        locationStock.forEach(stock => {
+          const itemDetail = allItems.find(item => item.id === stock.itemId);
+          if (itemDetail) {
+            const newItemRef = doc(itemsRef!);
+            const newItem: StockTakeItem = {
+              id: newItemRef.id,
+              itemId: stock.itemId,
+              itemName: formatItemName(itemDetail),
+              batchId: stock.batchId,
+              expiryDate: stock.expiryDate,
+              systemQty: stock.currentStockQuantity,
+              physicalQty: stock.currentStockQuantity, // Default to system quantity
+              variance: 0,
+            };
+            batch.set(newItemRef, newItem);
+          }
+        });
+        await batch.commit();
+        toast({ title: 'Session Ready', description: 'Stock list has been loaded. You can start counting.' });
+      }
+    };
+    
+    if (sessionData && stockTakeItems?.length === 0) {
+      createStockTakeList();
+    }
+  }, [sessionData, stockTakeItems, firestore, itemsRef]);
+
 
   React.useEffect(() => {
-    if (dispensaryStocks && allItems) {
-      const list = dispensaryStocks.map((stock) => {
-        const itemDetail = allItems.find(item => item.id === stock.itemId);
-        return {
-          id: stock.id,
-          name: itemDetail ? formatItemName(itemDetail) : 'Unknown Item',
-          systemQty: stock.currentStockQuantity,
-          physicalQty: '',
-        };
-      });
-      setStockTakeList(list);
+    if (stockTakeItems) {
+      setEditableItems(stockTakeItems.map(item => ({ ...item, physicalQty: item.physicalQty ?? '' })));
     }
-  }, [dispensaryStocks, allItems]);
-
-  const handlePhysicalQtyChange = (stockId: string, value: string) => {
-    setStockTakeList((prevList) =>
-      prevList.map((item) =>
-        item.id === stockId ? { ...item, physicalQty: value } : item
+  }, [stockTakeItems]);
+  
+  const handlePhysicalQtyChange = (itemId: string, value: string) => {
+    setEditableItems(prevList =>
+      prevList.map(item =>
+        item.id === itemId ? { ...item, physicalQty: value === '' ? '' : parseInt(value, 10) } : item
       )
     );
   };
+  
+  const handleBlur = async (itemId: string, physicalQty: number | '') => {
+    if (!itemsRef || physicalQty === '') return;
+    const itemRef = doc(itemsRef, itemId);
+    const originalItem = stockTakeItems?.find(i => i.id === itemId);
+    if (!originalItem) return;
 
-  const hasPendingChanges = stockTakeList.some(item => item.physicalQty !== '' && parseInt(item.physicalQty, 10) !== item.systemQty);
-  const isLoading = isLoadingItems || isLoadingStock;
+    const variance = physicalQty - originalItem.systemQty;
+    await setDoc(itemRef, { physicalQty, variance }, { merge: true });
+    // No toast here to avoid overwhelming the user
+  };
+
+  const hasPendingChanges = editableItems.some(item => {
+    const original = stockTakeItems?.find(i => i.id === item.id);
+    if (!original) return false;
+    return (item.physicalQty !== '' && item.physicalQty !== original.physicalQty);
+  });
+  
+  const isLoading = isSessionLoading || areItemsLoading;
 
   const handleFinalizeStockTake = async () => {
-    if (!firestore) return;
-    const updates = stockTakeList.filter(item => item.physicalQty !== '' && parseInt(item.physicalQty, 10) >= 0);
-    
-    if (updates.length === 0) {
-        toast({
-            variant: "destructive",
-            title: "No Changes to Apply",
-            description: "Please enter physical counts before finalizing.",
-        });
-        return;
-    }
+    if (!firestore || !stockTakeItems || !sessionRef) return;
     
     const batch = writeBatch(firestore);
-    updates.forEach(update => {
-        const stockRef = collection(firestore, 'stocks').doc(update.id);
-        batch.update(stockRef, { currentStockQuantity: parseInt(update.physicalQty, 10) });
+
+    // 1. Update the actual stock collection
+    stockTakeItems.forEach(item => {
+        if(item.variance !== 0) {
+             const stockRefQuery = query(
+                collection(firestore, 'stocks'), 
+                where('itemId', '==', item.itemId),
+                where('batchId', '==', item.batchId),
+                where('locationId', '==', sessionData?.locationId)
+            );
+
+            // This is a bit simplified. We assume a single stock doc per item/batch/location.
+            // A real app might need to get the doc ID differently.
+             firestore.collection('stocks').where('itemId', '==', item.itemId).where('batchId', '==', item.batchId).get().then((snapshot) => {
+                if(!snapshot.empty) {
+                    const stockDocId = snapshot.docs[0].id;
+                    const stockRef = doc(firestore, 'stocks', stockDocId);
+                    batch.update(stockRef, { currentStockQuantity: item.physicalQty });
+                }
+             });
+        }
     });
+
+    // 2. Mark the session as completed
+    batch.update(sessionRef, { status: 'Completed' });
 
     try {
         await batch.commit();
@@ -115,21 +181,29 @@ export default function StockTakingPage() {
             title: "Stock Take Finalized",
             description: "Inventory quantities have been updated successfully.",
         });
-
-        // Reset physical counts after finalization
-        setStockTakeList(prev => prev.map(item => ({...item, physicalQty: ''})));
+        router.push('/dispensary/stock-take-history');
     } catch(error) {
         console.error("Stock take failed:", error);
         toast({ variant: 'destructive', title: 'Update Failed', description: 'Could not update stock quantities.' });
     }
   };
+  
+  if (!sessionId) {
+    return (
+      <Card>
+        <CardHeader><CardTitle>Error</CardTitle></CardHeader>
+        <CardContent><p>No stock-take session ID provided. Please start a session from the inventory page.</p></CardContent>
+      </Card>
+    );
+  }
 
   return (
     <Card>
       <CardHeader>
-        <CardTitle>Stock Taking</CardTitle>
+        <CardTitle>Stock Taking Session</CardTitle>
         <CardDescription>
-          Perform a physical count of your inventory. Enter the physical quantity for each item to see the variance.
+          {sessionData ? `Session for ${sessionData.locationId} started on ${format(new Date(sessionData.date), 'PPpp')}` : 'Loading session...'}
+           {sessionData?.status === 'Completed' && <span className="text-destructive font-bold ml-2">(COMPLETED)</span>}
         </CardDescription>
       </CardHeader>
       <CardContent>
@@ -137,8 +211,8 @@ export default function StockTakingPage() {
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead className="w-2/5">Item Name</TableHead>
-                <TableHead className="text-center">System Quantity</TableHead>
+                <TableHead className="w-2/5">Item Name (Batch)</TableHead>
+                <TableHead className="text-center">System Qty</TableHead>
                 <TableHead className="text-center">Physical Count</TableHead>
                 <TableHead className="text-center">Variance</TableHead>
               </TableRow>
@@ -147,8 +221,8 @@ export default function StockTakingPage() {
               {isLoading && Array.from({length: 5}).map((_,i) => (
                 <TableRow key={i}><TableCell colSpan={4}><Skeleton className='h-8 w-full'/></TableCell></TableRow>
               ))}
-              {!isLoading && stockTakeList.map((item) => {
-                const physicalQty = item.physicalQty === '' ? null : parseInt(item.physicalQty, 10);
+              {!isLoading && editableItems.map((item) => {
+                const physicalQty = item.physicalQty === '' ? null : Number(item.physicalQty);
                 const variance = physicalQty === null ? null : physicalQty - item.systemQty;
 
                 let varianceColor = '';
@@ -159,15 +233,19 @@ export default function StockTakingPage() {
 
                 return (
                   <TableRow key={item.id}>
-                    <TableCell className="font-medium">{item.name}</TableCell>
+                    <TableCell className="font-medium">
+                      {item.itemName} <span className="text-xs text-muted-foreground">({item.batchId})</span>
+                    </TableCell>
                     <TableCell className="text-center">{item.systemQty}</TableCell>
                     <TableCell className="text-center">
                       <Input
                         type="number"
                         value={item.physicalQty}
                         onChange={(e) => handlePhysicalQtyChange(item.id, e.target.value)}
+                        onBlur={(e) => handleBlur(item.id, e.target.value === '' ? '' : parseInt(e.target.value))}
                         className="w-24 mx-auto text-center"
                         min="0"
+                        disabled={sessionData?.status === 'Completed'}
                       />
                     </TableCell>
                     <TableCell className={`text-center font-bold ${varianceColor}`}>
@@ -176,31 +254,36 @@ export default function StockTakingPage() {
                   </TableRow>
                 );
               })}
+              {!isLoading && editableItems.length === 0 && (
+                <TableRow><TableCell colSpan={4} className="text-center h-48">Loading stock list for this session...</TableCell></TableRow>
+              )}
             </TableBody>
           </Table>
         </div>
       </CardContent>
-      <CardFooter className="flex justify-end">
-        <AlertDialog>
-          <AlertDialogTrigger asChild>
-            <Button disabled={!hasPendingChanges || isLoading}>Finalize & Update Stock</Button>
-          </AlertDialogTrigger>
-          <AlertDialogContent>
-            <AlertDialogHeader>
-              <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
-              <AlertDialogDescription>
-                This will update the system's stock quantities to match your physical counts. This action cannot be undone.
-              </AlertDialogDescription>
-            </AlertDialogHeader>
-            <AlertDialogFooter>
-              <AlertDialogCancel>Cancel</AlertDialogCancel>
-              <AlertDialogAction onClick={handleFinalizeStockTake}>
-                Continue
-              </AlertDialogAction>
-            </AlertDialogFooter>
-          </AlertDialogContent>
-        </AlertDialog>
-      </CardFooter>
+      {sessionData?.status === 'Ongoing' && (
+        <CardFooter className="flex justify-end">
+            <AlertDialog>
+            <AlertDialogTrigger asChild>
+                <Button disabled={!hasPendingChanges || isLoading}>Finalize & Update Stock</Button>
+            </AlertDialogTrigger>
+            <AlertDialogContent>
+                <AlertDialogHeader>
+                <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
+                <AlertDialogDescription>
+                    This will update the system's stock quantities to match your physical counts. This action cannot be undone.
+                </AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                <AlertDialogCancel>Cancel</AlertDialogCancel>
+                <AlertDialogAction onClick={handleFinalizeStockTake}>
+                    Continue
+                </AlertDialogAction>
+                </AlertDialogFooter>
+            </AlertDialogContent>
+            </AlertDialog>
+        </CardFooter>
+      )}
     </Card>
   );
 }

@@ -426,6 +426,36 @@
             "status": { "type": "string", "enum": ["Draft", "Sent", "Completed", "Rejected"] }
         },
         "required": ["id", "lpoNumber", "vendorId", "vendorName", "date", "items", "grandTotal", "status"]
+    },
+    "StockTakeSession": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "title": "StockTakeSession",
+        "type": "object",
+        "description": "Represents a single stock-taking event.",
+        "properties": {
+            "id": { "type": "string" },
+            "date": { "type": "string", "format": "date-time" },
+            "locationId": { "type": "string" },
+            "status": { "type": "string", "enum": ["Ongoing", "Completed"] }
+        },
+        "required": ["id", "date", "locationId", "status"]
+    },
+    "StockTakeItem": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "title": "StockTakeItem",
+        "type": "object",
+        "description": "Represents a single item counted during a stock-take session.",
+        "properties": {
+            "id": { "type": "string" },
+            "itemId": { "type": "string" },
+            "itemName": { "type": "string" },
+            "batchId": { "type": "string" },
+            "expiryDate": { "type": "string" },
+            "systemQty": { "type": "number" },
+            "physicalQty": { "type": "number" },
+            "variance": { "type": "number" }
+        },
+        "required": ["id", "itemId", "itemName", "batchId", "systemQty", "physicalQty", "variance"]
     }
   },
   "auth": {
@@ -505,6 +535,20 @@
             "schema": { "$ref": "#/entities/LocalPurchaseOrder" },
             "description": "Stores generated Local Purchase Orders."
         }
+      },
+      {
+          "path": "/stockTakeSessions/{sessionId}",
+          "definition": {
+              "schema": { "$ref": "#/entities/StockTakeSession" },
+              "description": "Stores records of stock-take events."
+          }
+      },
+      {
+          "path": "/stockTakeSessions/{sessionId}/items/{itemId}",
+          "definition": {
+              "schema": { "$ref": "#/entities/StockTakeItem" },
+              "description": "Stores the individual items counted in a stock-take session."
+          }
       }
     ],
     "reasoning": "The Firestore structure has been flattened to use top-level collections for each major entity: items, stocks, internalOrders, billings, users, vendors, services, and settings. This approach is straightforward, scalable, and simplifies security rules by removing the need for complex nested path checks and `get()` calls. Security and data access can be efficiently managed by querying collections directly and using denormalized fields (like `locationId` in the `stocks` collection) to filter data based on a user's role and assigned location."

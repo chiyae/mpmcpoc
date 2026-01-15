@@ -122,6 +122,20 @@ service cloud.firestore {
       // Pharmacy staff can write to stock in their location.
       allow write: if isAuthenticated() && (isAdmin() || (isPharmacy() && isAssignedToLocation(request.resource.data.locationId)));
     }
+    
+    /* ============================
+       STOCK TAKING
+       ============================ */
+
+    match /stockTakeSessions/{sessionId} {
+      // Pharmacy staff can manage stock takes for their assigned location
+      allow read, write: if isAuthenticated() && (isAdmin() || (isPharmacy() && isAssignedToLocation(request.resource.data.locationId)));
+      
+      match /items/{itemId} {
+         allow read, write: if isAuthenticated() && (isAdmin() || isPharmacy());
+      }
+    }
+
 
     /* ============================
        INTERNAL ORDERS

@@ -106,6 +106,26 @@ export interface Service {
     fee: number;
 }
 
+export interface StockTakeItem {
+    id: string; // Document ID
+    itemId: string;
+    itemName: string;
+    batchId: string;
+    expiryDate: string;
+    systemQty: number;
+    physicalQty: number;
+    variance: number;
+}
+
+export interface StockTakeSession {
+    id: string; // Session ID
+    date: string; // ISO date-time string
+    locationId: string;
+    status: 'Ongoing' | 'Completed';
+    // items will be a subcollection
+}
+
+
 // Procurement Tool Types
 export interface ProcurementSession {
     id: string;

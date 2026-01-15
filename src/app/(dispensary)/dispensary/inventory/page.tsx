@@ -2,10 +2,10 @@
 'use client';
 
 import * as React from 'react';
+import { useRouter } from 'next/navigation';
 import {
   CaretSortIcon,
   ChevronDownIcon,
-  DotsHorizontalIcon
 } from '@radix-ui/react-icons';
 import {
   ColumnDef,
@@ -38,13 +38,12 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
-import type { InternalOrder, Item, Stock } from '@/lib/types';
+import type { InternalOrder, Item, Stock, StockTakeSession } from '@/lib/types';
 import { differenceInDays, parseISO } from 'date-fns';
 import { useToast } from "@/hooks/use-toast";
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { RequestStockForm } from '@/components/request-stock-form';
 import { ClipboardList } from 'lucide-react';
-import Link from 'next/link';
 import { useCollection, useFirestore, useMemoFirebase } from '@/firebase';
 import { collection, doc, query, setDoc, where } from 'firebase/firestore';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -65,6 +64,7 @@ function formatItemName(item: Item) {
 export default function DispensaryInventoryPage() {
   const { toast } = useToast();
   const firestore = useFirestore();
+  const router = useRouter();
 
   const [sorting, setSorting] = React.useState<SortingState>([]);
   const [columnFilters, setColumnFilters] = React.useState<ColumnFiltersState>([]);
@@ -120,6 +120,32 @@ export default function DispensaryInventoryPage() {
     } catch (error) {
         console.error("Failed to submit stock request:", error);
         toast({ variant: 'destructive', title: "Submission Failed", description: "Could not submit the stock request." });
+    }
+  };
+
+  const handleStartStockTake = async () => {
+    if (!firestore) return;
+
+    const sessionId = `ST-DISP-${Date.now()}`;
+    const sessionRef = doc(firestore, 'stockTakeSessions', sessionId);
+
+    const newSession: StockTakeSession = {
+      id: sessionId,
+      date: new Date().toISOString(),
+      locationId: 'dispensary',
+      status: 'Ongoing'
+    };
+
+    try {
+      await setDoc(sessionRef, newSession);
+      router.push(`/dispensary/stock-taking?session=${sessionId}`);
+    } catch (error) {
+      console.error("Failed to start stock take session:", error);
+      toast({
+        variant: 'destructive',
+        title: 'Error Starting Session',
+        description: 'Could not create a new stock-take session.',
+      });
     }
   };
 
@@ -259,11 +285,9 @@ export default function DispensaryInventoryPage() {
             className="max-w-sm"
             />
             <div className="flex items-center gap-2">
-                <Button variant="outline" asChild>
-                    <Link href="/dispensary/stock-taking">
-                        <ClipboardList className="mr-2 h-4 w-4" />
-                        Start Stock Take
-                    </Link>
+                <Button variant="outline" onClick={handleStartStockTake}>
+                    <ClipboardList className="mr-2 h-4 w-4" />
+                    Start Stock Take
                 </Button>
                 <Dialog open={isRequestStockOpen} onOpenChange={setIsRequestStockOpen}>
                   <DialogTrigger asChild>

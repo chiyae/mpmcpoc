@@ -85,11 +85,12 @@ service cloud.firestore {
        ============================ */
 
     match /procurementSessions/{sessionId} {
-        // Users can manage their own procurement sessions. Admins can manage all.
+        // Admins and Pharmacy staff can manage procurement sessions.
         allow read, write: if isAuthenticated() && (isAdmin() || isPharmacy());
     }
 
     match /localPurchaseOrders/{lpoId} {
+       // Admins and Pharmacy staff can manage LPOs.
        allow read, write: if isAuthenticated() && (isAdmin() || isPharmacy());
     }
 

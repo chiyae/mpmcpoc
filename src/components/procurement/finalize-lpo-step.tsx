@@ -5,12 +5,14 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import type { Item, Vendor, LocalPurchaseOrderItem } from '@/lib/types';
+import type { Item, Vendor, LocalPurchaseOrderItem, LocalPurchaseOrder, LpoStatus } from '@/lib/types';
 import { useCollection, useFirestore, useMemoFirebase } from '@/firebase';
-import { collection } from 'firebase/firestore';
+import { collection, doc, writeBatch } from 'firebase/firestore';
 import { useSettings } from '@/context/settings-provider';
 import { Skeleton } from '../ui/skeleton';
 import { Input } from '../ui/input';
+import { useToast } from '@/hooks/use-toast';
+import { useSearchParams } from 'next/navigation';
 
 interface FinalizeLpoStepProps {
   procurementListIds: string[];
@@ -24,7 +26,7 @@ interface FinalizeLpoStepProps {
 interface DraftLpo {
   vendorId: string;
   vendorName: string;
-  items: (LocalPurchaseOrderItem & { itemName: string })[];
+  items: (LocalPurchaseOrderItem)[];
   grandTotal: number;
 }
 
@@ -45,8 +47,12 @@ export function FinalizeLpoStep({
 }: FinalizeLpoStepProps) {
   const firestore = useFirestore();
   const { formatCurrency } = useSettings();
+  const { toast } = useToast();
+  const searchParams = useSearchParams();
+  const sessionId = searchParams.get('session');
 
   const [quantities, setQuantities] = React.useState(initialQuantities);
+  const [isFinalizing, setIsFinalizing] = React.useState(false);
   
   React.useEffect(() => {
     // Debounce the onQuantitiesChange callback
@@ -127,6 +133,54 @@ export function FinalizeLpoStep({
 
   }, [procurementList, vendorQuotes, allVendors, areVendorsLoading, areItemsLoading, quantities]);
 
+  const handleFinalizeLpos = async () => {
+    if (!firestore || !sessionId || draftLpos.length === 0) return;
+    setIsFinalizing(true);
+    
+    const batch = writeBatch(firestore);
+
+    // 1. Create LPO documents
+    draftLpos.forEach((draftLpo) => {
+        const lpoId = `LPO-${Date.now()}-${draftLpo.vendorId.slice(0,4)}`;
+        const lpoRef = doc(firestore, 'localPurchaseOrders', lpoId);
+        
+        const newLpo: LocalPurchaseOrder = {
+            id: lpoId,
+            lpoNumber: lpoId,
+            vendorId: draftLpo.vendorId,
+            vendorName: draftLpo.vendorName,
+            date: new Date().toISOString(),
+            items: draftLpo.items,
+            grandTotal: draftLpo.grandTotal,
+            status: 'Draft' as LpoStatus,
+        };
+        batch.set(lpoRef, newLpo);
+    });
+
+    // 2. Update the procurement session status
+    const sessionRef = doc(firestore, 'procurementSessions', sessionId);
+    batch.update(sessionRef, { status: 'Completed' });
+
+    try {
+        await batch.commit();
+        toast({
+            title: "LPOs Generated Successfully",
+            description: `${draftLpos.length} LPO(s) have been created and saved.`
+        });
+        onReset(); // Navigate back to sessions page
+    } catch (error) {
+        console.error("Failed to finalize LPOs:", error);
+        toast({
+            variant: "destructive",
+            title: "Generation Failed",
+            description: "An error occurred while trying to save the LPOs."
+        });
+    } finally {
+        setIsFinalizing(false);
+    }
+  }
+
+
   const isLoading = areVendorsLoading || areItemsLoading;
 
   if (isLoading) {
@@ -201,18 +255,16 @@ export function FinalizeLpoStep({
         )}
       </CardContent>
       <div className="mt-6 p-6 pt-0 flex justify-between">
-        <Button variant="outline" onClick={onBack}>
+        <Button variant="outline" onClick={onBack} disabled={isFinalizing}>
           Back
         </Button>
         <div className='flex gap-2'>
-            <Button onClick={onReset} variant="secondary">Start New Procurement</Button>
-            <Button disabled={draftLpos.length === 0}>
-                Confirm & Generate {draftLpos.length} LPO(s)
+            <Button onClick={onReset} variant="secondary" disabled={isFinalizing}>Start New Procurement</Button>
+            <Button disabled={draftLpos.length === 0 || isFinalizing} onClick={handleFinalizeLpos}>
+                {isFinalizing ? 'Generating...' : `Confirm & Generate ${draftLpos.length} LPO(s)`}
             </Button>
         </div>
       </div>
     </Card>
   );
 }
-
-    

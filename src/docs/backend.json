@@ -388,9 +388,44 @@
                     "type": "object",
                     "additionalProperties": { "type": "number" }
                 }
+            },
+            "lpoQuantities": {
+                "type": "object",
+                "description": "A map of item IDs to their order quantities. Format: { itemId: quantity }.",
+                "additionalProperties": { "type": "number" }
             }
         },
-        "required": ["id", "createdAt", "status", "procurementList", "vendorQuotes"]
+        "required": ["id", "createdAt", "status", "procurementList", "vendorQuotes", "lpoQuantities"]
+    },
+    "LocalPurchaseOrder": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "title": "LocalPurchaseOrder",
+        "type": "object",
+        "description": "Represents a formal purchase order to be sent to a vendor.",
+        "properties": {
+            "id": { "type": "string" },
+            "lpoNumber": { "type": "string" },
+            "vendorId": { "type": "string" },
+            "vendorName": { "type": "string" },
+            "date": { "type": "string", "format": "date-time" },
+            "items": {
+                "type": "array",
+                "items": {
+                    "type": "object",
+                    "properties": {
+                        "itemId": { "type": "string" },
+                        "itemName": { "type": "string" },
+                        "quantity": { "type": "number" },
+                        "unitPrice": { "type": "number" },
+                        "total": { "type": "number" }
+                    },
+                    "required": ["itemId", "itemName", "quantity", "unitPrice", "total"]
+                }
+            },
+            "grandTotal": { "type": "number" },
+            "status": { "type": "string", "enum": ["Draft", "Sent", "Completed", "Rejected"] }
+        },
+        "required": ["id", "lpoNumber", "vendorId", "vendorName", "date", "items", "grandTotal", "status"]
     }
   },
   "auth": {
@@ -463,10 +498,15 @@
             "schema": { "$ref": "#/entities/ProcurementSession" },
             "description": "Stores saved procurement assistant sessions."
         }
+      },
+      {
+        "path": "/localPurchaseOrders/{lpoId}",
+        "definition": {
+            "schema": { "$ref": "#/entities/LocalPurchaseOrder" },
+            "description": "Stores generated Local Purchase Orders."
+        }
       }
     ],
     "reasoning": "The Firestore structure has been flattened to use top-level collections for each major entity: items, stocks, internalOrders, billings, users, vendors, services, and settings. This approach is straightforward, scalable, and simplifies security rules by removing the need for complex nested path checks and `get()` calls. Security and data access can be efficiently managed by querying collections directly and using denormalized fields (like `locationId` in the `stocks` collection) to filter data based on a user's role and assigned location."
   }
 }
-
-    

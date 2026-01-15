@@ -166,7 +166,7 @@ const LpoItemSchema = z.object({
   itemId: z.string().describe('The ID of the item to order.'),
   itemName: z.string().describe('The name of the item.'),
   quantityToOrder: z.number().describe('The suggested quantity to order based on usage and stock levels.'),
-  selectedVendorId: z.string().describe('The ID of the recommended vendor for this item.'),
+  selectedVendorId: z.string().describe('The recommended vendor for this item.'),
   reasoning: z.string().describe('A brief justification for the recommended quantity and vendor choice.'),
 });
 
@@ -182,5 +182,3 @@ export type GenerateLpoOutput = z.infer<typeof GenerateLpoOutputSchema>;
 export interface Lpo extends GenerateLpoOutput {
   status: 'Pending' | 'Approved' | 'Rejected' | 'Completed';
 }
-
-    

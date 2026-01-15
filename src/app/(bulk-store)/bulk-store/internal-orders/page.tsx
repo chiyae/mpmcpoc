@@ -49,7 +49,7 @@ import {
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { useToast } from '@/hooks/use-toast';
 import { useCollection, useFirestore, useMemoFirebase } from '@/firebase';
-import { collection, doc, writeBatch, query, where, getDocs } from 'firebase/firestore';
+import { collection, doc, writeBatch, query, where, getDocs, setDoc } from 'firebase/firestore';
 import { Skeleton } from '@/components/ui/skeleton';
 
 export default function InternalOrderManagementPage() {
@@ -156,7 +156,7 @@ export default function InternalOrderManagementPage() {
 
     } else { // Handle Approve and Reject
         try {
-            await writeBatch(firestore).update(orderRef, { status }).commit();
+            await setDoc(orderRef, { status }, { merge: true });
             toast({
                 title: "Order Status Updated",
                 description: `Order ${orderId} has been marked as ${status}.`

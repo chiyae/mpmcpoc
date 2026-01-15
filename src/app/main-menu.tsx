@@ -1,3 +1,4 @@
+
 'use client';
 
 import Link from 'next/link';
@@ -55,7 +56,7 @@ export default function MainMenu() {
                 </Card>
             </Link>
             
-             <Link href="#" passHref>
+             <Link href="/tools/dashboard" passHref>
                 <Card className="hover:bg-accent hover:text-accent-foreground transition-colors">
                 <CardHeader className="flex flex-col items-center justify-center text-center">
                     <Wrench className="h-12 w-12 mb-4 text-primary" />

@@ -38,7 +38,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { useSettings } from '@/context/settings-provider';
 import { useToast } from '@/hooks/use-toast';
 import { LpoDocument } from '@/components/procurement/lpo-document';
-import { Printer } from 'lucide-react';
+import { Printer, X } from 'lucide-react';
 
 
 export default function LocalPurchaseOrdersPage() {
@@ -53,6 +53,7 @@ export default function LocalPurchaseOrdersPage() {
   const [selectedLpo, setSelectedLpo] = React.useState<LocalPurchaseOrder | null>(null);
   const [isLpoOpen, setIsLpoOpen] = React.useState(false);
   const [isUpdating, setIsUpdating] = React.useState(false);
+  const [isPrintPreview, setIsPrintPreview] = React.useState(false);
   
   const handleUpdateStatus = async (lpoId: string, status: 'Sent' | 'Completed' | 'Rejected') => {
     if (!firestore) return;
@@ -126,7 +127,7 @@ export default function LocalPurchaseOrdersPage() {
 
   return (
     <>
-    <style jsx global>{`
+      <style jsx global>{`
         @media print {
           body * {
             visibility: hidden;
@@ -150,7 +151,33 @@ export default function LocalPurchaseOrdersPage() {
             display: none !important;
           }
         }
+        .print-preview-mode {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            background-color: hsl(var(--background));
+            z-index: 100;
+            overflow-y: auto;
+        }
       `}</style>
+      
+      {isPrintPreview && selectedLpo && (
+        <div className="print-preview-mode">
+          <header className="sticky top-0 z-20 bg-background/80 backdrop-blur-sm p-4 border-b no-print flex justify-between items-center">
+            <p className="font-semibold">Print Preview: Use your browser's print function (Ctrl/Cmd + P).</p>
+            <Button variant="outline" onClick={() => setIsPrintPreview(false)}>
+              <X className="mr-2 h-4 w-4" />
+              Close Preview
+            </Button>
+          </header>
+          <div className="p-8">
+            <LpoDocument lpo={selectedLpo} />
+          </div>
+        </div>
+      )}
+
       <div className="w-full space-y-6 no-print">
         <header className="space-y-1.5">
               <h1 className="text-3xl font-bold tracking-tight">Local Purchase Orders</h1>
@@ -212,19 +239,19 @@ export default function LocalPurchaseOrdersPage() {
         {selectedLpo && (
           <Dialog open={isLpoOpen} onOpenChange={setIsLpoOpen}>
               <DialogContent className="sm:max-w-4xl p-0">
-                  <div className="p-6 pb-0 no-print">
+                  <div className="p-6 pb-0">
                       <DialogHeader>
                           <DialogTitle>LPO Details: {selectedLpo.lpoNumber}</DialogTitle>
-                          <DialogDescription>Review the LPO and update its status. Use your browser's print function (Ctrl/Cmd+P) to print.</DialogDescription>
+                          <DialogDescription>Review the LPO and update its status. Use the print button to prepare a printable version.</DialogDescription>
                       </DialogHeader>
                   </div>
                   <LpoDocument lpo={selectedLpo} />
-                  <DialogFooter className="sm:justify-between p-6 pt-0 no-print">
+                  <DialogFooter className="sm:justify-between p-6 pt-0">
                       <div className="flex gap-2">
                           {selectedLpo.status === 'Draft' && (
                               <Button variant="destructive" onClick={() => handleUpdateStatus(selectedLpo.id, 'Rejected')} disabled={isUpdating}>Reject</Button>
                           )}
-                           <Button variant="secondary" disabled>
+                           <Button variant="secondary" onClick={() => setIsPrintPreview(true)}>
                               <Printer className="mr-2 h-4 w-4" />
                               Print LPO
                           </Button>

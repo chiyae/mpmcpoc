@@ -35,6 +35,12 @@ import { useCollection, useFirestore, useMemoFirebase } from '@/firebase';
 import { collection, doc, query, where, writeBatch } from 'firebase/firestore';
 import { Skeleton } from '@/components/ui/skeleton';
 
+
+// A simple helper to differentiate services from items based on ID format.
+// This assumes service IDs are non-numeric strings (e.g., 'CONSULTATION-FEE')
+// and item IDs are codes (e.g., 'PAR500').
+const isService = (itemId: string) => isNaN(parseInt(itemId.substring(itemId.length - 4)));
+
 export default function DispensePage() {
   const { toast } = useToast();
   const firestore = useFirestore();
@@ -63,6 +69,13 @@ export default function DispensePage() {
     setSelectedBill(bill);
     setIsDispenseDialogOpen(true);
   };
+  
+  const itemsToDispense = React.useMemo(() => {
+    if (!selectedBill) return [];
+    // Only include items that are NOT services
+    return selectedBill.items.filter(item => !isService(item.itemId));
+  }, [selectedBill]);
+
 
   const handleDispense = async () => {
     if (!selectedBill || !dispensaryStocks || !firestore) return;
@@ -70,8 +83,8 @@ export default function DispensePage() {
     let canDispense = true;
     const batch = writeBatch(firestore);
 
-    // This is a simplified stock check. A real-world app would need to handle multiple batches.
-    for (const billItem of selectedBill.items) {
+    // This stock check only runs against physical items now
+    for (const billItem of itemsToDispense) {
       const stockItem = dispensaryStocks.find((s) => s.itemId === billItem.itemId);
       if (!stockItem || stockItem.currentStockQuantity < billItem.quantity) {
         canDispense = false;
@@ -85,8 +98,8 @@ export default function DispensePage() {
     }
 
     if (canDispense) {
-      // Deduct stock quantities
-      for (const billItem of selectedBill.items) {
+      // Deduct stock quantities for physical items only
+      for (const billItem of itemsToDispense) {
         const stockItem = dispensaryStocks.find((s) => s.itemId === billItem.itemId);
         if (stockItem) {
           const stockRef = doc(firestore, 'stocks', stockItem.id);
@@ -95,7 +108,7 @@ export default function DispensePage() {
         }
       }
 
-      // Mark the bill as dispensed
+      // Mark the entire bill as dispensed
       const billRef = doc(firestore, 'billings', selectedBill.id);
       batch.update(billRef, { isDispensed: true });
 
@@ -173,7 +186,7 @@ export default function DispensePage() {
               <DialogTitle>Dispense Medication</DialogTitle>
               <DialogDescription>
                 Dispensing items for Bill <strong>{selectedBill.id}</strong> for patient <strong>{selectedBill.patientName}</strong>.
-                Verify stock and confirm dispensation.
+                Verify stock and confirm dispensation. Services do not require stock verification.
               </DialogDescription>
             </DialogHeader>
             {isLoadingStock ? <Skeleton className='h-48 w-full' /> : (
@@ -187,7 +200,8 @@ export default function DispensePage() {
                         </TableRow>
                     </TableHeader>
                     <TableBody>
-                        {selectedBill.items.map((billItem) => {
+                        {itemsToDispense.length === 0 && <TableRow><TableCell colSpan={4} className="text-center h-24">No physical items to dispense.</TableCell></TableRow>}
+                        {itemsToDispense.map((billItem) => {
                         const stockItem = dispensaryStocks?.find((s) => s.itemId === billItem.itemId);
                         const availableQty = stockItem?.currentStockQuantity || 0;
                         const hasSufficientStock = availableQty >= billItem.quantity;

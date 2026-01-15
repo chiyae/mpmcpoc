@@ -10,10 +10,10 @@ import Link from "next/link";
 
 const toolsLinks = [
     {
-        href: '/tools/procurement-assistant',
+        href: '/tools/procurement-sessions',
         icon: ShoppingCart,
-        title: 'Procurement Assistant',
-        description: 'Assist in the process of procuring medicines by comparing prices from different vendors and generating LPOs based on the best price.'
+        title: 'Procurement Workflow',
+        description: 'Start a new session to compare vendor prices and generate Local Purchase Orders.'
     },
 ]
 

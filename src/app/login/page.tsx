@@ -29,6 +29,7 @@ import { useToast } from '@/hooks/use-toast';
 import { createUserWithEmailAndPassword, signInWithEmailAndPassword, User as FirebaseAuthUser } from 'firebase/auth';
 import { Skeleton } from '@/components/ui/skeleton';
 import { doc, getDoc, setDoc } from 'firebase/firestore';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 
 const formSchema = z.object({
   email: z.string().email({ message: 'Please enter a valid email address.' }),
@@ -36,6 +37,8 @@ const formSchema = z.object({
     .string()
     .min(6, { message: 'Password must be at least 6 characters.' }),
 });
+
+type FormValues = z.infer<typeof formSchema>;
 
 export default function LoginPage() {
   const auth = useAuth();
@@ -45,7 +48,7 @@ export default function LoginPage() {
   const { toast } = useToast();
   const [isSubmitting, setIsSubmitting] = React.useState(false);
 
-  const form = useForm<z.infer<typeof formSchema>>({
+  const form = useForm<FormValues>({
     resolver: zodResolver(formSchema),
     defaultValues: {
       email: '',
@@ -67,9 +70,9 @@ export default function LoginPage() {
 
     if (!userDocSnap.exists()) {
       const isAdmin = signedInUser.email === 'admin@example.com';
-      const userRole = isAdmin ? 'admin' : 'pharmacy';
+      const userRole = isAdmin ? 'admin' : 'pharmacy'; // Default role
       const userLocation = isAdmin ? 'all' : 'unassigned';
-      const userDisplayName = isAdmin ? 'Admin' : signedInUser.email?.split('@')[0] || 'New User'
+      const userDisplayName = signedInUser.email?.split('@')[0] || 'New User';
 
       try {
         await setDoc(userDocRef, {
@@ -80,24 +83,16 @@ export default function LoginPage() {
           locationId: userLocation,
         });
 
-        toast({
-          title: 'Welcome!',
-          description: 'Your user profile has been created.',
-        });
       } catch (error: any) {
         console.error("Failed to create user document:", error);
-        toast({
-          variant: 'destructive',
-          title: 'Profile Creation Failed',
-          description: error.message || 'Could not create your user profile on the server.',
-        });
-        if(auth) auth.signOut();
+        if(auth) auth.signOut(); // Log out user if profile creation fails
+        throw new Error("Could not create your user profile on the server.");
       }
     }
   }
 
 
-  async function onSubmit(values: z.infer<typeof formSchema>) {
+  async function handleSignIn(values: FormValues) {
     if (!auth || !firestore) {
       toast({ variant: 'destructive', title: 'Firebase not initialized.' });
       return;
@@ -105,31 +100,50 @@ export default function LoginPage() {
     setIsSubmitting(true);
 
     try {
-      const userCredential = await signInWithEmailAndPassword(auth, values.email, values.password);
-      await handleUserDocCreation(userCredential.user);
-       toast({
+      await signInWithEmailAndPassword(auth, values.email, values.password);
+      toast({
         title: 'Sign in successful',
         description: 'Redirecting to your dashboard...',
       });
     } catch (error: any) {
-      if (error.code === 'auth/user-not-found' || error.code === 'auth/invalid-credential') {
-        try {
-          const newUserCredential = await createUserWithEmailAndPassword(auth, values.email, values.password);
-          await handleUserDocCreation(newUserCredential.user);
-        } catch (creationError: any) {
-          toast({
-            variant: 'destructive',
-            title: 'Sign Up Failed',
-            description: creationError.message || 'Could not create a new account.',
-          });
-        }
-      } else {
-        toast({
-          variant: 'destructive',
-          title: 'Sign In Failed',
-          description: error.message || 'An unexpected error occurred.',
-        });
+      let description = 'An unexpected error occurred.';
+      if (error.code === 'auth/user-not-found' || error.code === 'auth/wrong-password' || error.code === 'auth/invalid-credential') {
+        description = 'Invalid email or password. Please try again.';
       }
+      toast({
+        variant: 'destructive',
+        title: 'Sign In Failed',
+        description: description,
+      });
+    } finally {
+      setIsSubmitting(false);
+    }
+  }
+  
+  async function handleSignUp(values: FormValues) {
+    if (!auth || !firestore) {
+      toast({ variant: 'destructive', title: 'Firebase not initialized.' });
+      return;
+    }
+    setIsSubmitting(true);
+
+    try {
+      const userCredential = await createUserWithEmailAndPassword(auth, values.email, values.password);
+      await handleUserDocCreation(userCredential.user);
+      toast({
+        title: 'Account Created!',
+        description: 'You have been signed in successfully.',
+      });
+    } catch (error: any) {
+      let description = error.message || 'An unexpected error occurred.';
+       if (error.code === 'auth/email-already-in-use') {
+        description = 'This email is already in use. Please try signing in instead.';
+      }
+      toast({
+        variant: 'destructive',
+        title: 'Sign Up Failed',
+        description: description,
+      });
     } finally {
       setIsSubmitting(false);
     }
@@ -147,58 +161,73 @@ export default function LoginPage() {
     );
   }
 
+  const LoginForm = ({ onFormSubmit, buttonText }: { onFormSubmit: (values: FormValues) => void, buttonText: string}) => (
+    <Form {...form}>
+      <form onSubmit={form.handleSubmit(onFormSubmit)} className="space-y-4">
+        <FormField
+          control={form.control}
+          name="email"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>Email</FormLabel>
+              <FormControl>
+                <Input
+                  type="email"
+                  placeholder="admin@example.com"
+                  {...field}
+                />
+              </FormControl>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+        <FormField
+          control={form.control}
+          name="password"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>Password</FormLabel>
+              <FormControl>
+                <Input type="password" placeholder="••••••••" {...field} />
+              </FormControl>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+        <Button type="submit" className="w-full" disabled={isSubmitting}>
+          {isSubmitting ? 'Processing...' : buttonText}
+        </Button>
+      </form>
+    </Form>
+  )
+
   return (
     <div className="flex min-h-screen items-center justify-center bg-background px-4">
-      <Card className="w-full max-w-sm">
-        <CardHeader className="text-center">
-          <div className="mb-4 flex justify-center">
-            <Logo />
-          </div>
-          <CardTitle className="text-2xl">Welcome</CardTitle>
-          <CardDescription>
-            Enter your credentials to sign in. A new account will be created if one doesn't exist.
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <Form {...form}>
-            <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
-              <FormField
-                control={form.control}
-                name="email"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Email</FormLabel>
-                    <FormControl>
-                      <Input
-                        type="email"
-                        placeholder="admin@example.com"
-                        {...field}
-                      />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              <FormField
-                control={form.control}
-                name="password"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Password</FormLabel>
-                    <FormControl>
-                      <Input type="password" placeholder="••••••••" {...field} />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              <Button type="submit" className="w-full" disabled={isSubmitting}>
-                {isSubmitting ? 'Processing...' : 'Sign In'}
-              </Button>
-            </form>
-          </Form>
-        </CardContent>
-      </Card>
+        <Tabs defaultValue="signin" className="w-full max-w-sm">
+            <Card>
+                <CardHeader className="text-center">
+                    <div className="mb-4 flex justify-center">
+                        <Logo />
+                    </div>
+                    <CardTitle className="text-2xl">Welcome</CardTitle>
+                    <CardDescription>
+                        Sign in to your account or create a new one.
+                    </CardDescription>
+                </CardHeader>
+                <CardContent className='space-y-4'>
+                    <TabsList className="grid w-full grid-cols-2">
+                        <TabsTrigger value="signin">Sign In</TabsTrigger>
+                        <TabsTrigger value="signup">Sign Up</TabsTrigger>
+                    </TabsList>
+                    <TabsContent value="signin">
+                        <LoginForm onFormSubmit={handleSignIn} buttonText="Sign In" />
+                    </TabsContent>
+                    <TabsContent value="signup">
+                        <LoginForm onFormSubmit={handleSignUp} buttonText="Create Account" />
+                    </TabsContent>
+                </CardContent>
+            </Card>
+        </Tabs>
     </div>
   );
 }

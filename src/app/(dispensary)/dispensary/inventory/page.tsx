@@ -41,7 +41,7 @@ import { Badge } from '@/components/ui/badge';
 import type { InternalOrder, Item, Stock, StockTakeSession } from '@/lib/types';
 import { differenceInDays, parseISO } from 'date-fns';
 import { useToast } from "@/hooks/use-toast";
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { RequestStockForm } from '@/components/request-stock-form';
 import { ClipboardList } from 'lucide-react';
 import { useCollection, useFirestore, useMemoFirebase } from '@/firebase';

@@ -23,7 +23,7 @@ import { ManuallyAddItemDialog } from '@/components/procurement/manually-add-ite
 type ItemForRequest = {
     id: string;
     name: string;
-    // We can add more details here if needed, like current quantity
+    bulkStoreQty: number;
 };
 
 function formatItemName(item: Item) {
@@ -46,10 +46,22 @@ export default function RequestStockPage() {
   const itemsQuery = useMemoFirebase(() => firestore ? collection(firestore, 'items') : null, [firestore]);
   const { data: allItems, isLoading: isLoadingItems } = useCollection<Item>(itemsQuery);
 
-  const stockQuery = useMemoFirebase(() => firestore ? query(collection(firestore, 'stocks'), where('locationId', '==', 'dispensary')) : null, [firestore]);
-  const { data: dispensaryStocks, isLoading: isLoadingStock } = useCollection<Stock>(stockQuery);
+  const dispensaryStockQuery = useMemoFirebase(() => firestore ? query(collection(firestore, 'stocks'), where('locationId', '==', 'dispensary')) : null, [firestore]);
+  const { data: dispensaryStocks, isLoading: isLoadingDispensaryStock } = useCollection<Stock>(dispensaryStockQuery);
 
-  const isLoading = isLoadingItems || isLoadingStock;
+  const bulkStockQuery = useMemoFirebase(() => firestore ? query(collection(firestore, 'stocks'), where('locationId', '==', 'bulk-store')) : null, [firestore]);
+  const { data: bulkStocks, isLoading: isLoadingBulkStock } = useCollection<Stock>(bulkStockQuery);
+
+
+  const isLoading = isLoadingItems || isLoadingDispensaryStock || isLoadingBulkStock;
+
+  const getBulkStockForItem = React.useCallback((itemId: string): number => {
+    if (!bulkStocks) return 0;
+    return bulkStocks
+        .filter(s => s.itemId === itemId)
+        .reduce((sum, s) => sum + s.currentStockQuantity, 0);
+  }, [bulkStocks]);
+
 
   const handleAutoRequest = () => {
     if (!allItems || !dispensaryStocks) {
@@ -62,7 +74,11 @@ export default function RequestStockPage() {
             .filter(s => s.itemId === item.id)
             .reduce((sum, s) => sum + s.currentStockQuantity, 0);
         return totalDispensaryStock < item.reorderLevel;
-    }).map(item => ({ id: item.id, name: formatItemName(item) }));
+    }).map(item => ({ 
+        id: item.id, 
+        name: formatItemName(item),
+        bulkStoreQty: getBulkStockForItem(item.id)
+    }));
 
     if (lowStockItems.length === 0) {
         toast({ title: "No Low-Stock Items", description: "All items in the dispensary are currently above their reorder level." });
@@ -78,7 +94,11 @@ export default function RequestStockPage() {
         if (prev.some(i => i.id === item.id)) {
             return prev;
         }
-        return [...prev, { id: item.id, name: formatItemName(item)}];
+        return [...prev, { 
+            id: item.id, 
+            name: formatItemName(item),
+            bulkStoreQty: getBulkStockForItem(item.id)
+        }];
     });
     setIsFormVisible(true); // Show form as soon as one item is added
   }

@@ -22,12 +22,14 @@ import { Plus } from "lucide-react"
 type ItemForRequest = {
     id: string;
     name: string;
+    bulkStoreQty: number;
 }
 
 const formSchema = z.object({
   items: z.array(z.object({
     itemId: z.string(),
     itemName: z.string(),
+    bulkStoreQty: z.number(),
     quantity: z.coerce.number().int().min(1, "Quantity must be at least 1."),
   })).min(1, "Please request at least one item."),
 });
@@ -46,6 +48,7 @@ export function RequestStockForm({ selectedItems, onSubmit, onCancel, onAddItem 
       items: selectedItems.map(item => ({
         itemId: item.id,
         itemName: item.name,
+        bulkStoreQty: item.bulkStoreQty,
         quantity: 1,
       })),
     },
@@ -57,6 +60,7 @@ export function RequestStockForm({ selectedItems, onSubmit, onCancel, onAddItem 
         items: selectedItems.map(item => ({
             itemId: item.id,
             itemName: item.name,
+            bulkStoreQty: item.bulkStoreQty,
             quantity: form.getValues(`items.${form.getValues('items').findIndex(i => i.itemId === item.id)}.quantity`) || 1,
         }))
     });
@@ -80,13 +84,17 @@ export function RequestStockForm({ selectedItems, onSubmit, onCancel, onAddItem 
             <TableHeader>
               <TableRow>
                 <TableHead>Item Name</TableHead>
-                <TableHead className="w-40 text-right">Quantity</TableHead>
+                <TableHead className="w-40 text-center">Bulk Store Qty</TableHead>
+                <TableHead className="w-40 text-right">Request Qty</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {fields.map((field, index) => (
                 <TableRow key={field.id}>
                   <TableCell className="font-medium">{field.itemName}</TableCell>
+                  <TableCell className={`text-center font-medium ${field.bulkStoreQty === 0 ? 'text-destructive' : ''}`}>
+                    {field.bulkStoreQty}
+                  </TableCell>
                   <TableCell>
                     <FormField
                       control={form.control}

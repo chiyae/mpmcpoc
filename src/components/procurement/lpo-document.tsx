@@ -14,7 +14,7 @@ import { Badge } from '@/components/ui/badge';
 import type { LocalPurchaseOrder } from '@/lib/types';
 import { format } from 'date-fns';
 import { useSettings } from '@/context/settings-provider';
-import Logo from '../logo';
+import { FileImage } from 'lucide-react';
 
 interface LpoDocumentProps {
   lpo: LocalPurchaseOrder;
@@ -26,19 +26,35 @@ export function LpoDocument({ lpo }: LpoDocumentProps) {
   return (
     <div className="bg-background rounded-lg shadow-lg p-8 max-w-4xl mx-auto printable-area">
       {/* Header */}
-      <header className="flex justify-between items-start mb-8">
-        <div>
-          {settings?.clinicName ? (
-            <>
-              <h1 className="text-3xl font-bold text-primary">{settings.clinicName}</h1>
-              <p className="text-sm text-muted-foreground">{settings.clinicAddress}</p>
-              <p className="text-sm text-muted-foreground">{settings.clinicPhone}</p>
-            </>
-          ) : <Logo />}
+      <header className="flex justify-between items-start mb-8 pb-4 border-b">
+        <div className="flex items-start gap-4">
+            <div className="flex flex-col items-center justify-center h-16 w-16 bg-muted rounded text-muted-foreground">
+                <FileImage className="h-8 w-8" />
+                <span className="text-xs">Logo</span>
+            </div>
+            <div>
+                 <h1 className="text-2xl font-bold text-primary">{settings?.clinicName || 'Your Clinic Name'}</h1>
+                 <p className="text-sm text-muted-foreground">{settings?.clinicAddress}</p>
+                 <p className="text-sm text-muted-foreground">
+                    Tel: {settings?.clinicPhone} | Email: info@mpingu.med
+                 </p>
+            </div>
         </div>
         <div className="text-right">
-          <h2 className="text-4xl font-bold uppercase tracking-wider text-muted-foreground">Purchase Order</h2>
-          <p className="text-lg font-mono text-muted-foreground mt-2">{lpo.lpoNumber}</p>
+          <h2 className="text-5xl font-bold uppercase tracking-wider text-muted-foreground">LPO</h2>
+           <div className="mt-2 space-y-1 text-sm text-muted-foreground">
+                <p><span className="font-semibold">LPO #:</span> {lpo.lpoNumber}</p>
+                <p><span className="font-semibold">Date:</span> {format(new Date(lpo.date), 'dd/MM/yyyy')}</p>
+                 <p>
+                    <span className="font-semibold">Status:</span>
+                    <Badge 
+                        variant={lpo.status === 'Completed' ? 'default' : lpo.status === 'Rejected' ? 'destructive' : 'secondary'} 
+                        className="capitalize ml-2"
+                    >
+                        {lpo.status}
+                    </Badge>
+                </p>
+           </div>
         </div>
       </header>
 
@@ -49,16 +65,6 @@ export function LpoDocument({ lpo }: LpoDocumentProps) {
           <div className="mt-2 p-4 border rounded-md bg-muted/50">
             <p className="font-bold text-lg">{lpo.vendorName}</p>
           </div>
-        </div>
-        <div className="text-right">
-            <dl className="grid grid-cols-2 gap-x-4 gap-y-2">
-                <dt className="text-sm font-semibold text-muted-foreground">DATE</dt>
-                <dd className="font-medium">{format(new Date(lpo.date), 'PPP')}</dd>
-                <dt className="text-sm font-semibold text-muted-foreground">STATUS</dt>
-                <dd>
-                    <Badge variant={lpo.status === 'Completed' ? 'default' : lpo.status === 'Rejected' ? 'destructive' : 'secondary'} className="capitalize">{lpo.status}</Badge>
-                </dd>
-            </dl>
         </div>
       </div>
       

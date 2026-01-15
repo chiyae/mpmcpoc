@@ -47,14 +47,6 @@ export default function BulkStoreLayout({ children }: { children: ReactNode }) {
               </SidebarMenuButton>
             </SidebarMenuItem>
             <SidebarMenuItem>
-              <SidebarMenuButton asChild tooltip="Procurement">
-                <Link href="/bulk-store/procurement">
-                  <ClipboardCheck />
-                  <span>Procurement</span>
-                </Link>
-              </SidebarMenuButton>
-            </SidebarMenuItem>
-            <SidebarMenuItem>
               <SidebarMenuButton asChild tooltip="Internal Orders">
                 <Link href="/bulk-store/internal-orders">
                   <Truck />

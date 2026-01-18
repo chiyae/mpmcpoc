@@ -34,9 +34,19 @@ import { Badge } from '@/components/ui/badge';
 function formatItemName(item: Item) {
   let name = item.genericName;
   if (item.brandName) name += ` (${item.brandName})`;
-  if (item.strengthValue) name += ` ${item.strengthValue}${item.strengthUnit}`;
-  if (item.concentrationValue) name += ` ${item.concentrationValue}${item.concentrationUnit}`;
+  
+  if (item.strengthValue) {
+    name += ` ${item.strengthValue}${item.strengthUnit}`;
+  }
+  
+  if (item.concentrationValue) {
+    name += ` ${item.concentrationValue}${item.concentrationUnit}`;
+  }
+
+  name += ` ${item.formulation}`;
+
   if (item.packageSizeValue) name += ` (${item.packageSizeValue}${item.packageSizeUnit})`;
+  
   return name;
 }
 

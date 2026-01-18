@@ -21,18 +21,21 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { useToast } from '@/hooks/use-toast';
-import type { Bill, BillItem, PaymentMethod, BillType, Service, Item } from '@/lib/types';
+import type { Bill, BillItem, PaymentMethod, BillType, Service, Item, Stock } from '@/lib/types';
 import { PlusCircle, Trash2 } from 'lucide-react';
 import { Label } from '@/components/ui/label';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { useSettings } from '@/context/settings-provider';
 import { useCollection, useFirestore, useMemoFirebase } from '@/firebase';
-import { collection, doc, writeBatch } from 'firebase/firestore';
+import { collection, doc, writeBatch, query, where } from 'firebase/firestore';
+import { Badge } from '@/components/ui/badge';
 
 function formatItemName(item: Item) {
   let name = item.genericName;
   if (item.brandName) name += ` (${item.brandName})`;
   if (item.strengthValue) name += ` ${item.strengthValue}${item.strengthUnit}`;
+  if (item.concentrationValue) name += ` ${item.concentrationValue}${item.concentrationUnit}`;
+  if (item.packageSizeValue) name += ` (${item.packageSizeValue}${item.packageSizeUnit})`;
   return name;
 }
 
@@ -54,9 +57,33 @@ export default function PatientBillingPage() {
   );
   const { data: allServices, isLoading: areServicesLoading } = useCollection<Service>(servicesCollectionQuery);
   
+  const dispensaryStockQuery = useMemoFirebase(
+    () => firestore ? query(collection(firestore, 'stocks'), where('locationId', '==', 'dispensary')) : null,
+    [firestore]
+  );
+  const { data: dispensaryStocks, isLoading: areStocksLoading } = useCollection<Stock>(dispensaryStockQuery);
+  
+  const isLoading = areItemsLoading || areServicesLoading || areStocksLoading;
+
   // For now, we will assume we are always billing from the 'dispensary' location.
   // In a multi-location setup, this would be dynamic based on the user's assigned location.
   const billingLocationId = 'dispensary';
+  
+  const availableItems = React.useMemo(() => {
+    if (!allItems || !dispensaryStocks) return [];
+    return allItems.map(item => {
+        // Sum stock from all batches for the same item in the dispensary
+        const totalQuantity = dispensaryStocks
+            .filter(s => s.itemId === item.id)
+            .reduce((sum, s) => sum + s.currentStockQuantity, 0);
+        
+        return {
+            ...item,
+            stockQuantity: totalQuantity,
+        };
+    });
+  }, [allItems, dispensaryStocks]);
+
 
   // --- Form State ---
   const [patientName, setPatientName] = React.useState('');
@@ -72,21 +99,31 @@ export default function PatientBillingPage() {
   const [amountTendered, setAmountTendered] = React.useState('');
 
   const addMedicineToBill = () => {
-    if (!selectedMedicine || !medicineQuantity || !allItems) {
+    if (!selectedMedicine || !medicineQuantity || !availableItems) {
       toast({ variant: 'destructive', title: 'Error', description: 'Please select a medicine and quantity.' });
       return;
     }
 
-    const item = allItems.find((i) => i.id === selectedMedicine);
+    const item = availableItems.find((i) => i.id === selectedMedicine);
     const quantity = parseInt(medicineQuantity, 10);
 
     if (!item) {
       toast({ variant: 'destructive', title: 'Error', description: 'Medicine not found.' });
       return;
     }
-
-    // Note: Stock checks will be handled properly in the dispensary module.
-    // This billing module just creates the bill.
+    
+    const existingItem = billItems.find(bi => bi.itemId === item.id);
+    const quantityOnBill = existingItem ? existingItem.quantity : 0;
+    const requestedTotal = quantityOnBill + quantity;
+    
+    if (requestedTotal > item.stockQuantity) {
+        toast({ 
+            variant: 'destructive', 
+            title: 'Insufficient Stock', 
+            description: `Cannot add ${quantity} of ${formatItemName(item)}. You already have ${quantityOnBill} on the bill, and only ${item.stockQuantity} are available in total.` 
+        });
+        return;
+    }
     
     const existingItemIndex = billItems.findIndex(bi => bi.itemId === item.id);
     if(existingItemIndex > -1) {
@@ -184,7 +221,7 @@ export default function PatientBillingPage() {
         isDispensed: false, // Bills are not dispensed by default
     };
 
-    if (billType === 'OPD') {
+    if (billType === 'OPD' && prescriptionNumber) {
       newBill.prescriptionNumber = prescriptionNumber;
     }
 
@@ -278,14 +315,19 @@ export default function PatientBillingPage() {
               <div className="space-y-2">
                   <h3 className="font-medium">Add Medicine</h3>
                   <div className="flex flex-col md:flex-row gap-2">
-                      <Select value={selectedMedicine} onValueChange={setSelectedMedicine} disabled={areItemsLoading}>
+                      <Select value={selectedMedicine} onValueChange={setSelectedMedicine} disabled={isLoading}>
                           <SelectTrigger className="flex-1">
-                              <SelectValue placeholder={areItemsLoading ? "Loading items..." : "Select a medicine"} />
+                              <SelectValue placeholder={isLoading ? "Loading items..." : "Select a medicine"} />
                           </SelectTrigger>
                           <SelectContent>
-                              {allItems?.map((item) => (
-                                  <SelectItem key={item.id} value={item.id}>
-                                      {formatItemName(item)}
+                              {availableItems?.map((item) => (
+                                  <SelectItem key={item.id} value={item.id} disabled={item.stockQuantity <= 0}>
+                                      <div className="flex justify-between w-full items-center">
+                                        <span>{formatItemName(item)}</span>
+                                        <Badge variant={item.stockQuantity > 0 ? 'secondary' : 'destructive'} className="ml-4">
+                                            {item.stockQuantity > 0 ? `Stock: ${item.stockQuantity}` : 'Out of Stock'}
+                                        </Badge>
+                                      </div>
                                   </SelectItem>
                               ))}
                           </SelectContent>
@@ -298,7 +340,7 @@ export default function PatientBillingPage() {
                           onChange={(e) => setMedicineQuantity(e.target.value)}
                           min="1"
                       />
-                      <Button onClick={addMedicineToBill} disabled={areItemsLoading}><PlusCircle className="mr-2 h-4 w-4" /> Add Item</Button>
+                      <Button onClick={addMedicineToBill} disabled={isLoading}><PlusCircle className="mr-2 h-4 w-4" /> Add Item</Button>
                   </div>
               </div>
 

@@ -61,7 +61,7 @@ export function BuildProcurementListStep({ initialList, onComplete }: BuildProcu
       const totalStock = allStock
         .filter(s => s.itemId === item.id)
         .reduce((sum, s) => sum + s.currentStockQuantity, 0);
-      return totalStock < item.reorderLevel;
+      return totalStock < item.bulkStoreReorderLevel;
     });
   }, [allItems, allStock, currentList]);
 
@@ -158,5 +158,3 @@ export function BuildProcurementListStep({ initialList, onComplete }: BuildProcu
     </>
   );
 }
-
-    

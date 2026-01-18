@@ -406,7 +406,7 @@ export default function ItemMasterPage() {
       
       {isClient && (
         <Dialog open={isDialogOpen} onOpenChange={handleCloseDialog}>
-            <DialogContent className="sm:max-w-[625px]">
+            <DialogContent className="sm:max-w-3xl">
                 <DialogHeader>
                 <DialogTitle>{selectedItem ? `Edit Item: ${formatItemName(selectedItem)}` : 'Add New Master Item'}</DialogTitle>
                 <DialogDescription>

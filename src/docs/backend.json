@@ -60,9 +60,13 @@
           "type": "string",
           "description": "The base unit for transactions (e.g., tablet, bottle, box)."
         },
-        "reorderLevel": {
+        "dispensaryReorderLevel": {
           "type": "number",
-          "description": "Reorder level for the item."
+          "description": "Reorder level for the item in the dispensary."
+        },
+        "bulkStoreReorderLevel": {
+          "type": "number",
+          "description": "Reorder level for the item in the bulk store."
         },
         "unitCost": {
           "type": "number",
@@ -80,7 +84,8 @@
         "formulation",
         "category",
         "unitOfMeasure",
-        "reorderLevel",
+        "dispensaryReorderLevel",
+        "bulkStoreReorderLevel",
         "unitCost",
         "sellingPrice"
       ]

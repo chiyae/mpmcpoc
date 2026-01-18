@@ -168,7 +168,7 @@ export function ItemForm({ item, onSubmit }: ItemFormProps) {
           />
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <FormField
                 control={form.control}
                 name="formulation"
@@ -214,6 +214,19 @@ export function ItemForm({ item, onSubmit }: ItemFormProps) {
                         <SelectItem value="Consumable">Consumable</SelectItem>
                     </SelectContent>
                     </Select>
+                    <FormMessage />
+                </FormItem>
+                )}
+            />
+            <FormField
+                control={form.control}
+                name="unitOfMeasure"
+                render={({ field }) => (
+                <FormItem>
+                    <FormLabel>Unit of Measure</FormLabel>
+                    <FormControl>
+                    <Input placeholder="e.g. tablets, bottle" {...field} />
+                    </FormControl>
                     <FormMessage />
                 </FormItem>
                 )}
@@ -300,31 +313,14 @@ export function ItemForm({ item, onSubmit }: ItemFormProps) {
                 />
             </div>
         )}
-
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-           <FormField
-            control={form.control}
-            name="unitOfMeasure"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>Unit of Measure</FormLabel>
-                <FormControl>
-                  <Input placeholder="e.g. tablets, bottle" {...field} />
-                </FormControl>
-                 <FormDescription>The base unit for transactions.</FormDescription>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
-        </div>
         
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
           <FormField
             control={form.control}
             name="dispensaryReorderLevel"
             render={({ field }) => (
               <FormItem>
-                <FormLabel>Dispensary Reorder Level</FormLabel>
+                <FormLabel>Dispensary Reorder</FormLabel>
                 <FormControl>
                   <Input type="number" {...field} />
                 </FormControl>
@@ -337,7 +333,7 @@ export function ItemForm({ item, onSubmit }: ItemFormProps) {
             name="bulkStoreReorderLevel"
             render={({ field }) => (
               <FormItem>
-                <FormLabel>Bulk Store Reorder Level</FormLabel>
+                <FormLabel>Bulk Store Reorder</FormLabel>
                 <FormControl>
                   <Input type="number" {...field} />
                 </FormControl>
@@ -345,9 +341,6 @@ export function ItemForm({ item, onSubmit }: ItemFormProps) {
               </FormItem>
             )}
           />
-        </div>
-
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
            <FormField
             control={form.control}
             name="unitCost"
@@ -385,5 +378,3 @@ export function ItemForm({ item, onSubmit }: ItemFormProps) {
     </Form>
   )
 }
-
-    

@@ -103,14 +103,14 @@ export default function PatientBillingPage() {
   const filteredMedicines = React.useMemo(() => {
     if (!medicineSearch) return [];
     return availableItems.filter(item => 
-        formatItemName(item).toLowerCase().includes(medicineSearch.toLowerCase())
+        formatItemName(item).toLowerCase().startsWith(medicineSearch.toLowerCase())
     );
   }, [medicineSearch, availableItems]);
   
   const filteredServices = React.useMemo(() => {
     if (!serviceSearch) return [];
     return allServices?.filter(service => 
-        service.name.toLowerCase().includes(serviceSearch.toLowerCase())
+        service.name.toLowerCase().startsWith(serviceSearch.toLowerCase())
     ) || [];
   }, [serviceSearch, allServices]);
 
@@ -513,4 +513,3 @@ export default function PatientBillingPage() {
     </div>
   );
 }
-

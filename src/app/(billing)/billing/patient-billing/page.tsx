@@ -22,13 +22,17 @@ import {
 } from '@/components/ui/select';
 import { useToast } from '@/hooks/use-toast';
 import type { Bill, BillItem, PaymentMethod, BillType, Service, Item, Stock } from '@/lib/types';
-import { PlusCircle, Trash2 } from 'lucide-react';
+import { PlusCircle, Trash2, ChevronsUpDown, Check } from 'lucide-react';
 import { Label } from '@/components/ui/label';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { useSettings } from '@/context/settings-provider';
 import { useCollection, useFirestore, useMemoFirebase } from '@/firebase';
 import { collection, doc, writeBatch, query, where } from 'firebase/firestore';
 import { Badge } from '@/components/ui/badge';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '@/components/ui/command';
+import { cn } from '@/lib/utils';
+
 
 function formatItemName(item: Item) {
   let name = item.genericName;
@@ -97,6 +101,10 @@ export default function PatientBillingPage() {
 
   const [paymentMethod, setPaymentMethod] = React.useState<PaymentMethod>('Cash');
   const [amountTendered, setAmountTendered] = React.useState('');
+  
+  const [openMedicineCombobox, setOpenMedicineCombobox] = React.useState(false);
+  const [openServiceCombobox, setOpenServiceCombobox] = React.useState(false);
+
 
   const addMedicineToBill = () => {
     if (!selectedMedicine || !medicineQuantity || !availableItems) {
@@ -254,6 +262,16 @@ export default function PatientBillingPage() {
   
   const finalizeButtonText = paymentMethod === 'Invoice' ? 'Finalize & Generate Invoice' : 'Finalize & Generate Bill';
 
+  const selectedMedicineName = React.useMemo(() => {
+    if (!selectedMedicine || !availableItems || availableItems.length === 0) return null;
+    return availableItems.find(item => item.id === selectedMedicine);
+  }, [selectedMedicine, availableItems]);
+
+  const selectedServiceName = React.useMemo(() => {
+    if (!selectedService || !allServices) return null;
+    return allServices.find(service => service.id === selectedService);
+  }, [selectedService, allServices]);
+
   return (
     <div className="grid grid-cols-1 lg:grid-cols-5 gap-8 items-start">
       {/* Left Column: Inputs */}
@@ -315,23 +333,58 @@ export default function PatientBillingPage() {
               <div className="space-y-2">
                   <h3 className="font-medium">Add Medicine</h3>
                   <div className="flex flex-col md:flex-row gap-2">
-                      <Select value={selectedMedicine} onValueChange={setSelectedMedicine} disabled={isLoading}>
-                          <SelectTrigger className="flex-1">
-                              <SelectValue placeholder={isLoading ? "Loading items..." : "Select a medicine"} />
-                          </SelectTrigger>
-                          <SelectContent>
-                              {availableItems?.map((item) => (
-                                  <SelectItem key={item.id} value={item.id} disabled={item.stockQuantity <= 0}>
-                                      <div className="flex justify-between w-full items-center">
-                                        <span>{formatItemName(item)}</span>
-                                        <Badge variant={item.stockQuantity > 0 ? 'secondary' : 'destructive'} className="ml-4">
-                                            {item.stockQuantity > 0 ? `Stock: ${item.stockQuantity}` : 'Out of Stock'}
-                                        </Badge>
-                                      </div>
-                                  </SelectItem>
-                              ))}
-                          </SelectContent>
-                      </Select>
+                    <Popover open={openMedicineCombobox} onOpenChange={setOpenMedicineCombobox}>
+                        <PopoverTrigger asChild>
+                          <Button
+                            variant="outline"
+                            role="combobox"
+                            aria-expanded={openMedicineCombobox}
+                            className="w-full flex-1 justify-between"
+                            disabled={isLoading}
+                          >
+                            <span className="truncate">
+                              {selectedMedicineName ? formatItemName(selectedMedicineName) : (isLoading ? "Loading items..." : "Select a medicine")}
+                            </span>
+                            <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                          </Button>
+                        </PopoverTrigger>
+                        <PopoverContent className="w-[--radix-popover-trigger-width] p-0">
+                          <Command>
+                            <CommandInput placeholder="Search medicine..." />
+                            <CommandList>
+                              <CommandEmpty>No medicine found.</CommandEmpty>
+                              <CommandGroup>
+                                {availableItems?.map((item) => (
+                                  <CommandItem
+                                    key={item.id}
+                                    value={item.id}
+                                    onSelect={(currentValue) => {
+                                      setSelectedMedicine(currentValue === selectedMedicine ? undefined : currentValue)
+                                      setOpenMedicineCombobox(false)
+                                    }}
+                                    disabled={item.stockQuantity <= 0}
+                                    className="flex justify-between w-full items-center"
+                                  >
+                                    <div className="flex items-center">
+                                       <Check
+                                        className={cn(
+                                          "mr-2 h-4 w-4",
+                                          selectedMedicine === item.id ? "opacity-100" : "opacity-0"
+                                        )}
+                                      />
+                                      <span>{formatItemName(item)}</span>
+                                    </div>
+                                    <Badge variant={item.stockQuantity > 0 ? 'secondary' : 'destructive'}>
+                                        {item.stockQuantity > 0 ? `Stock: ${item.stockQuantity}` : 'Out of Stock'}
+                                    </Badge>
+                                  </CommandItem>
+                                ))}
+                              </CommandGroup>
+                            </CommandList>
+                          </Command>
+                        </PopoverContent>
+                      </Popover>
+
                       <Input
                           type="number"
                           placeholder="Qty"
@@ -347,18 +400,50 @@ export default function PatientBillingPage() {
               <div className="space-y-2">
                   <h3 className="font-medium">Add Service</h3>
                   <div className="flex flex-col md:flex-row gap-2">
-                      <Select value={selectedService} onValueChange={setSelectedService} disabled={areServicesLoading}>
-                          <SelectTrigger className="flex-1">
-                              <SelectValue placeholder={areServicesLoading ? "Loading services..." : "Select a service"} />
-                          </SelectTrigger>
-                          <SelectContent>
-                              {allServices?.map((service) => (
-                                  <SelectItem key={service.id} value={service.id}>
-                                      {service.name} - {formatCurrency(service.fee)}
-                                  </SelectItem>
-                              ))}
-                          </SelectContent>
-                      </Select>
+                        <Popover open={openServiceCombobox} onOpenChange={setOpenServiceCombobox}>
+                            <PopoverTrigger asChild>
+                              <Button
+                                variant="outline"
+                                role="combobox"
+                                aria-expanded={openServiceCombobox}
+                                className="w-full flex-1 justify-between"
+                                disabled={areServicesLoading}
+                              >
+                                <span className="truncate">
+                                {selectedServiceName ? selectedServiceName.name : "Select a service"}
+                                </span>
+                                <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                              </Button>
+                            </PopoverTrigger>
+                            <PopoverContent className="w-[--radix-popover-trigger-width] p-0">
+                              <Command>
+                                <CommandInput placeholder="Search service..." />
+                                <CommandList>
+                                  <CommandEmpty>No service found.</CommandEmpty>
+                                  <CommandGroup>
+                                    {allServices?.map((service) => (
+                                      <CommandItem
+                                        key={service.id}
+                                        value={service.id}
+                                        onSelect={(currentValue) => {
+                                          setSelectedService(currentValue === selectedService ? undefined : currentValue)
+                                          setOpenServiceCombobox(false)
+                                        }}
+                                      >
+                                        <Check
+                                          className={cn(
+                                            "mr-2 h-4 w-4",
+                                            selectedService === service.id ? "opacity-100" : "opacity-0"
+                                          )}
+                                        />
+                                        {service.name} - {formatCurrency(service.fee)}
+                                      </CommandItem>
+                                    ))}
+                                  </CommandGroup>
+                                </CommandList>
+                              </Command>
+                            </PopoverContent>
+                        </Popover>
                       <Button onClick={addServiceToBill} disabled={areServicesLoading}><PlusCircle className="mr-2 h-4 w-4" /> Add Service</Button>
                   </div>
               </div>

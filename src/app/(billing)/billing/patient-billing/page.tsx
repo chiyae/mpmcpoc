@@ -354,6 +354,8 @@ export default function PatientBillingPage() {
                                             if (item.stockQuantity > 0) {
                                                 setSelectedMedicine(item.id);
                                                 setMedicineSearch(formatItemName(item));
+                                            } else {
+                                                toast({ variant: 'destructive', title: 'Out of Stock', description: `${formatItemName(item)} cannot be selected.`})
                                             }
                                         }}
                                     >
@@ -512,4 +514,3 @@ export default function PatientBillingPage() {
   );
 }
 
-    

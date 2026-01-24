@@ -55,6 +55,9 @@ import { collection, doc, setDoc } from 'firebase/firestore';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useSettings } from '@/context/settings-provider';
 import { ItemForm } from '@/components/item-form';
+import { ItemImportDialog } from '@/components/item-import-dialog';
+import { Upload } from 'lucide-react';
+
 
 function formatItemName(item: Item | Omit<Item, 'id' | 'itemCode'>) {
     let name = item.genericName;
@@ -91,6 +94,7 @@ export default function ItemMasterPage() {
   const [rowSelection, setRowSelection] = React.useState({});
   
   const [isDialogOpen, setIsDialogOpen] = React.useState(false);
+  const [isImportOpen, setIsImportOpen] = React.useState(false);
   const [selectedItem, setSelectedItem] = React.useState<Item | null>(null);
 
   const [isClient, setIsClient] = React.useState(false);
@@ -290,7 +294,13 @@ export default function ItemMasterPage() {
             />
             <div className="flex items-center gap-2">
                 {isClient && (
+                  <>
+                    <Button variant="outline" onClick={() => setIsImportOpen(true)}>
+                      <Upload className="mr-2 h-4 w-4" />
+                      Import from CSV
+                    </Button>
                     <Button onClick={() => handleOpenDialog(null)}>Add New Item</Button>
+                  </>
                 )}
                 <DropdownMenu>
                 <DropdownMenuTrigger asChild>
@@ -405,20 +415,24 @@ export default function ItemMasterPage() {
       </div>
       
       {isClient && (
-        <Dialog open={isDialogOpen} onOpenChange={handleCloseDialog}>
-            <DialogContent className="sm:max-w-3xl">
-                <DialogHeader>
-                <DialogTitle>{selectedItem ? `Edit Item: ${formatItemName(selectedItem)}` : 'Add New Master Item'}</DialogTitle>
-                <DialogDescription>
-                    {selectedItem ? 'Update the details for this item. The item code cannot be changed.' : 'Define a new item that can be stocked in inventory. The item code will be generated automatically.'}
-                </DialogDescription>
-                </DialogHeader>
-                <ItemForm
-                    item={selectedItem}
-                    onSubmit={handleFormSubmit}
-                />
-            </DialogContent>
-        </Dialog>
+        <>
+          <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+              <DialogContent className="sm:max-w-3xl">
+                  <DialogHeader>
+                  <DialogTitle>{selectedItem ? `Edit Item: ${formatItemName(selectedItem)}` : 'Add New Master Item'}</DialogTitle>
+                  <DialogDescription>
+                      {selectedItem ? 'Update the details for this item. The item code cannot be changed.' : 'Define a new item that can be stocked in inventory. The item code will be generated automatically.'}
+                  </DialogDescription>
+                  </DialogHeader>
+                  <ItemForm
+                      item={selectedItem}
+                      onSubmit={handleFormSubmit}
+                  />
+              </DialogContent>
+          </Dialog>
+
+          <ItemImportDialog isOpen={isImportOpen} onOpenChange={setIsImportOpen} />
+        </>
       )}
     </div>
   );

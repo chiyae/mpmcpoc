@@ -81,6 +81,7 @@ export function AddUserForm({ onUserAdded }: AddUserFormProps) {
         displayName: values.displayName,
         role: values.role,
         locationId: values.locationId,
+        disabled: false,
       });
 
 

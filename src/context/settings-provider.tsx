@@ -1,8 +1,7 @@
-
 'use client';
 
 import React, { createContext, useContext, ReactNode, useMemo } from 'react';
-import { useDoc, useFirestore, useMemoFirebase } from '@/firebase';
+import { useDoc, useFirestore, useMemoFirebase, useUser } from '@/firebase';
 import { doc } from 'firebase/firestore';
 import { Skeleton } from '@/components/ui/skeleton';
 
@@ -31,12 +30,13 @@ const SettingsContext = createContext<SettingsContextValue | undefined>(undefine
 
 export function SettingsProvider({ children }: { children: ReactNode }) {
     const firestore = useFirestore();
+    const { user, isUserLoading } = useUser();
 
     const settingsDocRef = useMemoFirebase(
-        () => (firestore ? doc(firestore, 'settings', 'clinic') : null),
-        [firestore]
+        () => (firestore && user ? doc(firestore, 'settings', 'clinic') : null),
+        [firestore, user]
       );
-    const { data: settingsData, isLoading, error } = useDoc<ClinicSettings>(settingsDocRef);
+    const { data: settingsData, isLoading: isSettingsLoading, error } = useDoc<ClinicSettings>(settingsDocRef);
     
     const settings = useMemo(() => settingsData || defaultSettings, [settingsData]);
     const currency = useMemo(() => settings?.currency || 'USD', [settings]);
@@ -50,18 +50,12 @@ export function SettingsProvider({ children }: { children: ReactNode }) {
 
     const value = useMemo(() => ({
         settings,
-        isLoading: isLoading && !error,
+        isLoading: isUserLoading || isSettingsLoading,
         currency,
         formatCurrency,
-    }), [settings, isLoading, error, currency]);
+    }), [settings, isUserLoading, isSettingsLoading, currency]);
 
-    if (isLoading && !error) {
-        // You might want to render a global loading spinner here
-        // For now, we'll render children, but they should handle their own loading state.
-        return <div className="flex flex-col items-center justify-center min-h-screen bg-background p-4">
-            <Skeleton className="h-96 w-full" />
-        </div>;
-    }
+    // The main page.tsx handles the initial auth loading skeleton, so we don't need a global one here.
     
     if (error) {
         // console.error("Error loading settings, using default. Error:", error);

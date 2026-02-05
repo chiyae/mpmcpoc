@@ -26,10 +26,9 @@ import Logo from '@/components/logo';
 import { useAuth, useFirestore, useUser } from '@/firebase';
 import { useRouter } from 'next/navigation';
 import { useToast } from '@/hooks/use-toast';
-import { createUserWithEmailAndPassword, signInWithEmailAndPassword, User as FirebaseAuthUser } from 'firebase/auth';
+import { signInWithEmailAndPassword } from 'firebase/auth';
 import { Skeleton } from '@/components/ui/skeleton';
-import { doc, getDoc, setDoc } from 'firebase/firestore';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import { doc, getDoc } from 'firebase/firestore';
 
 const formSchema = z.object({
   email: z.string().email({ message: 'Please enter a valid email address.' }),
@@ -61,36 +60,6 @@ export default function LoginPage() {
       router.push('/');
     }
   }, [user, isUserLoading, router]);
-
-  async function handleUserDocCreation(signedInUser: FirebaseAuthUser) {
-    if (!firestore) return;
-    
-    const userDocRef = doc(firestore, 'users', signedInUser.uid);
-    const userDocSnap = await getDoc(userDocRef);
-
-    if (!userDocSnap.exists()) {
-      const isAdmin = signedInUser.email === 'admin@example.com';
-      const userRole = isAdmin ? 'admin' : 'pharmacy'; // Default role
-      const userLocation = isAdmin ? 'all' : 'unassigned';
-      const userDisplayName = signedInUser.email?.split('@')[0] || 'New User';
-
-      try {
-        await setDoc(userDocRef, {
-          id: signedInUser.uid,
-          username: signedInUser.email,
-          displayName: userDisplayName,
-          role: userRole,
-          locationId: userLocation,
-          disabled: false,
-        });
-
-      } catch (error: any) {
-        console.error("Failed to create user document:", error);
-        if(auth) auth.signOut(); // Log out user if profile creation fails
-        throw new Error("Could not create your user profile on the server.");
-      }
-    }
-  }
 
 
   async function handleSignIn(values: FormValues) {
@@ -137,35 +106,6 @@ export default function LoginPage() {
     } 
   }
   
-  async function handleSignUp(values: FormValues) {
-    if (!auth || !firestore) {
-      toast({ variant: 'destructive', title: 'Firebase not initialized.' });
-      return;
-    }
-    setIsSubmitting(true);
-
-    try {
-      const userCredential = await createUserWithEmailAndPassword(auth, values.email, values.password);
-      await handleUserDocCreation(userCredential.user);
-      toast({
-        title: 'Account Created!',
-        description: 'You have been signed in successfully.',
-      });
-    } catch (error: any) {
-      let description = error.message || 'An unexpected error occurred.';
-       if (error.code === 'auth/email-already-in-use') {
-        description = 'This email is already in use. Please try signing in instead.';
-      }
-      toast({
-        variant: 'destructive',
-        title: 'Sign Up Failed',
-        description: description,
-      });
-    } finally {
-      setIsSubmitting(false);
-    }
-  }
-
   if (isUserLoading || user) {
     return (
       <div className="flex flex-col items-center justify-center min-h-screen bg-background p-4">
@@ -220,31 +160,20 @@ export default function LoginPage() {
 
   return (
     <div className="flex min-h-screen items-center justify-center bg-background px-4">
-        <Tabs defaultValue="signin" className="w-full max-w-sm">
-            <Card>
-                <CardHeader className="text-center">
-                    <div className="mb-4 flex justify-center">
-                        <Logo />
-                    </div>
-                    <CardTitle className="text-2xl">Welcome</CardTitle>
-                    <CardDescription>
-                        Sign in to your account or create a new one.
-                    </CardDescription>
-                </CardHeader>
-                <CardContent className='space-y-4'>
-                    <TabsList className="grid w-full grid-cols-2">
-                        <TabsTrigger value="signin">Sign In</TabsTrigger>
-                        <TabsTrigger value="signup">Sign Up</TabsTrigger>
-                    </TabsList>
-                    <TabsContent value="signin">
-                        <LoginForm onFormSubmit={handleSignIn} buttonText="Sign In" />
-                    </TabsContent>
-                    <TabsContent value="signup">
-                        <LoginForm onFormSubmit={handleSignUp} buttonText="Create Account" />
-                    </TabsContent>
-                </CardContent>
-            </Card>
-        </Tabs>
+        <Card className="w-full max-w-sm">
+            <CardHeader className="text-center">
+                <div className="mb-4 flex justify-center">
+                    <Logo />
+                </div>
+                <CardTitle className="text-2xl">Welcome Back</CardTitle>
+                <CardDescription>
+                    Sign in to your account to continue.
+                </CardDescription>
+            </CardHeader>
+            <CardContent>
+                <LoginForm onFormSubmit={handleSignIn} buttonText="Sign In" />
+            </CardContent>
+        </Card>
     </div>
   );
 }

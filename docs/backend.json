@@ -271,6 +271,10 @@
         "locationId": {
           "type": "string",
           "description": "Location this user is assigned to (e.g., 'dispensary', 'bulk-store', 'all')."
+        },
+        "disabled": {
+          "type": "boolean",
+          "description": "If true, the user's account is disabled and they cannot log in."
         }
       },
       "required": [

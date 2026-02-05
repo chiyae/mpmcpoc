@@ -13,7 +13,7 @@ import {
 import { Badge } from '@/components/ui/badge';
 import type { User } from '@/lib/types';
 import { useCollection, useFirestore, useMemoFirebase, useUser } from '@/firebase';
-import { collection, query, where } from 'firebase/firestore';
+import { collection, doc, setDoc } from 'firebase/firestore';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import {
@@ -34,6 +34,15 @@ import {
 } from '@/components/ui/dialog';
 import { AddUserForm } from '@/components/add-user-form';
 import { useToast } from '@/hooks/use-toast';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
+import { DotsHorizontalIcon } from '@radix-ui/react-icons';
 
 export default function UserManagementPage() {
   const { toast } = useToast();
@@ -59,6 +68,38 @@ export default function UserManagementPage() {
     setIsAddUserOpen(false);
     // The useCollection hook will automatically update the list
   }
+
+  const handleToggleDisable = async (targetUser: User) => {
+    if (!firestore || !authUser) return;
+
+    if (targetUser.id === authUser.uid) {
+      toast({
+        variant: 'destructive',
+        title: 'Action Not Allowed',
+        description: 'You cannot disable your own account.',
+      });
+      return;
+    }
+
+    const userRef = doc(firestore, 'users', targetUser.id);
+    const newDisabledState = !targetUser.disabled;
+
+    try {
+      await setDoc(userRef, { disabled: newDisabledState }, { merge: true });
+      toast({
+        title: 'User Updated',
+        description: `${targetUser.displayName}'s account has been ${newDisabledState ? 'disabled' : 'enabled'}.`,
+      });
+    } catch (error) {
+      console.error('Error updating user status:', error);
+      toast({
+        variant: 'destructive',
+        title: 'Update Failed',
+        description: "Could not update the user's status.",
+      });
+    }
+  };
+
 
   if (error) {
     return (
@@ -112,16 +153,20 @@ export default function UserManagementPage() {
                     <TableHead>Email / Username</TableHead>
                     <TableHead>Role</TableHead>
                     <TableHead>Location</TableHead>
-                    <TableHead>Actions</TableHead>
+                    <TableHead>Status</TableHead>
+                    <TableHead className="text-right">Actions</TableHead>
                 </TableRow>
             </TableHeader>
             <TableBody>
                 {isLoading && Array.from({ length: 3 }).map((_, i) => (
                     <TableRow key={i}>
-                        <TableCell colSpan={5}><Skeleton className="h-8 w-full" /></TableCell>
+                        <TableCell colSpan={6}><Skeleton className="h-8 w-full" /></TableCell>
                     </TableRow>
                 ))}
-                {!isLoading && users && users.map(user => (
+                {!isLoading && users && users.map(user => {
+                  const isSelf = authUser?.uid === user.id;
+
+                  return (
                     <TableRow key={user.id}>
                         <TableCell>
                             <div className="flex items-center gap-3">
@@ -135,10 +180,37 @@ export default function UserManagementPage() {
                         <TableCell><Badge>{user.role}</Badge></TableCell>
                         <TableCell><Badge variant="secondary">{user.locationId}</Badge></TableCell>
                         <TableCell>
-                            <Button variant="ghost" size="sm">Edit</Button>
+                          <Badge variant={user.disabled ? 'destructive' : 'default'}>
+                            {user.disabled ? 'Disabled' : 'Active'}
+                          </Badge>
+                        </TableCell>
+                        <TableCell className="text-right">
+                            <DropdownMenu>
+                              <DropdownMenuTrigger asChild>
+                                <Button variant="ghost" className="h-8 w-8 p-0">
+                                  <span className="sr-only">Open menu</span>
+                                  <DotsHorizontalIcon className="h-4 w-4" />
+                                </Button>
+                              </DropdownMenuTrigger>
+                              <DropdownMenuContent align="end">
+                                <DropdownMenuLabel>Actions</DropdownMenuLabel>
+                                <DropdownMenuItem disabled>
+                                  Edit
+                                </DropdownMenuItem>
+                                <DropdownMenuSeparator />
+                                <DropdownMenuItem
+                                  onClick={() => handleToggleDisable(user)}
+                                  disabled={isSelf}
+                                  className={!user.disabled ? 'text-destructive focus:text-destructive' : ''}
+                                >
+                                  {user.disabled ? 'Enable User' : 'Disable User'}
+                                </DropdownMenuItem>
+                              </DropdownMenuContent>
+                            </DropdownMenu>
                         </TableCell>
                     </TableRow>
-                ))}
+                  );
+                })}
             </TableBody>
           </Table>
           {!isLoading && (!users || users.length === 0) && (
@@ -149,3 +221,5 @@ export default function UserManagementPage() {
     </div>
   );
 }
+
+    

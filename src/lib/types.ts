@@ -48,6 +48,7 @@ export interface User {
   displayName: string;
   role: UserRole;
   locationId: string; // e.g. 'bulk-store', 'dispensary', 'billing', 'all'
+  disabled?: boolean;
 }
 
 export interface Vendor {

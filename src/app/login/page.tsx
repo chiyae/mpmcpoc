@@ -81,6 +81,7 @@ export default function LoginPage() {
           displayName: userDisplayName,
           role: userRole,
           locationId: userLocation,
+          disabled: false,
         });
 
       } catch (error: any) {
@@ -100,7 +101,24 @@ export default function LoginPage() {
     setIsSubmitting(true);
 
     try {
-      await signInWithEmailAndPassword(auth, values.email, values.password);
+      const userCredential = await signInWithEmailAndPassword(auth, values.email, values.password);
+      const user = userCredential.user;
+
+      // Check if user account is disabled
+      const userDocRef = doc(firestore, 'users', user.uid);
+      const userDocSnap = await getDoc(userDocRef);
+
+      if (userDocSnap.exists() && userDocSnap.data().disabled === true) {
+        await auth.signOut();
+        toast({
+          variant: 'destructive',
+          title: 'Account Disabled',
+          description: 'Your account has been disabled. Please contact an administrator.',
+        });
+        setIsSubmitting(false);
+        return;
+      }
+      
       toast({
         title: 'Sign in successful',
         description: 'Redirecting to your dashboard...',
@@ -115,9 +133,8 @@ export default function LoginPage() {
         title: 'Sign In Failed',
         description: description,
       });
-    } finally {
       setIsSubmitting(false);
-    }
+    } 
   }
   
   async function handleSignUp(values: FormValues) {
@@ -231,3 +248,5 @@ export default function LoginPage() {
     </div>
   );
 }
+
+    

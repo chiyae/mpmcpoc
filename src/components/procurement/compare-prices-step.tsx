@@ -10,19 +10,13 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '.
 import { Input } from '../ui/input';
 import { Skeleton } from '../ui/skeleton';
 import { useSettings } from '@/context/settings-provider';
+import { formatItemName } from '@/lib/utils';
 
 interface ComparePricesStepProps {
   procurementListIds: string[];
   initialQuotes: Record<string, Record<string, number>>;
   onComplete: (vendorQuotes: Record<string, Record<string, number>>) => void;
   onBack: () => void;
-}
-
-function formatItemName(item: Item) {
-    let name = item.genericName;
-    if (item.brandName) name += ` (${item.brandName})`;
-    if (item.strengthValue) name += ` ${item.strengthValue}${item.strengthUnit}`;
-    return name;
 }
 
 export function ComparePricesStep({ procurementListIds, initialQuotes, onComplete, onBack }: ComparePricesStepProps) {
@@ -133,5 +127,3 @@ export function ComparePricesStep({ procurementListIds, initialQuotes, onComplet
         </Card>
     );
 }
-
-    

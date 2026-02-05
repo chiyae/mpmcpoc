@@ -18,24 +18,10 @@ import {
 import { Home, Users, Package, Truck, Settings, HandHeart } from "lucide-react";
 import Logo from "@/components/logo";
 import DashboardHeader from "@/components/dashboard-header";
-import { useUser, useDoc, useFirestore, useMemoFirebase } from '@/firebase';
-import type { User as AppUser } from '@/lib/types';
-import { doc } from 'firebase/firestore';
+import { useAppUser } from "@/hooks/use-app-user";
 
 export default function SettingsLayout({ children }: { children: ReactNode }) {
-  const firestore = useFirestore();
-  const { user: authUser, isUserLoading: isAuthLoading } = useUser();
-  
-  const userDocRef = useMemoFirebase(() => (firestore && authUser) ? doc(firestore, 'users', authUser.uid) : null, [firestore, authUser]);
-  const { data: appUser, isLoading: isAppUserLoading } = useDoc<AppUser>(userDocRef);
-
-  const isLoading = isAuthLoading || isAppUserLoading;
-
-  const user = { 
-    name: isLoading ? "Loading..." : appUser?.displayName || authUser?.email || "User", 
-    role: isLoading ? "..." : appUser?.role || "user", 
-    avatarUrl: authUser ? `https://picsum.photos/seed/${authUser.uid}/100/100` : "https://picsum.photos/seed/1/100/100" 
-  };
+  const { user } = useAppUser();
   
   return (
     <SidebarProvider>

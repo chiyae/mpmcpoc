@@ -6,6 +6,7 @@ import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, Command
 import { ScrollArea } from '../ui/scroll-area';
 import type { Item } from '@/lib/types';
 import { Skeleton } from '../ui/skeleton';
+import { formatItemName } from '@/lib/utils';
 
 
 interface ManuallyAddItemDialogProps {
@@ -14,13 +15,6 @@ interface ManuallyAddItemDialogProps {
     allItems: Item[];
     onItemSelected: (item: Item) => void;
     isLoading: boolean;
-}
-
-function formatItemName(item: Item) {
-    let name = item.genericName;
-    if (item.brandName) name += ` (${item.brandName})`;
-    if (item.strengthValue) name += ` ${item.strengthValue}${item.strengthUnit}`;
-    return name;
 }
 
 export function ManuallyAddItemDialog({ isOpen, onOpenChange, allItems, onItemSelected, isLoading }: ManuallyAddItemDialogProps) {

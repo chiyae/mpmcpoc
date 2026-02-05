@@ -13,6 +13,7 @@ import { Skeleton } from '../ui/skeleton';
 import { Input } from '../ui/input';
 import { useToast } from '@/hooks/use-toast';
 import { useSearchParams } from 'next/navigation';
+import { formatItemName } from '@/lib/utils';
 
 interface FinalizeLpoStepProps {
   procurementListIds: string[];
@@ -28,13 +29,6 @@ interface DraftLpo {
   vendorName: string;
   items: (LocalPurchaseOrderItem)[];
   grandTotal: number;
-}
-
-function formatItemName(item: Item) {
-  let name = item.genericName;
-  if (item.brandName) name += ` (${item.brandName})`;
-  if (item.strengthValue) name += ` ${item.strengthValue}${item.strengthUnit}`;
-  return name;
 }
 
 export function FinalizeLpoStep({ 

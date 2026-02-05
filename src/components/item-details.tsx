@@ -3,13 +3,6 @@
 
 import type { Item, Stock } from "@/lib/types";
 import {
-  Card,
-  CardContent,
-  CardHeader,
-  CardTitle,
-  CardDescription,
-} from "@/components/ui/card";
-import {
   Table,
   TableBody,
   TableCell,
@@ -17,21 +10,14 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { ScrollArea } from "./ui/scroll-area";
 import { Badge } from "./ui/badge";
 import { format } from "date-fns";
 import { useSettings } from "@/context/settings-provider";
+import { formatItemName } from "@/lib/utils";
 
 type ItemDetailsProps = {
   item: Item & { stock?: Stock };
 };
-
-function formatItemName(item: Item) {
-    let name = item.genericName;
-    if (item.brandName) name += ` (${item.brandName})`;
-    if (item.strengthValue) name += ` ${item.strengthValue}${item.strengthUnit}`;
-    return name;
-  }
 
 export function ItemDetails({ item }: ItemDetailsProps) {
   const { formatCurrency } = useSettings();
@@ -88,5 +74,3 @@ export function ItemDetails({ item }: ItemDetailsProps) {
     </div>
   );
 }
-
-    

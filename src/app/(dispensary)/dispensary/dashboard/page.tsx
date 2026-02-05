@@ -8,13 +8,14 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { Package, AlertTriangle, DollarSign } from "lucide-react";
+import { Package, AlertTriangle, DollarSign, History, BarChart } from "lucide-react";
 import { useSettings } from '@/context/settings-provider';
 import { useCollection, useFirestore, useMemoFirebase } from '@/firebase';
 import { collection, query, where } from 'firebase/firestore';
 import type { Stock, Bill, Item } from '@/lib/types';
 import { differenceInDays, parseISO, isToday } from 'date-fns';
-import { Skeleton } from '@/components/ui/skeleton';
+import { StatCard } from '@/components/ui/stat-card';
+import { EmptyState } from '@/components/ui/empty-state';
 
 export default function DispensaryDashboard() {
   const { formatCurrency } = useSettings();
@@ -92,64 +93,47 @@ export default function DispensaryDashboard() {
   return (
     <div className="space-y-6">
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Items on Hand</CardTitle>
-            <Package className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            {isLoading ? <Skeleton className='h-8 w-1/2' /> : <div className="text-2xl font-bold">{totalItems}</div>}
-            <p className="text-xs text-muted-foreground">
-              Unique items in dispensary
-            </p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Low Stock Alerts</CardTitle>
-            <AlertTriangle className="h-4 w-4 text-orange-500" />
-          </CardHeader>
-          <CardContent>
-             {isLoading ? <Skeleton className='h-8 w-1/2' /> : <div className="text-2xl font-bold">{lowStockItemsCount}</div>}
-            <p className="text-xs text-muted-foreground">
-              Items below their reorder level
-            </p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Near Expiry Alerts</CardTitle>
-            <AlertTriangle className="h-4 w-4 text-destructive" />
-          </CardHeader>
-          <CardContent>
-             {isLoading ? <Skeleton className='h-8 w-1/2' /> : <div className="text-2xl font-bold">{nearExpiryItems}</div>}
-            <p className="text-xs text-muted-foreground">
-              Items expiring within 30 days
-            </p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Today's Sales</CardTitle>
-            <DollarSign className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            {isLoading ? <Skeleton className='h-8 w-1/2' /> : <div className="text-2xl font-bold">{formatCurrency(todaysSales)}</div>}
-            <p className="text-xs text-muted-foreground">
-              Total revenue from dispensed items today
-            </p>
-          </CardContent>
-        </Card>
+        <StatCard
+          title="Items on Hand"
+          value={totalItems}
+          icon={Package}
+          description="Unique items in dispensary"
+          isLoading={isLoading}
+        />
+        <StatCard
+          title="Low Stock Alerts"
+          value={lowStockItemsCount}
+          icon={AlertTriangle}
+          description="Items below reorder level"
+          isLoading={isLoading}
+        />
+        <StatCard
+          title="Near Expiry Alerts"
+          value={nearExpiryItems}
+          icon={AlertTriangle}
+          description="Items expiring in 30 days"
+          isLoading={isLoading}
+        />
+        <StatCard
+          title="Today's Sales"
+          value={formatCurrency(todaysSales)}
+          icon={DollarSign}
+          description="Revenue from dispensed items"
+          isLoading={isLoading}
+        />
       </div>
 
-       {/* Placeholder for more dashboard components */}
        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-7">
         <Card className="col-span-4">
           <CardHeader>
             <CardTitle>Sales Overview</CardTitle>
           </CardHeader>
           <CardContent className="pl-2">
-            <p>Sales chart will be here.</p>
+            <EmptyState
+              icon={BarChart}
+              title="Sales Chart"
+              description="A chart showing sales trends will be implemented here."
+            />
           </CardContent>
         </Card>
         <Card className="col-span-3">
@@ -160,12 +144,14 @@ export default function DispensaryDashboard() {
             </CardDescription>
           </CardHeader>
           <CardContent>
-             <p>A list of recent billings will be shown here.</p>
+             <EmptyState
+                icon={History}
+                title="No Recent Activity"
+                description="A list of recently dispensed items will appear here."
+            />
           </CardContent>
         </Card>
       </div>
     </div>
   );
 }
-
-    

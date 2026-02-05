@@ -46,18 +46,12 @@ import { useCollection, useDoc, useFirestore, useMemoFirebase, useUser } from '@
 import { collection, doc, query, setDoc, where } from 'firebase/firestore';
 import { Skeleton } from '@/components/ui/skeleton';
 import { ItemDetails } from '@/components/item-details';
+import { formatItemName } from '@/lib/utils';
 
 
 type DispensaryStockItem = Item & {
   stockData: Stock;
 };
-
-function formatItemName(item: Item) {
-    let name = item.genericName;
-    if (item.brandName) name += ` (${item.brandName})`;
-    if (item.strengthValue) name += ` ${item.strengthValue}${item.strengthUnit}`;
-    return name;
-}
 
 export default function DispensaryInventoryPage() {
   const { toast } = useToast();

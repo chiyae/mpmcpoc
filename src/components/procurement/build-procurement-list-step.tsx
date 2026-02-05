@@ -12,17 +12,11 @@ import type { Item, Stock } from '@/lib/types';
 import { Skeleton } from '../ui/skeleton';
 import { PlusCircle, Trash2 } from 'lucide-react';
 import { ManuallyAddItemDialog } from './manually-add-item-dialog';
+import { formatItemName } from '@/lib/utils';
 
 interface BuildProcurementListStepProps {
   initialList: string[]; // Now takes array of item IDs
   onComplete: (procurementList: Item[]) => void;
-}
-
-function formatItemName(item: Item) {
-  let name = item.genericName;
-  if (item.brandName) name += ` (${item.brandName})`;
-  if (item.strengthValue) name += ` ${item.strengthValue}${item.strengthUnit}`;
-  return name;
 }
 
 export function BuildProcurementListStep({ initialList, onComplete }: BuildProcurementListStepProps) {

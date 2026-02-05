@@ -12,7 +12,9 @@ import { Package, AlertTriangle, Truck } from "lucide-react";
 import { useCollection, useFirestore, useMemoFirebase } from '@/firebase';
 import type { Stock, Item, InternalOrder } from '@/lib/types';
 import { collection, query, where } from 'firebase/firestore';
-import { Skeleton } from '@/components/ui/skeleton';
+import { StatCard } from '@/components/ui/stat-card';
+import { EmptyState } from '@/components/ui/empty-state';
+import { BarChart, History } from 'lucide-react';
 
 export default function BulkStoreDashboard() {
   const firestore = useFirestore();
@@ -58,52 +60,40 @@ export default function BulkStoreDashboard() {
   return (
     <div className="space-y-6">
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Total Items</CardTitle>
-            <Package className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            {isLoading ? <Skeleton className="h-8 w-1/2" /> : <div className="text-2xl font-bold">{totalUniqueItems}</div>}
-            <p className="text-xs text-muted-foreground">
-              Unique items in bulk store
-            </p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Low Stock Alerts</CardTitle>
-            <AlertTriangle className="h-4 w-4 text-destructive" />
-          </CardHeader>
-          <CardContent>
-            {isLoading ? <Skeleton className="h-8 w-1/2" /> : <div className="text-2xl font-bold">{lowStockItemsCount}</div>}
-            <p className="text-xs text-muted-foreground">
-              Items below reorder level
-            </p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Pending Orders</CardTitle>
-            <Truck className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            {isLoading ? <Skeleton className="h-8 w-1/2" /> : <div className="text-2xl font-bold">+{pendingOrdersCount}</div>}
-            <p className="text-xs text-muted-foreground">
-              Internal orders from dispensary
-            </p>
-          </CardContent>
-        </Card>
+        <StatCard
+          title="Total Items"
+          value={totalUniqueItems}
+          icon={Package}
+          description="Unique items in bulk store"
+          isLoading={isLoading}
+        />
+        <StatCard
+          title="Low Stock Alerts"
+          value={lowStockItemsCount}
+          icon={AlertTriangle}
+          description="Items below reorder level"
+          isLoading={isLoading}
+        />
+        <StatCard
+          title="Pending Orders"
+          value={`+${pendingOrdersCount}`}
+          icon={Truck}
+          description="Internal orders from dispensary"
+          isLoading={isLoading}
+        />
       </div>
 
-      {/* Placeholder for more dashboard components */}
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-7">
         <Card className="col-span-4">
           <CardHeader>
             <CardTitle>Overview</CardTitle>
           </CardHeader>
           <CardContent className="pl-2">
-            <p>Chart or recent activity will be here.</p>
+            <EmptyState
+              icon={BarChart}
+              title="Inventory Overview Chart"
+              description="A chart showing inventory value or stock levels will be here."
+            />
           </CardContent>
         </Card>
         <Card className="col-span-3">
@@ -114,12 +104,14 @@ export default function BulkStoreDashboard() {
             </CardDescription>
           </CardHeader>
           <CardContent>
-             <p>A list of recent transfers will be shown here.</p>
+            <EmptyState
+              icon={History}
+              title="No Recent Transfers"
+              description="A list of recent transfers will be shown here."
+            />
           </CardContent>
         </Card>
       </div>
     </div>
   );
 }
-
-    

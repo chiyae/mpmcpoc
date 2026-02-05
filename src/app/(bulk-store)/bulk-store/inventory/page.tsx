@@ -61,18 +61,11 @@ import { generateLpo } from '@/ai/flows/lpo-generation';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useCollection, useFirestore, useMemoFirebase } from '@/firebase';
 import { addDoc, collection, doc, setDoc, writeBatch, query, where } from 'firebase/firestore';
+import { formatItemName } from '@/lib/utils';
 
 type BulkStoreInventoryItem = Item & {
   stock?: Stock; // Stock is now optional
 };
-
-
-function formatItemName(item: Item | Omit<Item, 'id' | 'itemCode'>) {
-  let name = item.genericName;
-  if (item.brandName) name += ` (${item.brandName})`;
-  if (item.strengthValue) name += ` ${item.strengthValue}${item.strengthUnit}`;
-  return name;
-}
 
 export default function BulkStoreInventoryPage() {
   const { toast } = useToast();
@@ -616,4 +609,3 @@ export default function BulkStoreInventoryPage() {
     </div>
   );
 }
-

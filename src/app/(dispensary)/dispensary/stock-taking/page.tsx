@@ -39,18 +39,11 @@ import { useCollection, useDoc, useFirestore, useMemoFirebase } from '@/firebase
 import { collection, doc, query, where, writeBatch, setDoc, getDocs } from 'firebase/firestore';
 import { Skeleton } from '@/components/ui/skeleton';
 import { format } from 'date-fns';
+import { formatItemName } from '@/lib/utils';
 
 type EditableStockTakeItem = StockTakeItem & {
   physicalQty: number | ''; // Allow empty string for input
 };
-
-
-function formatItemName(item: {genericName: string, brandName?: string, strengthValue?: number, strengthUnit?: string}) {
-    let name = item.genericName;
-    if (item.brandName) name += ` (${item.brandName})`;
-    if (item.strengthValue) name += ` ${item.strengthValue}${item.strengthUnit}`;
-    return name;
-}
 
 export default function StockTakingPage() {
   const { toast } = useToast();
@@ -76,7 +69,7 @@ export default function StockTakingPage() {
         
         const [stockSnapshot, itemsSnapshot] = await Promise.all([
           getDocs(stockQuery),
-          getDocs(itemsQuery),
+          getDocs(itemsSnapshot),
         ]);
         
         const allItems = itemsSnapshot.docs.map(d => ({ id: d.id, ...d.data() })) as Item[];

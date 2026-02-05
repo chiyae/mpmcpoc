@@ -19,19 +19,13 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { Button } from '@/components/ui/button';
 import { AlertTriangle, ListPlus } from 'lucide-react';
 import { ManuallyAddItemDialog } from '@/components/procurement/manually-add-item-dialog';
+import { formatItemName } from '@/lib/utils';
 
 type ItemForRequest = {
     id: string;
     name: string;
     bulkStoreQty: number;
 };
-
-function formatItemName(item: Item) {
-    let name = item.genericName;
-    if (item.brandName) name += ` (${item.brandName})`;
-    if (item.strengthValue) name += ` ${item.strengthValue}${item.strengthUnit}`;
-    return name;
-}
 
 export default function RequestStockPage() {
   const firestore = useFirestore();

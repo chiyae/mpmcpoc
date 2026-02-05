@@ -16,6 +16,9 @@ import { collection } from 'firebase/firestore';
 import type { Bill } from '@/lib/types';
 import { Skeleton } from '@/components/ui/skeleton';
 import { isThisMonth, parseISO } from 'date-fns';
+import { StatCard } from '@/components/ui/stat-card';
+import { EmptyState } from '@/components/ui/empty-state';
+import { BarChart } from 'lucide-react';
 
 export default function BillingDashboard() {
   const { formatCurrency } = useSettings();
@@ -54,20 +57,6 @@ export default function BillingDashboard() {
     return { totalRevenue, outstandingInvoices, averageBillValue, totalPatients, recentPayments };
 
   }, [bills]);
-
-
-  const StatCard = ({ title, value, icon: Icon, description, isLoading }: { title: string, value: string | number, icon: React.ElementType, description: string, isLoading: boolean }) => (
-    <Card>
-        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">{title}</CardTitle>
-            <Icon className="h-4 w-4 text-muted-foreground" />
-        </CardHeader>
-        <CardContent>
-            {isLoading ? <Skeleton className="h-8 w-3/4" /> : <div className="text-2xl font-bold">{value}</div>}
-            {isLoading ? <Skeleton className="h-4 w-1/2 mt-1" /> : <p className="text-xs text-muted-foreground">{description}</p>}
-        </CardContent>
-    </Card>
-  )
 
   return (
     <div className="space-y-6">
@@ -108,7 +97,11 @@ export default function BillingDashboard() {
             <CardTitle>Revenue Overview</CardTitle>
           </CardHeader>
           <CardContent className="pl-2">
-            <p>Revenue chart will be here.</p>
+            <EmptyState 
+              icon={BarChart}
+              title="Revenue Chart"
+              description="A chart showing revenue trends will be implemented here."
+            />
           </CardContent>
         </Card>
         <Card className="col-span-3">

@@ -1,5 +1,4 @@
 
-
 'use client';
 
 import * as React from 'react';
@@ -57,24 +56,7 @@ import { useSettings } from '@/context/settings-provider';
 import { ItemForm } from '@/components/item-form';
 import { ItemImportDialog } from '@/components/item-import-dialog';
 import { Upload } from 'lucide-react';
-
-
-function formatItemName(item: Item | Omit<Item, 'id' | 'itemCode'>) {
-    let name = item.genericName;
-    if (item.brandName) {
-      name += ` (${item.brandName})`;
-    }
-    if (item.strengthValue) {
-      name += ` ${item.strengthValue}${item.strengthUnit}`;
-    }
-    if (item.concentrationValue) {
-      name += ` ${item.concentrationValue}${item.concentrationUnit}`;
-    }
-    if (item.packageSizeValue) {
-      name += ` (${item.packageSizeValue}${item.packageSizeUnit})`;
-    }
-    return name;
-}
+import { formatItemName } from '@/lib/utils';
 
 
 export default function ItemMasterPage() {

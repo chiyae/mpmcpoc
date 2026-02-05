@@ -3,30 +3,22 @@
 
 import { useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { useUser, useDoc, useFirestore, useMemoFirebase } from '@/firebase';
 import { Skeleton } from '@/components/ui/skeleton';
 import { SidebarProvider, SidebarInset } from '@/components/ui/sidebar';
 import Logo from '@/components/logo';
 import DashboardHeader from '@/components/dashboard-header';
 import MainMenu from '@/app/main-menu';
-import type { User as AppUser } from '@/lib/types';
-import { doc } from 'firebase/firestore';
+import { useAppUser } from '@/hooks/use-app-user';
 
 export default function Home() {
-  const { user: authUser, isUserLoading: isAuthLoading } = useUser();
+  const { user: headerUser, isLoading, authUser } = useAppUser();
   const router = useRouter();
-  const firestore = useFirestore();
   
-  const userDocRef = useMemoFirebase(() => (firestore && authUser) ? doc(firestore, 'users', authUser.uid) : null, [firestore, authUser]);
-  const { data: appUser, isLoading: isAppUserLoading } = useDoc<AppUser>(userDocRef);
-
-  const isLoading = isAuthLoading || isAppUserLoading;
-
   useEffect(() => {
-    if (!isAuthLoading && !authUser) {
+    if (!isLoading && !authUser) {
       router.push('/login');
     }
-  }, [authUser, isAuthLoading, router]);
+  }, [authUser, isLoading, router]);
 
   if (isLoading || !authUser) {
     return (
@@ -46,12 +38,6 @@ export default function Home() {
       </div>
     );
   }
-
-  const headerUser = {
-    name: appUser?.displayName || authUser.email || "User",
-    role: appUser?.role || "user",
-    avatarUrl: authUser.photoURL || `https://picsum.photos/seed/${authUser.uid}/100/100`,
-  };
 
   return (
     <SidebarProvider>

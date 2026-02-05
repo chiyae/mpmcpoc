@@ -27,11 +27,7 @@ export default function SettingsLayout({ children }: { children: ReactNode }) {
     <SidebarProvider>
       <Sidebar collapsible="icon">
         <SidebarRail />
-        <SidebarHeader>
-          <Link href="/">
-            <Logo />
-          </Link>
-        </SidebarHeader>
+        
         <SidebarContent>
           <SidebarMenu>
             <SidebarMenuItem>

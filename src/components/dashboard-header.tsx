@@ -14,6 +14,7 @@ import { useEffect, useState } from "react";
 import { useAuth } from "@/firebase";
 import { useRouter } from "next/navigation";
 import { useToast } from "@/hooks/use-toast";
+import Logo from "./logo";
 
 type DashboardHeaderProps = {
     title: string;
@@ -49,7 +50,7 @@ function HeaderActions({ user }: { user: DashboardHeaderProps['user'] }) {
     };
 
     return (
-        <div className="ml-auto flex items-center gap-4">
+        <div className="flex items-center gap-4">
             <Link href="/" passHref>
               <Button variant="ghost" size="icon" aria-label="Home">
                 <Home className="h-5 w-5" />
@@ -111,10 +112,17 @@ export default function DashboardHeader({ title, user }: DashboardHeaderProps) {
     }
     
     return (
-        <header className="sticky top-0 z-10 flex h-16 items-center gap-4 border-b bg-background/80 px-4 backdrop-blur-sm md:px-6">
-            <SidebarTrigger />
+        <header className="sticky top-0 z-10 flex h-16 items-center justify-between border-b bg-background/80 px-4 backdrop-blur-sm md:px-6">
+            <div className="flex items-center gap-4">
+                <SidebarTrigger />
+                <h1 className="text-lg font-semibold md:text-2xl whitespace-nowrap">{title}</h1>
+            </div>
 
-            <h1 className="text-lg font-semibold md:text-2xl">{title}</h1>
+            <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2">
+                <Link href="/">
+                    <Logo />
+                </Link>
+            </div>
 
             <HeaderActions user={user} />
         </header>

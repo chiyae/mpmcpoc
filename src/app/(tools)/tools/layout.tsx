@@ -1,4 +1,6 @@
 
+'use client';
+
 import type { ReactNode } from "react";
 import Link from "next/link";
 import {
@@ -16,9 +18,24 @@ import {
 import { Home, Wrench, ShoppingCart, ListChecks, ClipboardCheck } from "lucide-react";
 import Logo from "@/components/logo";
 import DashboardHeader from "@/components/dashboard-header";
+import { useUser, useDoc, useFirestore, useMemoFirebase } from '@/firebase';
+import type { User as AppUser } from '@/lib/types';
+import { doc } from 'firebase/firestore';
 
 export default function ToolsLayout({ children }: { children: ReactNode }) {
-  const user = { name: "Admin User", role: "Administrator", avatarUrl: "https://picsum.photos/seed/1/100/100" };
+  const firestore = useFirestore();
+  const { user: authUser, isUserLoading: isAuthLoading } = useUser();
+  
+  const userDocRef = useMemoFirebase(() => (firestore && authUser) ? doc(firestore, 'users', authUser.uid) : null, [firestore, authUser]);
+  const { data: appUser, isLoading: isAppUserLoading } = useDoc<AppUser>(userDocRef);
+
+  const isLoading = isAuthLoading || isAppUserLoading;
+
+  const user = { 
+    name: isLoading ? "Loading..." : appUser?.displayName || authUser?.email || "User", 
+    role: isLoading ? "..." : appUser?.role || "user", 
+    avatarUrl: authUser ? `https://picsum.photos/seed/${authUser.uid}/100/100` : "https://picsum.photos/seed/1/100/100" 
+  };
   
   return (
     <SidebarProvider>

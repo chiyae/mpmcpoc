@@ -13,6 +13,7 @@ import Link from "next/link"
 import { useEffect, useState } from "react";
 import { useAuth } from "@/firebase";
 import { useRouter } from "next/navigation";
+import { useToast } from "@/hooks/use-toast";
 
 type DashboardHeaderProps = {
     title: string;
@@ -27,12 +28,24 @@ function HeaderActions({ user }: { user: DashboardHeaderProps['user'] }) {
     const avatarFallback = user.name.split(' ').map(n => n[0]).join('');
     const auth = useAuth();
     const router = useRouter();
+    const { toast } = useToast();
 
     const handleLogout = async () => {
-        if (auth) {
-            await auth.signOut();
+        try {
+            if (auth) {
+                await auth.signOut();
+            }
+        } catch (error) {
+            console.error("Logout failed:", error);
+            toast({
+                variant: "destructive",
+                title: "Logout Failed",
+                description: "An error occurred while signing out. Please try again.",
+            });
+        } finally {
+            // Ensure redirect happens even if signout fails network-wise
+            router.push('/login');
         }
-        router.push('/login');
     };
 
     return (
@@ -56,7 +69,7 @@ function HeaderActions({ user }: { user: DashboardHeaderProps['user'] }) {
                     <DropdownMenuLabel className="font-normal">
                         <div className="flex flex-col space-y-1">
                             <p className="text-sm font-medium leading-none">{user.name}</p>
-                            <p className="text-xs leading-none text-muted-foreground">{user.role}</p>
+                            <p className="text-xs leading-none text-muted-foreground capitalize">{user.role}</p>
                         </div>
                     </DropdownMenuLabel>
                     <DropdownMenuSeparator />

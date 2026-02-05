@@ -75,9 +75,14 @@ service cloud.firestore {
        ============================ */
 
     match /users/{userId} {
-      // User can read own doc. Admins can read/write any user doc.
+      // A user can read their own document.
       allow get: if isAuthenticated() && isUserDocOwner(userId);
-      allow list, create, update, delete: if isAdmin();
+
+      // Admins can list, update, and delete.
+      allow list, update, delete: if isAdmin();
+      
+      // A user can create their own document (needed for client-side account creation), or an admin can create one.
+      allow create: if (request.auth.uid == userId) || isAdmin();
     }
 
     /* ============================

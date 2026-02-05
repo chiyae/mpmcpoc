@@ -72,12 +72,8 @@ export function useCollection<T = any>(
         setIsLoading(false);
       },
       (err: FirestoreError) => {
-        // console.error("useCollection error:", err);
-        const contextualError = new FirestorePermissionError({
-            operation: 'list',
-            path: (memoizedTargetRefOrQuery as any)._query.path.canonicalString()
-        });
-        errorEmitter.emit('permission-error', contextualError);
+        // For read operations, we set the error state for the component to handle,
+        // rather than throwing a global error.
         setError(err);
         setData(null);
         setIsLoading(false);

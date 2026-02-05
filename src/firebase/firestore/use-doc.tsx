@@ -73,12 +73,8 @@ export function useDoc<T = any>(
         setIsLoading(false);
       },
       (err: FirestoreError) => {
-        // console.error("useDoc error:", err);
-        const contextualError = new FirestorePermissionError({
-            operation: 'get',
-            path: memoizedDocRef.path
-        });
-        errorEmitter.emit('permission-error', contextualError);
+        // For read operations, we set the error state for the component to handle,
+        // rather than throwing a global error.
         setError(err);
         setData(null);
         setIsLoading(false);

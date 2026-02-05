@@ -1,4 +1,3 @@
-
 'use client';
 
 import * as React from 'react';
@@ -23,9 +22,11 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { useToast } from '@/hooks/use-toast';
-import { useAuth, useFirestore } from '@/firebase';
-import { createUserWithEmailAndPassword } from 'firebase/auth';
-import { doc, setDoc, writeBatch } from 'firebase/firestore';
+import { useFirestore } from '@/firebase';
+import { createUserWithEmailAndPassword, getAuth } from 'firebase/auth';
+import { initializeApp, deleteApp } from 'firebase/app';
+import { firebaseConfig } from '@/firebase/config';
+import { doc, setDoc } from 'firebase/firestore';
 
 const formSchema = z.object({
   username: z.string().email({ message: 'Please enter a valid email.' }),
@@ -41,8 +42,7 @@ type AddUserFormProps = {
 
 export function AddUserForm({ onUserAdded }: AddUserFormProps) {
   const { toast } = useToast();
-  const auth = useAuth();
-  const firestore = useFirestore();
+  const firestore = useFirestore(); // Only need firestore from the main app
   const [isSubmitting, setIsSubmitting] = React.useState(false);
   
   const locations = [
@@ -62,18 +62,24 @@ export function AddUserForm({ onUserAdded }: AddUserFormProps) {
   });
 
   async function onSubmit(values: z.infer<typeof formSchema>) {
-    if (!auth || !firestore) {
+    if (!firestore) {
       toast({ variant: 'destructive', title: 'Firebase not initialized.' });
       return;
     }
 
     setIsSubmitting(true);
-    // This pattern is for demonstration purposes in an environment where backend functions aren't used.
-    // In a production app, this logic should be in a secure Cloud Function that uses the Firebase Admin SDK.
+    
+    // Create a temporary Firebase app instance to create the user without affecting the admin's session.
+    const tempAppName = `temp-user-creation-${Date.now()}`;
+    const tempApp = initializeApp(firebaseConfig, tempAppName);
+    const tempAuth = getAuth(tempApp);
+
     try {
-      const userCredential = await createUserWithEmailAndPassword(auth, values.username, values.password);
+      // Create user with the temporary auth instance
+      const userCredential = await createUserWithEmailAndPassword(tempAuth, values.username, values.password);
       const user = userCredential.user;
 
+      // Use the main firestore instance (where admin is logged in) to create the user document
       const userRef = doc(firestore, 'users', user.uid);
       await setDoc(userRef, {
         id: user.uid,
@@ -108,6 +114,8 @@ export function AddUserForm({ onUserAdded }: AddUserFormProps) {
       });
     } finally {
       setIsSubmitting(false);
+      // Clean up the temporary app instance to avoid memory leaks.
+      await deleteApp(tempApp);
     }
   }
 

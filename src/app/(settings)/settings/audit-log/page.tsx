@@ -30,9 +30,12 @@ import { collection, query, orderBy } from 'firebase/firestore';
 import { Skeleton } from '@/components/ui/skeleton';
 import { format } from 'date-fns';
 import { Button } from '@/components/ui/button';
+import { useRouter } from 'next/navigation';
+import { ArrowLeft } from 'lucide-react';
 
 export default function AuditLogPage() {
   const firestore = useFirestore();
+  const router = useRouter();
 
   const logsQuery = useMemoFirebase(
     () => firestore ? query(collection(firestore, 'logs'), orderBy('timestamp', 'desc')) : null,
@@ -54,10 +57,18 @@ export default function AuditLogPage() {
     <>
       <div className="w-full space-y-6">
         <header className="space-y-1.5">
-          <h1 className="text-3xl font-bold tracking-tight">Audit Log</h1>
-          <p className="text-muted-foreground">
-            A chronological record of significant actions taken within the application.
-          </p>
+            <div className="flex items-center gap-4">
+                <Button variant="outline" size="icon" className="h-8 w-8 flex-shrink-0" onClick={() => router.back()}>
+                    <ArrowLeft className="h-4 w-4" />
+                    <span className="sr-only">Back</span>
+                </Button>
+                <div>
+                    <h1 className="text-3xl font-bold tracking-tight">Audit Log</h1>
+                    <p className="text-muted-foreground">
+                        A chronological record of significant actions taken within the application.
+                    </p>
+                </div>
+            </div>
         </header>
 
         <Card>

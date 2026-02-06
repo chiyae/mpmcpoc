@@ -38,7 +38,6 @@ import {
   DialogDescription,
   DialogHeader,
   DialogTitle,
-  DialogTrigger,
 } from '@/components/ui/dialog';
 import { useToast } from "@/hooks/use-toast";
 import { useCollection, useFirestore, useMemoFirebase } from '@/firebase';
@@ -46,10 +45,13 @@ import { collection, doc, setDoc } from 'firebase/firestore';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useSettings } from '@/context/settings-provider';
 import { ServiceForm } from '@/components/service-form';
+import { useRouter } from 'next/navigation';
+import { ArrowLeft } from 'lucide-react';
 
 export default function ServiceManagementPage() {
   const { toast } = useToast();
   const firestore = useFirestore();
+  const router = useRouter();
   const { formatCurrency } = useSettings();
 
   const servicesCollectionQuery = useMemoFirebase(
@@ -191,10 +193,18 @@ export default function ServiceManagementPage() {
 
   return (
     <div className="w-full space-y-6">
-        <div className="flex items-center justify-between">
-            <header>
-                <h1 className="text-3xl font-bold tracking-tight">Service Management</h1>
-                <p className="text-muted-foreground">Define billable clinic services like consultation or lab fees.</p>
+        <div className="flex items-start justify-between">
+            <header className="space-y-1.5">
+                <div className="flex items-center gap-4">
+                    <Button variant="outline" size="icon" className="h-8 w-8 flex-shrink-0" onClick={() => router.back()}>
+                        <ArrowLeft className="h-4 w-4" />
+                        <span className="sr-only">Back</span>
+                    </Button>
+                    <div>
+                        <h1 className="text-3xl font-bold tracking-tight">Service Management</h1>
+                        <p className="text-muted-foreground">Define billable clinic services like consultation or lab fees.</p>
+                    </div>
+                </div>
             </header>
             {isClient && (
                 <Button onClick={() => handleOpenDialog(null)}>Add New Service</Button>

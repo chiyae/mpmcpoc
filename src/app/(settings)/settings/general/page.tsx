@@ -17,6 +17,8 @@ import { Label } from '@/components/ui/label';
 import { useDoc, useFirestore, useMemoFirebase } from '@/firebase';
 import { doc, setDoc } from 'firebase/firestore';
 import { Skeleton } from '@/components/ui/skeleton';
+import { useRouter } from 'next/navigation';
+import { ArrowLeft } from 'lucide-react';
 
 interface ClinicSettings {
     clinicName: string;
@@ -35,6 +37,7 @@ const defaultSettings: ClinicSettings = {
 export default function GeneralSettingsPage() {
   const { toast } = useToast();
   const firestore = useFirestore();
+  const router = useRouter();
   
   const [isClient, setIsClient] = React.useState(false);
   React.useEffect(() => {
@@ -167,10 +170,18 @@ export default function GeneralSettingsPage() {
   return (
     <div className="space-y-8 max-w-4xl mx-auto">
         <header className="space-y-1.5">
-            <h1 className="text-3xl font-bold tracking-tight">General Settings</h1>
-            <p className="text-muted-foreground">
-                Manage general information and configurations for the application.
-            </p>
+            <div className="flex items-center gap-4">
+                <Button variant="outline" size="icon" className="h-8 w-8 flex-shrink-0" onClick={() => router.back()}>
+                    <ArrowLeft className="h-4 w-4" />
+                    <span className="sr-only">Back</span>
+                </Button>
+                <div>
+                    <h1 className="text-3xl font-bold tracking-tight">General Settings</h1>
+                    <p className="text-muted-foreground">
+                        Manage general information and configurations for the application.
+                    </p>
+                </div>
+            </div>
         </header>
 
       {/* Clinic Information Card */}

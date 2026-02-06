@@ -45,10 +45,13 @@ import {
 import { DotsHorizontalIcon } from '@radix-ui/react-icons';
 import { useAppUser } from '@/hooks/use-app-user';
 import { logAction } from '@/lib/audit';
+import { useRouter } from 'next/navigation';
+import { ArrowLeft } from 'lucide-react';
 
 export default function UserManagementPage() {
   const { toast } = useToast();
   const firestore = useFirestore();
+  const router = useRouter();
   const currentUser = useAppUser();
 
   const usersCollectionQuery = useMemoFirebase(
@@ -122,30 +125,36 @@ export default function UserManagementPage() {
 
   return (
     <div className="w-full space-y-6">
-       <div className="flex items-center justify-between">
-        <header className="space-y-1.5">
-            <h1 className="text-3xl font-bold tracking-tight">User Management</h1>
-            <p className="text-muted-foreground">
-            Add, view, and manage user accounts and roles.
-            </p>
-        </header>
-        {isClient && (
-          <Dialog open={isAddUserOpen} onOpenChange={setIsAddUserOpen}>
-              <DialogTrigger asChild>
-                  <Button>Add New User</Button>
-              </DialogTrigger>
-              <DialogContent>
-                  <DialogHeader>
-                      <DialogTitle>Create New User</DialogTitle>
-                      <DialogDescription>
-                          Fill out the form below to create a new user account.
-                      </DialogDescription>
-                  </DialogHeader>
-                  <AddUserForm onUserAdded={handleUserAdded} />
-              </DialogContent>
-          </Dialog>
-        )}
-      </div>
+       <div className="flex items-start justify-between">
+            <header className="space-y-1.5">
+                <div className="flex items-center gap-4">
+                    <Button variant="outline" size="icon" className="h-8 w-8 flex-shrink-0" onClick={() => router.back()}>
+                        <ArrowLeft className="h-4 w-4" />
+                        <span className="sr-only">Back</span>
+                    </Button>
+                    <div>
+                        <h1 className="text-3xl font-bold tracking-tight">User Management</h1>
+                        <p className="text-muted-foreground">Add, view, and manage user accounts and roles.</p>
+                    </div>
+                </div>
+            </header>
+            {isClient && (
+            <Dialog open={isAddUserOpen} onOpenChange={setIsAddUserOpen}>
+                <DialogTrigger asChild>
+                    <Button>Add New User</Button>
+                </DialogTrigger>
+                <DialogContent>
+                    <DialogHeader>
+                        <DialogTitle>Create New User</DialogTitle>
+                        <DialogDescription>
+                            Fill out the form below to create a new user account.
+                        </DialogDescription>
+                    </DialogHeader>
+                    <AddUserForm onUserAdded={handleUserAdded} />
+                </DialogContent>
+            </Dialog>
+            )}
+        </div>
 
       <Card>
         <CardHeader>

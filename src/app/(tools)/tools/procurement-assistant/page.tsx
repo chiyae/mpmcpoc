@@ -13,6 +13,7 @@ import { useDoc, useFirestore, useMemoFirebase } from '@/firebase';
 import { doc, setDoc } from 'firebase/firestore';
 import { useToast } from '@/hooks/use-toast';
 import { Skeleton } from '@/components/ui/skeleton';
+import { ArrowLeft } from 'lucide-react';
 
 export default function ProcurementAssistantPage() {
   const router = useRouter();
@@ -132,11 +133,17 @@ export default function ProcurementAssistantPage() {
 
   return (
     <div className="space-y-6">
-       <header className="space-y-1.5">
-            <h1 className="text-3xl font-bold tracking-tight">Procurement Assistant</h1>
-            <p className="text-muted-foreground">
-                Session ID: <span className="font-mono text-sm bg-muted p-1 rounded">{sessionId}</span>
-            </p>
+       <header className="flex items-center justify-between">
+            <div className="space-y-1.5">
+                <h1 className="text-3xl font-bold tracking-tight">Procurement Assistant</h1>
+                <p className="text-muted-foreground">
+                    Session ID: <span className="font-mono text-sm bg-muted p-1 rounded">{sessionId}</span>
+                </p>
+            </div>
+            <Button variant="outline" onClick={() => router.back()}>
+                <ArrowLeft className="mr-2 h-4 w-4" />
+                Back to Sessions
+            </Button>
         </header>
 
         <Stepper initialStep={0} currentStep={currentStep} onStepClick={setCurrentStep} className='w-full'>
@@ -158,5 +165,3 @@ export default function ProcurementAssistantPage() {
     </div>
   );
 }
-
-    

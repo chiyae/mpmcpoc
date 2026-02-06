@@ -2,8 +2,7 @@
 'use client';
 
 import * as React from 'react';
-import { useSearchParams } from 'next/navigation';
-import { useRouter } from 'next/navigation';
+import { useSearchParams, useRouter } from 'next/navigation';
 import {
   Card,
   CardContent,
@@ -40,6 +39,7 @@ import { collection, doc, query, where, writeBatch, setDoc, getDocs } from 'fire
 import { Skeleton } from '@/components/ui/skeleton';
 import { format } from 'date-fns';
 import { formatItemName } from '@/lib/utils';
+import { ArrowLeft } from 'lucide-react';
 
 type EditableStockTakeItem = StockTakeItem & {
   physicalQty: number | ''; // Allow empty string for input
@@ -69,7 +69,7 @@ export default function StockTakingPage() {
         
         const [stockSnapshot, itemsSnapshot] = await Promise.all([
           getDocs(stockQuery),
-          getDocs(itemsSnapshot),
+          getDocs(itemsQuery),
         ]);
         
         const allItems = itemsSnapshot.docs.map(d => ({ id: d.id, ...d.data() })) as Item[];
@@ -191,11 +191,19 @@ export default function StockTakingPage() {
   return (
     <Card>
       <CardHeader>
-        <CardTitle>Stock Taking Session</CardTitle>
-        <CardDescription>
-          {sessionData ? `Session for ${sessionData.locationId} started on ${format(new Date(sessionData.date), 'PPpp')}` : 'Loading session...'}
-           {sessionData?.status === 'Completed' && <span className="text-destructive font-bold ml-2">(COMPLETED)</span>}
-        </CardDescription>
+        <div className="flex items-start justify-between gap-4">
+            <div>
+                <CardTitle>Stock Taking Session</CardTitle>
+                <CardDescription>
+                {sessionData ? `Session for ${sessionData.locationId} started on ${format(new Date(sessionData.date), 'PPpp')}` : 'Loading session...'}
+                {sessionData?.status === 'Completed' && <span className="text-destructive font-bold ml-2">(COMPLETED)</span>}
+                </CardDescription>
+            </div>
+            <Button variant="outline" onClick={() => router.back()}>
+                <ArrowLeft className="mr-2 h-4 w-4" />
+                Back
+            </Button>
+        </div>
       </CardHeader>
       <CardContent>
         <div className="rounded-md border">

@@ -55,13 +55,15 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { useSettings } from '@/context/settings-provider';
 import { ItemForm } from '@/components/item-form';
 import { ItemImportDialog } from '@/components/item-import-dialog';
-import { Upload } from 'lucide-react';
+import { ArrowLeft, Upload } from 'lucide-react';
 import { formatItemName } from '@/lib/utils';
+import { useRouter } from 'next/navigation';
 
 
 export default function ItemMasterPage() {
   const { toast } = useToast();
   const firestore = useFirestore();
+  const router = useRouter();
   const { currency, formatCurrency } = useSettings();
 
   const itemsCollectionQuery = useMemoFirebase(
@@ -264,16 +266,20 @@ export default function ItemMasterPage() {
   }
 
   return (
-    <div className="w-full">
-        <div className="flex items-center justify-between py-4">
-            <Input
-            placeholder="Filter items..."
-            value={(table.getColumn('itemName')?.getFilterValue() as string) ?? ''}
-            onChange={(event) =>
-                table.getColumn('itemName')?.setFilterValue(event.target.value)
-            }
-            className="max-w-sm"
-            />
+    <div className="w-full space-y-6">
+        <div className="flex items-start justify-between">
+            <header className="space-y-1.5">
+                <div className="flex items-center gap-4">
+                    <Button variant="outline" size="icon" className="h-8 w-8 flex-shrink-0" onClick={() => router.back()}>
+                        <ArrowLeft className="h-4 w-4" />
+                        <span className="sr-only">Back</span>
+                    </Button>
+                    <div>
+                        <h1 className="text-3xl font-bold tracking-tight">Item Master Data</h1>
+                        <p className="text-muted-foreground">Define and manage all inventory item definitions.</p>
+                    </div>
+                </div>
+            </header>
             <div className="flex items-center gap-2">
                 {isClient && (
                   <>
@@ -311,6 +317,16 @@ export default function ItemMasterPage() {
                 </DropdownMenuContent>
                 </DropdownMenu>
             </div>
+        </div>
+         <div className="flex items-center">
+            <Input
+                placeholder="Filter items by name..."
+                value={(table.getColumn('itemName')?.getFilterValue() as string) ?? ''}
+                onChange={(event) =>
+                    table.getColumn('itemName')?.setFilterValue(event.target.value)
+                }
+                className="max-w-sm"
+            />
         </div>
         <div className="rounded-md border">
             <Table>

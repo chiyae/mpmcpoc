@@ -1,4 +1,3 @@
-
 'use client';
 import * as React from 'react';
 import {
@@ -13,16 +12,18 @@ import { useSettings } from '@/context/settings-provider';
 import { useCollection, useFirestore, useMemoFirebase } from '@/firebase';
 import { collection, query, where } from 'firebase/firestore';
 import type { Stock, Bill, Item, BillItem } from '@/lib/types';
-import { differenceInDays, parseISO, isToday, format, subDays, startOfDay, endOfDay } from 'date-fns';
+import { differenceInDays, parseISO, isToday, format, subDays, isThisWeek, isThisMonth, isSameDay } from 'date-fns';
 import { StatCard } from '@/components/ui/stat-card';
 import { BarChart, XAxis, YAxis, Tooltip, Bar, ResponsiveContainer } from 'recharts';
 import { Skeleton } from '@/components/ui/skeleton';
 import { formatItemName } from '@/lib/utils';
+import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 
 
 export default function DispensaryDashboard() {
   const { formatCurrency } = useSettings();
   const firestore = useFirestore();
+  const [salesPeriod, setSalesPeriod] = React.useState<'day' | 'week' | 'month'>('day');
 
   // --- Data Fetching ---
   const dispensaryStockQuery = useMemoFirebase(
@@ -47,14 +48,14 @@ export default function DispensaryDashboard() {
     totalItems, 
     nearExpiryItems, 
     lowStockItemsCount, 
-    todaysSales,
+    filteredSales,
     weeklySalesData,
     recentlyDispensedItems
   } = React.useMemo(() => {
     const today = new Date();
     
     if (!dispensaryStocks || !allItems || !dispensaryBills) {
-        return { totalItems: 0, nearExpiryItems: 0, lowStockItemsCount: 0, todaysSales: 0, weeklySalesData: [], recentlyDispensedItems: [] };
+        return { totalItems: 0, nearExpiryItems: 0, lowStockItemsCount: 0, filteredSales: 0, weeklySalesData: [], recentlyDispensedItems: [] };
     }
 
     const stockStats = dispensaryStocks.reduce((acc, stock) => {
@@ -80,14 +81,20 @@ export default function DispensaryDashboard() {
     }, 0);
 
     const sales = dispensaryBills
-        ?.filter(bill => isToday(parseISO(bill.date)))
+        ?.filter(bill => {
+            const billDate = parseISO(bill.date);
+            if (salesPeriod === 'day') return isToday(billDate);
+            if (salesPeriod === 'week') return isThisWeek(billDate, { weekStartsOn: 1 });
+            if (salesPeriod === 'month') return isThisMonth(billDate);
+            return false;
+        })
         .reduce((sum, bill) => sum + bill.grandTotal, 0) || 0;
         
     // Last 7 days sales data
     const weeklySales = Array.from({ length: 7 }).map((_, i) => {
         const date = subDays(new Date(), i);
         const dailyTotal = dispensaryBills
-            .filter(bill => isToday(parseISO(bill.date)))
+            .filter(bill => isSameDay(parseISO(bill.date), date))
             .reduce((sum, bill) => sum + bill.grandTotal, 0);
         return {
             name: format(date, 'eee'),
@@ -107,16 +114,28 @@ export default function DispensaryDashboard() {
         totalItems: stockStats.itemIds.size,
         nearExpiryItems: stockStats.nearExpiryCount,
         lowStockItemsCount: lowStockCount,
-        todaysSales: sales,
+        filteredSales: sales,
         weeklySalesData: weeklySales,
         recentlyDispensedItems: recentlyDispensed
     }
-  }, [dispensaryStocks, allItems, dispensaryBills]);
+  }, [dispensaryStocks, allItems, dispensaryBills, salesPeriod]);
 
   const isLoading = isLoadingStock || isLoadingBills || isLoadingItems;
 
+  const salesCardTitle = `This ${salesPeriod.charAt(0).toUpperCase() + salesPeriod.slice(1)}'s Sales`;
+
   return (
     <div className="space-y-6">
+       <div className="flex justify-between items-center">
+        <h1 className="text-3xl font-bold tracking-tight">Dispensary Dashboard</h1>
+        <Tabs value={salesPeriod} onValueChange={(value) => setSalesPeriod(value as 'day' | 'week' | 'month')}>
+            <TabsList>
+                <TabsTrigger value="day">Day</TabsTrigger>
+                <TabsTrigger value="week">Week</TabsTrigger>
+                <TabsTrigger value="month">Month</TabsTrigger>
+            </TabsList>
+        </Tabs>
+      </div>
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
         <StatCard
           title="Items on Hand"
@@ -140,8 +159,8 @@ export default function DispensaryDashboard() {
           isLoading={isLoading}
         />
         <StatCard
-          title="Today's Sales"
-          value={formatCurrency(todaysSales)}
+          title={salesCardTitle}
+          value={formatCurrency(filteredSales)}
           icon={DollarSign}
           description="Revenue from dispensed items"
           isLoading={isLoading}

@@ -15,6 +15,7 @@ import { useAuth } from "@/firebase";
 import { useRouter } from "next/navigation";
 import { useToast } from "@/hooks/use-toast";
 import Logo from "./logo";
+import { Skeleton } from "./ui/skeleton";
 
 type DashboardHeaderProps = {
     title: string;
@@ -23,9 +24,10 @@ type DashboardHeaderProps = {
         role: string;
         avatarUrl?: string;
     }
+    isLoading?: boolean;
 }
 
-function HeaderActions({ user }: { user: DashboardHeaderProps['user'] }) {
+function HeaderActions({ user, isLoading }: { user: DashboardHeaderProps['user'], isLoading?: boolean }) {
     const avatarFallback = user.name.split(' ').map(n => n[0]).join('');
     const auth = useAuth();
     const router = useRouter();
@@ -48,6 +50,16 @@ function HeaderActions({ user }: { user: DashboardHeaderProps['user'] }) {
             router.push('/login');
         }
     };
+    
+    if (isLoading) {
+        return (
+             <div className="flex items-center gap-4">
+                <Skeleton className="h-10 w-10" />
+                <Skeleton className="h-10 w-10" />
+                <Skeleton className="h-10 w-10 rounded-full" />
+            </div>
+        )
+    }
 
     return (
         <div className="flex items-center gap-4">
@@ -93,7 +105,7 @@ function HeaderActions({ user }: { user: DashboardHeaderProps['user'] }) {
     )
 }
 
-export default function DashboardHeader({ title, user }: DashboardHeaderProps) {
+export default function DashboardHeader({ title, user, isLoading }: DashboardHeaderProps) {
     const [mounted, setMounted] = useState(false);
 
     useEffect(() => {
@@ -124,7 +136,9 @@ export default function DashboardHeader({ title, user }: DashboardHeaderProps) {
                 </Link>
             </div>
 
-            <HeaderActions user={user} />
+            <HeaderActions user={user} isLoading={isLoading} />
         </header>
     )
 }
+
+    

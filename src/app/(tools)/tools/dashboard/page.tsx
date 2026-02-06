@@ -5,14 +5,14 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { ShoppingCart } from "lucide-react";
+import { ListChecks } from "lucide-react";
 import Link from "next/link";
 
 const toolsLinks = [
     {
         href: '/tools/procurement-sessions',
-        icon: ShoppingCart,
-        title: 'Procurement Workflow',
+        icon: ListChecks,
+        title: 'Procurement Assistant',
         description: 'Start a new session to compare vendor prices and generate Local Purchase Orders.'
     },
 ]
@@ -45,3 +45,5 @@ export default function ToolsDashboard() {
     </div>
   );
 }
+
+    

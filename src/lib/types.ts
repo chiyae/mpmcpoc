@@ -1,8 +1,11 @@
 
 import { z } from 'zod';
 
-export type ItemCategory = 'Medicine' | 'Medical Supply' | 'Consumable';
-export type Formulation = "Tablet" | "Capsule" | "Syrup" | "Injection" | "Cream" | "Lotion" | "Medical Supply" | "Consumable";
+export const FormulationEnum = z.enum(["Tablet", "Capsule", "Syrup", "Injection", "Cream", "Lotion", "Medical Supply", "Consumable"]);
+export const ItemCategoryEnum = z.enum(["Medicine", "Medical Supply", "Consumable"]);
+
+export type ItemCategory = z.infer<typeof ItemCategoryEnum>;
+export type Formulation = z.infer<typeof FormulationEnum>;
 
 export type Location = 'Bulk Store' | 'Dispensary' | 'Billing';
 export type OrderStatus = 'Pending' | 'Approved' | 'Issued' | 'Rejected';
@@ -158,51 +161,6 @@ export interface LocalPurchaseOrder {
     items: LocalPurchaseOrderItem[];
     grandTotal: number;
     status: LpoStatus;
-}
-
-
-// AI LPO Generation Schemas
-const LowStockItemSchema = z.object({
-  id: z.string().describe('The unique item code.'),
-  name: z.string().describe('The name of the item.'),
-  quantity: z.number().describe('The current stock quantity.'),
-  reorderLevel: z.number().describe('The reorder level for the item.'),
-  usageHistory: z.array(z.object({
-    date: z.string(),
-    quantity: z.number(),
-  })).describe('Last 30 days of usage history.'),
-});
-
-const VendorForLpoSchema = z.object({
-  id: z.string().describe('The unique vendor ID.'),
-  name: z.string().describe('The name of the vendor.'),
-});
-
-export const GenerateLpoInputSchema = z.object({
-  lowStockItems: z.array(LowStockItemSchema).describe('A list of items that are below their reorder level.'),
-  vendors: z.array(VendorForLpoSchema).describe('A list of available vendors.'),
-});
-export type GenerateLpoInput = z.infer<typeof GenerateLpoInputSchema>;
-
-const LpoItemSchema = z.object({
-  itemId: z.string().describe('The ID of the item to order.'),
-  itemName: z.string().describe('The name of the item.'),
-  quantityToOrder: z.number().describe('The suggested quantity to order based on usage and stock levels.'),
-  selectedVendorId: z.string().describe('The recommended vendor for this item.'),
-  reasoning: z.string().describe('A brief justification for the recommended quantity and vendor choice.'),
-});
-
-export const GenerateLpoOutputSchema = z.object({
-  lpoId: z.string().describe('A generated unique ID for the LPO, e.g., LPO-YYYYMMDD-XXXX.'),
-  generatedDate: z.string().describe('The ISO date string for when the LPO was generated.'),
-  items: z.array(LpoItemSchema).describe('The list of items to be included in the LPO.'),
-  summary: z.string().describe('A brief overall summary of the generated LPO.'),
-});
-export type GenerateLpoOutput = z.infer<typeof GenerateLpoOutputSchema>;
-
-// Interface for saved LPOs, extending the AI output with a status
-export interface Lpo extends GenerateLpoOutput {
-  status: 'Pending' | 'Approved' | 'Rejected' | 'Completed';
 }
 
     

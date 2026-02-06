@@ -41,7 +41,7 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
-import type { Item, GenerateLpoOutput, Lpo, Vendor, Stock } from '@/lib/types';
+import type { Item, Vendor, Stock } from '@/lib/types';
 import { format } from 'date-fns';
 import { ItemForm } from '@/components/item-form';
 import {
@@ -51,17 +51,14 @@ import {
   DialogHeader,
   DialogTitle,
   DialogTrigger,
-  DialogFooter,
-  DialogClose,
 } from '@/components/ui/dialog';
 import { AdjustStockForm } from '@/components/adjust-stock-form';
 import { useToast } from "@/hooks/use-toast";
-import { ScrollArea } from '@/components/ui/scroll-area';
-import { generateLpo } from '@/ai/flows/lpo-generation';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useCollection, useFirestore, useMemoFirebase } from '@/firebase';
-import { addDoc, collection, doc, setDoc, writeBatch, query, where } from 'firebase/firestore';
+import { collection, doc, setDoc, writeBatch, query, where } from 'firebase/firestore';
 import { formatItemName } from '@/lib/utils';
+import { useRouter } from 'next/navigation';
 
 type BulkStoreInventoryItem = Item & {
   stock?: Stock; // Stock is now optional
@@ -69,7 +66,7 @@ type BulkStoreInventoryItem = Item & {
 
 export default function BulkStoreInventoryPage() {
   const { toast } = useToast();
-  
+  const router = useRouter();
   const firestore = useFirestore();
 
   const itemsCollectionQuery = useMemoFirebase(
@@ -102,11 +99,6 @@ export default function BulkStoreInventoryPage() {
 
   const [selectedItem, setSelectedItem] = React.useState<BulkStoreInventoryItem | null>(null);
   const [isAdjustStockOpen, setIsAdjustStockOpen] = React.useState(false);
-  const [isLpoDialogOpen, setIsLpoDialogOpen] = React.useState(false);
-
-  const [isGeneratingLpo, setIsGeneratingLpo] = React.useState(false);
-  const [generatedLpo, setGeneratedLpo] = React.useState<GenerateLpoOutput | null>(null);
-  const [savedLpos, setSavedLpos] = React.useState<Lpo[]>([]);
   
   const isLoading = isItemsLoading || isStockLoading || areVendorsLoading;
 
@@ -121,63 +113,6 @@ export default function BulkStoreInventoryPage() {
         };
     });
   }, [allItems, allStock]);
-
-
-  const handleOpenLpoDialog = async () => {
-    setIsLpoDialogOpen(true);
-    setIsGeneratingLpo(true);
-    setGeneratedLpo(null);
-
-    const lowStockItems = inventoryData.filter(item => (item.stock?.currentStockQuantity ?? 0) < item.bulkStoreReorderLevel);
-
-    if (lowStockItems.length === 0 || !vendors || vendors.length === 0) {
-        setIsGeneratingLpo(false);
-        return;
-    }
-    
-    try {
-        const lpoInput = {
-            lowStockItems: lowStockItems.map(item => ({
-                id: item.id,
-                name: formatItemName(item),
-                quantity: item.stock?.currentStockQuantity ?? 0,
-                reorderLevel: item.bulkStoreReorderLevel,
-                usageHistory: [] // Note: usage history is not tracked yet
-            })),
-            vendors: vendors.map(v => ({ id: v.id, name: v.name }))
-        }
-        const lpo = await generateLpo(lpoInput);
-        setGeneratedLpo(lpo);
-    } catch (error) {
-        console.error("Failed to generate LPO:", error);
-        toast({
-            variant: "destructive",
-            title: "AI LPO Generation Failed",
-            description: "There was an error communicating with the AI. Please try again.",
-        });
-        setIsLpoDialogOpen(false); // Close dialog on error
-    } finally {
-        setIsGeneratingLpo(false);
-    }
-  };
-
-  const handleConfirmLpo = () => {
-    if (!generatedLpo) return;
-
-    const newLpo: Lpo = {
-      ...generatedLpo,
-      status: "Pending",
-    };
-    setSavedLpos(prev => [newLpo, ...prev]);
-
-    toast({
-      title: "LPO Confirmed",
-      description: `LPO ${generatedLpo.lpoId} has been logged and is ready for processing.`,
-    });
-    setIsLpoDialogOpen(false);
-    setGeneratedLpo(null);
-  };
-
 
   const handleCopyItemId = (itemId: string) => {
     navigator.clipboard.writeText(itemId);
@@ -399,7 +334,7 @@ export default function BulkStoreInventoryPage() {
             className="max-w-sm"
             />
             <div className="flex items-center gap-2">
-                <Button variant="outline" onClick={handleOpenLpoDialog}>Generate LPO with AI</Button>
+                 <Button variant="outline" onClick={() => router.push('/tools/procurement-sessions')}>Procurement Tools</Button>
                  <Dialog open={isAddItemFormOpen} onOpenChange={setIsAddItemFormOpen}>
                   <DialogTrigger asChild>
                     <Button>Add New Item</Button>
@@ -540,72 +475,8 @@ export default function BulkStoreInventoryPage() {
           </Dialog>
       )}
 
-      <Dialog open={isLpoDialogOpen} onOpenChange={setIsLpoDialogOpen}>
-        <DialogContent className="sm:max-w-4xl">
-          <DialogHeader>
-            <DialogTitle>AI-Generated Local Purchase Order (LPO)</DialogTitle>
-            <DialogDescription>
-                {isGeneratingLpo 
-                    ? "The AI is analyzing your low-stock items and vendors to generate an optimized LPO..." 
-                    : generatedLpo 
-                        ? `LPO ${generatedLpo.lpoId} generated on ${format(new Date(generatedLpo.generatedDate), 'PPP')}. Review and confirm below.`
-                        : "No items are currently below their reorder level or no vendors are available."
-                }
-            </DialogDescription>
-          </DialogHeader>
-            {isGeneratingLpo && (
-                 <div className="space-y-4 py-8">
-                    <Skeleton className="h-8 w-3/4" />
-                    <Skeleton className="h-12 w-full" />
-                    <Skeleton className="h-12 w-full" />
-                    <Skeleton className="h-12 w-full" />
-                 </div>
-            )}
-            {generatedLpo && vendors && (
-            <div className="space-y-4">
-                <p className="text-sm text-muted-foreground">{generatedLpo.summary}</p>
-                <ScrollArea className="max-h-80">
-                    <Table>
-                      <TableHeader>
-                        <TableRow>
-                          <TableHead>Item</TableHead>
-                          <TableHead>Order Qty</TableHead>
-                          <TableHead>Vendor</TableHead>
-                          <TableHead>AI Reasoning</TableHead>
-                        </TableRow>
-                      </TableHeader>
-                      <TableBody>
-                        {generatedLpo.items.map((item) => {
-                            const vendor = vendors.find(v => v.id === item.selectedVendorId);
-                            return (
-                              <TableRow key={item.itemId}>
-                                <TableCell className="font-medium">{item.itemName}</TableCell>
-                                <TableCell>{item.quantityToOrder}</TableCell>
-                                <TableCell>{vendor?.name || 'N/A'}</TableCell>
-                                <TableCell className="text-xs text-muted-foreground">{item.reasoning}</TableCell>
-                              </TableRow>
-                            );
-                        })}
-                      </TableBody>
-                    </Table>
-                </ScrollArea>
-            </div>
-            )}
-           {!isGeneratingLpo && !generatedLpo && (
-                <p className="py-8 text-center text-muted-foreground">
-                    No items are currently below their reorder level or no vendors found.
-                </p>
-           )}
-          <DialogFooter>
-            <DialogClose asChild>
-              <Button variant="outline">Cancel</Button>
-            </DialogClose>
-            <Button onClick={handleConfirmLpo} disabled={!generatedLpo || isGeneratingLpo}>
-              Confirm & Log LPO
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
     </div>
   );
 }
+
+    

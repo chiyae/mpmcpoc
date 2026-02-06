@@ -21,11 +21,11 @@ import DashboardHeader from "@/components/dashboard-header";
 import { useAppUser } from "@/hooks/use-app-user";
 
 export default function ToolsLayout({ children }: { children: ReactNode }) {
-  const { user } = useAppUser();
+  const { user, isLoading } = useAppUser();
   
   return (
     <SidebarProvider>
-      <Sidebar collapsible="icon">
+      <Sidebar collapsible>
         <SidebarRail />
         
         <SidebarContent>
@@ -61,7 +61,7 @@ export default function ToolsLayout({ children }: { children: ReactNode }) {
         </SidebarFooter>
       </Sidebar>
       <SidebarInset className="flex flex-col">
-        <DashboardHeader title="Tools" user={user} />
+        <DashboardHeader title="Tools" user={user} isLoading={isLoading}/>
         <main className="flex-1 p-4 md:p-6 lg:p-8">
           {children}
         </main>
@@ -69,3 +69,5 @@ export default function ToolsLayout({ children }: { children: ReactNode }) {
     </SidebarProvider>
   );
 }
+
+    

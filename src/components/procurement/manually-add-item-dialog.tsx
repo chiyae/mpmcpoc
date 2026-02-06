@@ -41,7 +41,14 @@ export function ManuallyAddItemDialog({ isOpen, onOpenChange, allItems, onItemSe
                             <CommandEmpty>No items found.</CommandEmpty>
                             <CommandGroup>
                                 {allItems.map(item => (
-                                    <CommandItem key={item.id} onSelect={() => handleSelect(item)}>
+                                    <CommandItem 
+                                        key={item.id} 
+                                        onSelect={() => handleSelect(item)}
+                                        onMouseDown={(e) => {
+                                            e.preventDefault();
+                                            e.stopPropagation();
+                                        }}
+                                    >
                                         {formatItemName(item)}
                                     </CommandItem>
                                 ))}

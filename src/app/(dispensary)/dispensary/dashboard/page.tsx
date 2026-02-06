@@ -148,30 +148,20 @@ export default function DispensaryDashboard() {
        <div className="flex justify-between items-center">
         <h1 className="text-3xl font-bold tracking-tight">Dispensary Dashboard</h1>
       </div>
-
-      <Card className="col-span-full bg-primary/10 border-primary/50">
-        <CardHeader className="flex flex-row items-center justify-between">
-            <div>
-                <CardTitle>Dispensing Queue</CardTitle>
-                <CardDescription>Paid bills awaiting collection.</CardDescription>
-            </div>
-            <Pill className="h-8 w-8 text-primary" />
-        </CardHeader>
-        <CardContent className="flex items-center justify-between">
-            {isLoading ? (
-                <Skeleton className="h-12 w-24" />
-            ) : (
-                <p className="text-5xl font-bold">{pendingDispensationsCount}</p>
-            )}
-            <Button asChild size="lg">
-                <Link href="/dispensary/dispense">
-                    View Queue
-                </Link>
-            </Button>
-        </CardContent>
-      </Card>
       
-      <div className="grid gap-4 md:grid-cols-3">
+      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+        <Link href="/dispensary/dispense" className="col-span-1">
+            <Card className="bg-primary/10 border-primary/50 hover:bg-primary/20 transition-colors h-full">
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                    <CardTitle className="text-sm font-medium">Dispensing Queue</CardTitle>
+                    <Pill className="h-4 w-4 text-primary" />
+                </CardHeader>
+                <CardContent>
+                    {isLoading ? <Skeleton className="h-10 w-16" /> : <div className="text-4xl font-bold">{pendingDispensationsCount}</div>}
+                    <p className="text-xs text-muted-foreground">bills awaiting collection</p>
+                </CardContent>
+            </Card>
+        </Link>
         <StatCard
           title="Items on Hand"
           value={totalItems}

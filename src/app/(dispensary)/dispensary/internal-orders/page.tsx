@@ -1,4 +1,3 @@
-
 'use client';
 
 import * as React from 'react';
@@ -25,7 +24,7 @@ import {
 } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
 import type { InternalOrder, OrderStatus, Item } from '@/lib/types';
-import { format } from 'date-fns';
+import { format, subDays, isWithinInterval } from 'date-fns';
 import {
   Dialog,
   DialogContent,
@@ -39,6 +38,8 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { useCollection, useFirestore, useMemoFirebase } from '@/firebase';
 import { collection, query, where } from 'firebase/firestore';
 import { Skeleton } from '@/components/ui/skeleton';
+import { DateRangePicker } from '@/components/ui/date-range-picker';
+import { DateRange } from 'react-day-picker';
 
 export default function DispensaryInternalOrdersPage() {
   const firestore = useFirestore();
@@ -58,6 +59,25 @@ export default function DispensaryInternalOrdersPage() {
   const [sorting, setSorting] = React.useState<SortingState>([]);
   const [selectedOrder, setSelectedOrder] = React.useState<InternalOrder | null>(null);
   const [isViewOrderOpen, setIsViewOrderOpen] = React.useState(false);
+
+   const [dateRange, setDateRange] = React.useState<DateRange | undefined>({
+    from: subDays(new Date(), 29),
+    to: new Date(),
+  });
+
+  const filteredData = React.useMemo(() => {
+    if (!internalOrders) return [];
+    if (!dateRange?.from) return internalOrders;
+
+    return internalOrders.filter(order => {
+        try {
+            const orderDate = new Date(order.date);
+            return isWithinInterval(orderDate, { start: dateRange.from!, end: dateRange.to || new Date() });
+        } catch(e) {
+            return false;
+        }
+    });
+  }, [internalOrders, dateRange]);
 
   const handleOpenViewOrder = (order: InternalOrder) => {
     setSelectedOrder(order);
@@ -116,7 +136,7 @@ export default function DispensaryInternalOrdersPage() {
   ];
 
   const table = useReactTable({
-    data: internalOrders ?? [],
+    data: filteredData ?? [],
     columns,
     onSortingChange: setSorting,
     getCoreRowModel: getCoreRowModel(),
@@ -131,12 +151,15 @@ export default function DispensaryInternalOrdersPage() {
 
   return (
     <div className="w-full">
-      <header className="mb-6">
-        <h1 className="text-3xl font-bold tracking-tight">Internal Order History</h1>
-        <p className="text-muted-foreground mt-1">
-          Track the status of stock requests you have made to the Bulk Store.
-        </p>
-      </header>
+      <div className="flex items-start justify-between mb-6">
+        <header>
+            <h1 className="text-3xl font-bold tracking-tight">Internal Order History</h1>
+            <p className="text-muted-foreground mt-1">
+            Track the status of stock requests you have made to the Bulk Store.
+            </p>
+        </header>
+        <DateRangePicker date={dateRange} onDateChange={setDateRange} />
+      </div>
       <div className="rounded-md border">
         <Table>
           <TableHeader>
@@ -182,7 +205,7 @@ export default function DispensaryInternalOrdersPage() {
                   colSpan={columns.length}
                   className="h-24 text-center"
                 >
-                  You have not made any internal stock requests.
+                  No internal stock requests found in the selected date range.
                 </TableCell>
               </TableRow>
             ) : null}

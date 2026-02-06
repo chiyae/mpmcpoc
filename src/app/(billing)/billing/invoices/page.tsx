@@ -1,4 +1,3 @@
-
 'use client';
 
 import * as React from 'react';
@@ -36,7 +35,7 @@ import {
 } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
 import type { Bill, PaymentStatus } from '@/lib/types';
-import { format } from 'date-fns';
+import { format, subDays, isWithinInterval } from 'date-fns';
 import {
   Dialog,
   DialogContent,
@@ -52,6 +51,8 @@ import { useSettings } from '@/context/settings-provider';
 import { useCollection, useFirestore, useMemoFirebase } from '@/firebase';
 import { collection, doc, setDoc } from 'firebase/firestore';
 import { Skeleton } from '@/components/ui/skeleton';
+import { DateRangePicker } from '@/components/ui/date-range-picker';
+import { DateRange } from 'react-day-picker';
 
 export default function InvoicesAndBillsPage() {
   const { toast } = useToast();
@@ -72,6 +73,26 @@ export default function InvoicesAndBillsPage() {
   
   const [selectedBill, setSelectedBill] = React.useState<Bill | null>(null);
   const [isViewBillOpen, setIsViewBillOpen] = React.useState(false);
+  
+  const [dateRange, setDateRange] = React.useState<DateRange | undefined>({
+    from: subDays(new Date(), 29),
+    to: new Date(),
+  });
+
+  const filteredData = React.useMemo(() => {
+    if (!bills) return [];
+    if (!dateRange?.from) return bills;
+
+    return bills.filter(bill => {
+        try {
+            const billDate = new Date(bill.date);
+            return isWithinInterval(billDate, { start: dateRange.from!, end: dateRange.to || new Date() });
+        } catch(e) {
+            return false;
+        }
+    });
+  }, [bills, dateRange]);
+
 
   const handleOpenViewBill = (bill: Bill) => {
     setSelectedBill(bill);
@@ -165,7 +186,7 @@ export default function InvoicesAndBillsPage() {
   ];
 
   const table = useReactTable({
-    data: bills ?? [],
+    data: filteredData ?? [],
     columns,
     onSortingChange: setSorting,
     onColumnFiltersChange: setColumnFilters,
@@ -186,7 +207,7 @@ export default function InvoicesAndBillsPage() {
   return (
     <div className="w-full">
       <h1 className="text-2xl font-bold mb-4">Invoices & Past Bills</h1>
-      <div className="flex items-center py-4">
+      <div className="flex items-center py-4 gap-4">
         <Input
           placeholder="Filter by Patient Name..."
           value={(table.getColumn('patientName')?.getFilterValue() as string) ?? ''}
@@ -195,6 +216,7 @@ export default function InvoicesAndBillsPage() {
           }
           className="max-w-sm"
         />
+         <DateRangePicker date={dateRange} onDateChange={setDateRange} />
         <DropdownMenu>
             <DropdownMenuTrigger asChild>
                 <Button variant="outline" className="ml-auto">
@@ -271,7 +293,7 @@ export default function InvoicesAndBillsPage() {
                   colSpan={columns.length}
                   className="h-24 text-center"
                 >
-                  No bills found.
+                  No bills found in the selected date range.
                 </TableCell>
               </TableRow>
             ) : null}

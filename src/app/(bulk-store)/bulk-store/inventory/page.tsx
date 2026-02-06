@@ -41,7 +41,7 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
-import type { Item, Vendor, Stock } from '@/lib/types';
+import type { Item, Vendor, Stock, StockTakeSession } from '@/lib/types';
 import { format } from 'date-fns';
 import { ItemForm } from '@/components/item-form';
 import {
@@ -59,6 +59,7 @@ import { useCollection, useFirestore, useMemoFirebase } from '@/firebase';
 import { collection, doc, setDoc, writeBatch, query, where } from 'firebase/firestore';
 import { formatItemName } from '@/lib/utils';
 import { useRouter } from 'next/navigation';
+import { ClipboardList } from 'lucide-react';
 
 type BulkStoreInventoryItem = Item & {
   stock?: Stock; // Stock is now optional
@@ -151,6 +152,33 @@ export default function BulkStoreInventoryPage() {
         toast({ variant: 'destructive', title: 'Error', description: 'Failed to add new item.'});
     }
   };
+
+  const handleStartStockTake = async () => {
+    if (!firestore) return;
+
+    const sessionId = `ST-BULK-${Date.now()}`;
+    const sessionRef = doc(firestore, 'stockTakeSessions', sessionId);
+
+    const newSession: StockTakeSession = {
+      id: sessionId,
+      date: new Date().toISOString(),
+      locationId: 'bulk-store',
+      status: 'Ongoing'
+    };
+
+    try {
+      await setDoc(sessionRef, newSession);
+      router.push(`/bulk-store/stock-taking?session=${sessionId}`);
+    } catch (error) {
+      console.error("Failed to start stock take session:", error);
+      toast({
+        variant: 'destructive',
+        title: 'Error Starting Session',
+        description: 'Could not create a new stock-take session.',
+      });
+    }
+  };
+
 
   const handleAdjustStock = async (itemId: string, adjustment: number) => {
      if (!firestore || !selectedItem) return;
@@ -334,6 +362,10 @@ export default function BulkStoreInventoryPage() {
             className="max-w-sm"
             />
             <div className="flex items-center gap-2">
+                 <Button variant="outline" onClick={handleStartStockTake}>
+                    <ClipboardList className="mr-2 h-4 w-4" />
+                    Start Stock Take
+                </Button>
                  <Button variant="outline" onClick={() => router.push('/tools/procurement-sessions')}>Procurement Tools</Button>
                  <Dialog open={isAddItemFormOpen} onOpenChange={setIsAddItemFormOpen}>
                   <DialogTrigger asChild>
@@ -478,5 +510,3 @@ export default function BulkStoreInventoryPage() {
     </div>
   );
 }
-
-    

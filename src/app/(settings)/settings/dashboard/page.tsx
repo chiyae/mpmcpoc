@@ -5,7 +5,7 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { Users, Truck, Package, Settings, HandHeart } from "lucide-react";
+import { Users, Truck, Package, Settings, HandHeart, History } from "lucide-react";
 import Link from "next/link";
 
 const settingsLinks = [
@@ -38,6 +38,12 @@ const settingsLinks = [
         icon: Settings,
         title: 'General Settings',
         description: 'Configure application-wide settings like currency.'
+    },
+    {
+        href: '/settings/audit-log',
+        icon: History,
+        title: 'Audit Log',
+        description: 'Review a trail of important user actions in the system.'
     },
 ]
 

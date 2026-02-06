@@ -15,7 +15,7 @@ import {
   SidebarInset,
   SidebarRail,
 } from "@/components/ui/sidebar";
-import { Home, Users, Package, Truck, Settings, HandHeart } from "lucide-react";
+import { Home, Users, Package, Truck, Settings, HandHeart, History } from "lucide-react";
 import Logo from "@/components/logo";
 import DashboardHeader from "@/components/dashboard-header";
 import { useAppUser } from "@/hooks/use-app-user";
@@ -75,6 +75,14 @@ export default function SettingsLayout({ children }: { children: ReactNode }) {
                 <Link href="/settings/general">
                   <Settings />
                   <span>General Settings</span>
+                </Link>
+              </SidebarMenuButton>
+            </SidebarMenuItem>
+             <SidebarMenuItem>
+              <SidebarMenuButton asChild tooltip="Audit Log">
+                <Link href="/settings/audit-log">
+                  <History />
+                  <span>Audit Log</span>
                 </Link>
               </SidebarMenuButton>
             </SidebarMenuItem>

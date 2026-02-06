@@ -12,10 +12,10 @@ import {
 } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import type { User } from '@/lib/types';
-import { useCollection, useFirestore, useMemoFirebase, useUser } from '@/firebase';
+import { useCollection, useFirestore, useMemoFirebase } from '@/firebase';
 import { collection, doc, setDoc } from 'firebase/firestore';
 import { Skeleton } from '@/components/ui/skeleton';
-import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import {
     Table,
     TableBody,
@@ -43,11 +43,13 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { DotsHorizontalIcon } from '@radix-ui/react-icons';
+import { useAppUser } from '@/hooks/use-app-user';
+import { logAction } from '@/lib/audit';
 
 export default function UserManagementPage() {
   const { toast } = useToast();
   const firestore = useFirestore();
-  const { user: authUser, isUserLoading: isAuthUserLoading } = useUser();
+  const currentUser = useAppUser();
 
   const usersCollectionQuery = useMemoFirebase(
     () => (firestore ? collection(firestore, 'users') : null),
@@ -55,7 +57,7 @@ export default function UserManagementPage() {
   );
   
   const { data: users, isLoading: areUsersLoading, error } = useCollection<User>(usersCollectionQuery);
-  const isLoading = isAuthUserLoading || areUsersLoading;
+  const isLoading = currentUser.isLoading || areUsersLoading;
 
   const [isAddUserOpen, setIsAddUserOpen] = React.useState(false);
   const [isClient, setIsClient] = React.useState(false);
@@ -70,9 +72,9 @@ export default function UserManagementPage() {
   }
 
   const handleToggleDisable = async (targetUser: User) => {
-    if (!firestore || !authUser) return;
+    if (!firestore || !currentUser.authUser) return;
 
-    if (targetUser.id === authUser.uid) {
+    if (targetUser.id === currentUser.authUser.uid) {
       toast({
         variant: 'destructive',
         title: 'Action Not Allowed',
@@ -86,6 +88,13 @@ export default function UserManagementPage() {
 
     try {
       await setDoc(userRef, { disabled: newDisabledState }, { merge: true });
+      
+      // Log the action
+      await logAction(firestore, currentUser, newDisabledState ? 'user.disable' : 'user.enable', {
+        targetUserId: targetUser.id,
+        targetUserEmail: targetUser.username,
+      });
+
       toast({
         title: 'User Updated',
         description: `${targetUser.displayName}'s account has been ${newDisabledState ? 'disabled' : 'enabled'}.`,
@@ -164,7 +173,7 @@ export default function UserManagementPage() {
                     </TableRow>
                 ))}
                 {!isLoading && users && users.map(user => {
-                  const isSelf = authUser?.uid === user.id;
+                  const isSelf = currentUser.authUser?.uid === user.id;
 
                   return (
                     <TableRow key={user.id}>
@@ -221,5 +230,3 @@ export default function UserManagementPage() {
     </div>
   );
 }
-
-    

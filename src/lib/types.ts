@@ -163,4 +163,11 @@ export interface LocalPurchaseOrder {
     status: LpoStatus;
 }
 
-    
+export interface Log {
+    id: string;
+    timestamp: string; // ISO date-time string
+    userId: string;
+    userDisplayName: string;
+    action: string;
+    details: Record<string, any>;
+}

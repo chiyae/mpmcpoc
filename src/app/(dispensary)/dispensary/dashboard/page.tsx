@@ -12,10 +12,13 @@ import { Package, AlertTriangle } from "lucide-react";
 import { useCollection, useFirestore, useMemoFirebase } from '@/firebase';
 import { collection, query, where } from 'firebase/firestore';
 import type { Stock, Bill, Item } from '@/lib/types';
-import { differenceInDays, parseISO } from 'date-fns';
+import { differenceInDays, parseISO, subDays, isWithinInterval, format } from 'date-fns';
 import { StatCard } from '@/components/ui/stat-card';
 import { BarChart, XAxis, YAxis, Tooltip, Bar, ResponsiveContainer } from 'recharts';
 import { Skeleton } from '@/components/ui/skeleton';
+import { DateRangePicker } from '@/components/ui/date-range-picker';
+import type { DateRange } from 'react-day-picker';
+import { ScrollArea } from '@/components/ui/scroll-area';
 
 // A simple helper to differentiate services from items based on ID format.
 // This assumes service IDs are non-numeric strings (e.g., 'CONSULTATION-FEE')
@@ -24,6 +27,11 @@ const isService = (itemId: string) => isNaN(parseInt(itemId.substring(itemId.len
 
 export default function DispensaryDashboard() {
   const firestore = useFirestore();
+
+  const [dateRange, setDateRange] = React.useState<DateRange | undefined>({
+    from: subDays(new Date(), 6),
+    to: new Date(),
+  });
 
   // --- Data Fetching ---
   const dispensaryStockQuery = useMemoFirebase(
@@ -79,12 +87,21 @@ export default function DispensaryDashboard() {
         return count;
     }, 0);
         
-    // Recently dispensed items
-    const recentlyDispensed = dispensaryBills
-      .filter(bill => bill.isDispensed)
-      .sort((a,b) => new Date(b.date).getTime() - new Date(a.date).getTime())
-      .flatMap(bill => bill.items.map(item => ({...item, billId: bill.id})))
-      .slice(0, 5);
+    // Dispensed items for the selected date range
+    const dispensedBills = dispensaryBills.filter(bill => bill.isDispensed);
+    
+    const filteredBillsByDate = dateRange?.from ? dispensedBills.filter(bill => {
+        try {
+            const billDate = parseISO(bill.date);
+            return isWithinInterval(billDate, { start: dateRange.from!, end: dateRange.to || new Date() });
+        } catch(e) {
+            return false;
+        }
+    }) : dispensedBills;
+
+    const recentlyDispensed = filteredBillsByDate
+      .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
+      .flatMap(bill => bill.items.map(item => ({...item, billId: bill.id, date: bill.date })));
     
     // Top 5 dispensed items by instance count
      const dispensedCounts = dispensaryBills
@@ -108,7 +125,7 @@ export default function DispensaryDashboard() {
         recentlyDispensedItems: recentlyDispensed,
         topDispensedItems: topDispensed
     }
-  }, [dispensaryStocks, allItems, dispensaryBills]);
+  }, [dispensaryStocks, allItems, dispensaryBills, dateRange]);
 
   const isLoading = isLoadingStock || isLoadingBills || isLoadingItems;
 
@@ -177,30 +194,40 @@ export default function DispensaryDashboard() {
           </CardContent>
         </Card>
         <Card className="col-span-3">
-          <CardHeader>
-            <CardTitle>Recently Dispensed</CardTitle>
-            <CardDescription>
-              Items from the most recently completed dispensations.
-            </CardDescription>
+           <CardHeader>
+            <div className="flex justify-between items-start">
+                <div>
+                    <CardTitle>Dispensing History</CardTitle>
+                    <CardDescription>
+                        Items dispensed in the selected period.
+                    </CardDescription>
+                </div>
+                <DateRangePicker date={dateRange} onDateChange={setDateRange} />
+            </div>
           </CardHeader>
           <CardContent>
-             {isLoading ? (
-                 <div className="space-y-4">
-                    <Skeleton className="h-10 w-full" />
-                    <Skeleton className="h-10 w-full" />
-                    <Skeleton className="h-10 w-full" />
-                </div>
-             ) : (
-                <div className="space-y-4">
-                    {recentlyDispensedItems.length === 0 && <p className="text-center text-sm text-muted-foreground py-8">No items have been dispensed recently.</p>}
-                    {recentlyDispensedItems.map((item, index) => (
-                        <div key={`${item.billId}-${item.itemId}-${index}`} className="flex items-center justify-between">
-                            <p className="font-medium truncate pr-4">{item.itemName}</p>
-                            <p className="text-right text-muted-foreground">Qty: <span className="font-bold text-foreground">{item.quantity}</span></p>
-                        </div>
-                    ))}
-                </div>
-             )}
+             <ScrollArea className="h-[280px]">
+                 {isLoading ? (
+                     <div className="space-y-4">
+                        <Skeleton className="h-10 w-full" />
+                        <Skeleton className="h-10 w-full" />
+                        <Skeleton className="h-10 w-full" />
+                    </div>
+                 ) : (
+                    <div className="space-y-4 pr-4">
+                        {recentlyDispensedItems.length === 0 && <p className="text-center text-sm text-muted-foreground py-8">No items were dispensed in this period.</p>}
+                        {recentlyDispensedItems.map((item, index) => (
+                            <div key={`${item.billId}-${item.itemId}-${index}`} className="flex items-center justify-between">
+                                 <div>
+                                    <p className="font-medium truncate pr-4">{item.itemName}</p>
+                                    <p className="text-xs text-muted-foreground">{format(parseISO(item.date), 'PP')}</p>
+                                </div>
+                                <p className="text-right text-muted-foreground">Qty: <span className="font-bold text-foreground">{item.quantity}</span></p>
+                            </div>
+                        ))}
+                    </div>
+                 )}
+             </ScrollArea>
           </CardContent>
         </Card>
       </div>

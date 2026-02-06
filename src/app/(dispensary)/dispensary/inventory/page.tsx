@@ -2,7 +2,7 @@
 'use client';
 
 import * as React from 'react';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import {
   CaretSortIcon,
   ChevronDownIcon,
@@ -41,7 +41,7 @@ import type { Item, Stock, StockTakeSession, User } from '@/lib/types';
 import { differenceInDays, parseISO } from 'date-fns';
 import { useToast } from "@/hooks/use-toast";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { ClipboardList } from 'lucide-react';
+import { ClipboardList, FilterX } from 'lucide-react';
 import { useCollection, useDoc, useFirestore, useMemoFirebase, useUser } from '@/firebase';
 import { collection, doc, query, setDoc, where } from 'firebase/firestore';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -57,6 +57,7 @@ export default function DispensaryInventoryPage() {
   const { toast } = useToast();
   const firestore = useFirestore();
   const router = useRouter();
+  const searchParams = useSearchParams();
   const { user: authUser } = useUser();
 
   const userDocRef = useMemoFirebase(() => (firestore && authUser) ? doc(firestore, 'users', authUser.uid) : null, [firestore, authUser]);
@@ -76,22 +77,36 @@ export default function DispensaryInventoryPage() {
   const stockQuery = useMemoFirebase(() => firestore ? query(collection(firestore, 'stocks'), where('locationId', '==', 'dispensary')) : null, [firestore]);
   const { data: dispensaryStocks, isLoading: isLoadingStock } = useCollection<Stock>(stockQuery);
 
+  const prefilter = searchParams.get('filter');
+
   const inventoryData: DispensaryStockItem[] = React.useMemo(() => {
     if (!allItems || !dispensaryStocks) return [];
     
-    const medicineStock = dispensaryStocks.filter(stock => {
-        const itemInfo = allItems.find(item => item.id === stock.itemId);
-        return itemInfo && itemInfo.category === 'Medicine';
-    });
-
-    return medicineStock.map(stock => {
+    let combinedData = dispensaryStocks.map(stock => {
       const itemInfo = allItems.find(item => item.id === stock.itemId);
+      if (!itemInfo || itemInfo.category !== 'Medicine') return null;
       return {
         ...itemInfo,
         stockData: stock,
       } as DispensaryStockItem;
-    }).filter(item => item.id); // Filter out any items that couldn't be found
-  }, [allItems, dispensaryStocks]);
+    }).filter((item): item is DispensaryStockItem => !!item);
+
+    if (prefilter === 'low-stock') {
+        combinedData = combinedData.filter(item => {
+            const { stockData, dispensaryReorderLevel } = item;
+            return stockData.currentStockQuantity < dispensaryReorderLevel;
+        });
+    } else if (prefilter === 'near-expiry') {
+        combinedData = combinedData.filter(item => {
+            const { stockData } = item;
+            if (!stockData.expiryDate) return false;
+            const daysToExpiry = differenceInDays(parseISO(stockData.expiryDate), new Date());
+            return daysToExpiry >= 0 && daysToExpiry <= 30;
+        });
+    }
+    
+    return combinedData;
+  }, [allItems, dispensaryStocks, prefilter]);
 
 
   const handleStartStockTake = async () => {
@@ -220,16 +235,30 @@ export default function DispensaryInventoryPage() {
   const isLoading = isLoadingItems || isLoadingStock || isUserLoading;
 
   return (
-    <div className="w-full">
+    <div className="space-y-6">
+        <header className="space-y-1.5">
+            <h1 className="text-3xl font-bold tracking-tight">Dispensary Inventory</h1>
+            <p className="text-muted-foreground">
+                View and manage all medicines currently stocked in the dispensary.
+            </p>
+        </header>
+
         <div className="flex items-center justify-between py-4">
-            <Input
-            placeholder="Filter items..."
-            value={(table.getColumn('genericName')?.getFilterValue() as string) ?? ''}
-            onChange={(event) =>
-                table.getColumn('genericName')?.setFilterValue(event.target.value)
-            }
-            className="max-w-sm"
-            />
+            <div className="flex items-center gap-2">
+                <Input
+                placeholder="Filter items..."
+                value={(table.getColumn('genericName')?.getFilterValue() as string) ?? ''}
+                onChange={(event) =>
+                    table.getColumn('genericName')?.setFilterValue(event.target.value)
+                }
+                className="max-w-sm"
+                />
+                {prefilter && (
+                    <Button variant="outline" onClick={() => router.push('/dispensary/inventory')}>
+                        <FilterX className="mr-2 h-4 w-4" /> Clear Filter
+                    </Button>
+                )}
+            </div>
             <div className="flex items-center gap-2">
                 <Button variant="outline" onClick={handleStartStockTake}>
                     <ClipboardList className="mr-2 h-4 w-4" />
@@ -311,7 +340,7 @@ export default function DispensaryInventoryPage() {
                     colSpan={columns.length}
                     className="h-24 text-center"
                     >
-                    No medicines in dispensary inventory.
+                    {prefilter ? `No items match the filter: "${prefilter}"` : "No medicines in dispensary inventory."}
                     </TableCell>
                 </TableRow>
                 ) : null}

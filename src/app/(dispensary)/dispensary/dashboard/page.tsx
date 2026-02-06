@@ -162,27 +162,36 @@ export default function DispensaryDashboard() {
                 </CardContent>
             </Card>
         </Link>
-        <StatCard
-          title="Items on Hand"
-          value={totalItems}
-          icon={Package}
-          description="Unique items in dispensary"
-          isLoading={isLoading}
-        />
-        <StatCard
-          title="Low Stock Alerts"
-          value={lowStockItemsCount}
-          icon={AlertTriangle}
-          description="Items below reorder level"
-          isLoading={isLoading}
-        />
-        <StatCard
-          title="Near Expiry Alerts"
-          value={nearExpiryItems}
-          icon={AlertTriangle}
-          description="Items expiring in 30 days"
-          isLoading={isLoading}
-        />
+        <Link href="/dispensary/inventory">
+            <StatCard
+            title="Items on Hand"
+            value={totalItems}
+            icon={Package}
+            description="Unique items in dispensary"
+            isLoading={isLoading}
+            className="hover:bg-accent transition-colors"
+            />
+        </Link>
+        <Link href="/dispensary/inventory?filter=low-stock">
+            <StatCard
+            title="Low Stock Alerts"
+            value={lowStockItemsCount}
+            icon={AlertTriangle}
+            description="Items below reorder level"
+            isLoading={isLoading}
+            className="hover:bg-accent transition-colors"
+            />
+        </Link>
+        <Link href="/dispensary/inventory?filter=near-expiry">
+            <StatCard
+            title="Near Expiry Alerts"
+            value={nearExpiryItems}
+            icon={AlertTriangle}
+            description="Items expiring in 30 days"
+            isLoading={isLoading}
+            className="hover:bg-accent transition-colors"
+            />
+        </Link>
       </div>
 
        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-7">

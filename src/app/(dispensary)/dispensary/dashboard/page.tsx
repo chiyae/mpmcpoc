@@ -8,7 +8,7 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { Package, AlertTriangle } from "lucide-react";
+import { Package, AlertTriangle, Pill } from "lucide-react";
 import { useCollection, useFirestore, useMemoFirebase } from '@/firebase';
 import { collection, query, where } from 'firebase/firestore';
 import type { Stock, Bill, Item } from '@/lib/types';
@@ -19,6 +19,8 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { DateRangePicker } from '@/components/ui/date-range-picker';
 import type { DateRange } from 'react-day-picker';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import { Button } from '@/components/ui/button';
+import Link from 'next/link';
 
 // A simple helper to differentiate services from items based on ID format.
 // This assumes service IDs are non-numeric strings (e.g., 'CONSULTATION-FEE')
@@ -50,6 +52,17 @@ export default function DispensaryDashboard() {
     [firestore]
   );
   const { data: dispensaryBills, isLoading: isLoadingBills } = useCollection<Bill>(dispensaryBillsQuery);
+
+  const pendingBillsQuery = useMemoFirebase(
+    () => firestore 
+      ? query(collection(firestore, 'billings'), where('paymentDetails.status', '==', 'Paid'), where('isDispensed', '==', false))
+      : null,
+    [firestore]
+  );
+  const { data: pendingDispensations, isLoading: isLoadingPending } = useCollection<Bill>(pendingBillsQuery);
+  
+  const pendingDispensationsCount = pendingDispensations?.length || 0;
+
 
   // --- Calculations ---
   const { 
@@ -127,7 +140,7 @@ export default function DispensaryDashboard() {
     }
   }, [dispensaryStocks, allItems, dispensaryBills, dateRange]);
 
-  const isLoading = isLoadingStock || isLoadingBills || isLoadingItems;
+  const isLoading = isLoadingStock || isLoadingBills || isLoadingItems || isLoadingPending;
 
 
   return (
@@ -135,7 +148,30 @@ export default function DispensaryDashboard() {
        <div className="flex justify-between items-center">
         <h1 className="text-3xl font-bold tracking-tight">Dispensary Dashboard</h1>
       </div>
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+
+      <Card className="col-span-full bg-primary/10 border-primary/50">
+        <CardHeader className="flex flex-row items-center justify-between">
+            <div>
+                <CardTitle>Dispensing Queue</CardTitle>
+                <CardDescription>Paid bills awaiting collection.</CardDescription>
+            </div>
+            <Pill className="h-8 w-8 text-primary" />
+        </CardHeader>
+        <CardContent className="flex items-center justify-between">
+            {isLoading ? (
+                <Skeleton className="h-12 w-24" />
+            ) : (
+                <p className="text-5xl font-bold">{pendingDispensationsCount}</p>
+            )}
+            <Button asChild size="lg">
+                <Link href="/dispensary/dispense">
+                    View Queue
+                </Link>
+            </Button>
+        </CardContent>
+      </Card>
+      
+      <div className="grid gap-4 md:grid-cols-3">
         <StatCard
           title="Items on Hand"
           value={totalItems}

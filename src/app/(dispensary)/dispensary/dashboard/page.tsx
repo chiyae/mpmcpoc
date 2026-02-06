@@ -8,23 +8,17 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { Package, AlertTriangle, DollarSign } from "lucide-react";
-import { useSettings } from '@/context/settings-provider';
+import { Package, AlertTriangle } from "lucide-react";
 import { useCollection, useFirestore, useMemoFirebase } from '@/firebase';
 import { collection, query, where } from 'firebase/firestore';
-import type { Stock, Bill, Item, BillItem } from '@/lib/types';
-import { differenceInDays, parseISO, isToday, format, subDays, isThisWeek, isThisMonth, isSameDay } from 'date-fns';
+import type { Stock, Bill, Item } from '@/lib/types';
+import { differenceInDays, parseISO } from 'date-fns';
 import { StatCard } from '@/components/ui/stat-card';
 import { BarChart, XAxis, YAxis, Tooltip, Bar, ResponsiveContainer } from 'recharts';
 import { Skeleton } from '@/components/ui/skeleton';
-import { formatItemName } from '@/lib/utils';
-import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
-
 
 export default function DispensaryDashboard() {
-  const { formatCurrency } = useSettings();
   const firestore = useFirestore();
-  const [salesPeriod, setSalesPeriod] = React.useState<'day' | 'week' | 'month'>('day');
 
   // --- Data Fetching ---
   const dispensaryStockQuery = useMemoFirebase(
@@ -48,15 +42,14 @@ export default function DispensaryDashboard() {
   const { 
     totalItems, 
     nearExpiryItems, 
-    lowStockItemsCount, 
-    filteredSales,
-    weeklySalesData,
-    recentlyDispensedItems
+    lowStockItemsCount,
+    recentlyDispensedItems,
+    topDispensedItems
   } = React.useMemo(() => {
     const today = new Date();
     
     if (!dispensaryStocks || !allItems || !dispensaryBills) {
-        return { totalItems: 0, nearExpiryItems: 0, lowStockItemsCount: 0, filteredSales: 0, weeklySalesData: [], recentlyDispensedItems: [] };
+        return { totalItems: 0, nearExpiryItems: 0, lowStockItemsCount: 0, recentlyDispensedItems: [], topDispensedItems: [] };
     }
 
     const stockStats = dispensaryStocks.reduce((acc, stock) => {
@@ -80,57 +73,46 @@ export default function DispensaryDashboard() {
         }
         return count;
     }, 0);
-
-    const sales = dispensaryBills
-        ?.filter(bill => {
-            const billDate = parseISO(bill.date);
-            if (salesPeriod === 'day') return isToday(billDate);
-            if (salesPeriod === 'week') return isThisWeek(billDate, { weekStartsOn: 1 });
-            if (salesPeriod === 'month') return isThisMonth(billDate);
-            return false;
-        })
-        .reduce((sum, bill) => sum + bill.grandTotal, 0) || 0;
         
-    // Last 7 days sales data
-    const weeklySales = Array.from({ length: 7 }).map((_, i) => {
-        const date = subDays(new Date(), i);
-        const dailyTotal = dispensaryBills
-            .filter(bill => isSameDay(parseISO(bill.date), date))
-            .reduce((sum, bill) => sum + bill.grandTotal, 0);
-        return {
-            name: format(date, 'eee'),
-            total: dailyTotal
-        }
-    }).reverse();
-
     // Recently dispensed items
     const recentlyDispensed = dispensaryBills
       .filter(bill => bill.isDispensed)
       .sort((a,b) => new Date(b.date).getTime() - new Date(a.date).getTime())
-      .slice(0, 5)
-      .flatMap(bill => bill.items.map(item => ({...item, billId: bill.id})));
+      .flatMap(bill => bill.items.map(item => ({...item, billId: bill.id})))
+      .slice(0, 5);
+    
+    // Top 5 dispensed items by quantity
+     const dispensedCounts = dispensaryBills
+      .flatMap(bill => bill.items)
+      .reduce((acc, item) => {
+          acc[item.itemName] = (acc[item.itemName] || 0) + item.quantity;
+          return acc;
+      }, {} as Record<string, number>);
+      
+    const topDispensed = Object.entries(dispensedCounts)
+        .sort((a,b) => b[1] - a[1])
+        .slice(0,5)
+        .map(([name, total]) => ({ name, total }));
 
 
     return {
         totalItems: stockStats.itemIds.size,
         nearExpiryItems: stockStats.nearExpiryCount,
         lowStockItemsCount: lowStockCount,
-        filteredSales: sales,
-        weeklySalesData: weeklySales,
-        recentlyDispensedItems: recentlyDispensed
+        recentlyDispensedItems: recentlyDispensed,
+        topDispensedItems: topDispensed
     }
-  }, [dispensaryStocks, allItems, dispensaryBills, salesPeriod]);
+  }, [dispensaryStocks, allItems, dispensaryBills]);
 
   const isLoading = isLoadingStock || isLoadingBills || isLoadingItems;
 
-  const salesCardTitle = `This ${salesPeriod.charAt(0).toUpperCase() + salesPeriod.slice(1)}'s Sales`;
 
   return (
     <div className="space-y-6">
        <div className="flex justify-between items-center">
         <h1 className="text-3xl font-bold tracking-tight">Dispensary Dashboard</h1>
       </div>
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
         <StatCard
           title="Items on Hand"
           value={totalItems}
@@ -152,60 +134,37 @@ export default function DispensaryDashboard() {
           description="Items expiring in 30 days"
           isLoading={isLoading}
         />
-        <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">{salesCardTitle}</CardTitle>
-                <Tabs value={salesPeriod} onValueChange={(value) => setSalesPeriod(value as 'day' | 'week' | 'month')} className="h-auto p-0">
-                    <TabsList className="h-7 text-xs px-1">
-                        <TabsTrigger value="day" className="h-5 px-2 text-xs">Day</TabsTrigger>
-                        <TabsTrigger value="week" className="h-5 px-2 text-xs">Week</TabsTrigger>
-                        <TabsTrigger value="month" className="h-5 px-2 text-xs">Month</TabsTrigger>
-                    </TabsList>
-                </Tabs>
-            </CardHeader>
-            <CardContent>
-                {isLoading ? <Skeleton className="h-8 w-3/4" /> : <div className="text-2xl font-bold">{formatCurrency(filteredSales)}</div>}
-                 {isLoading 
-                    ? <Skeleton className="h-4 w-1/2 mt-1" /> 
-                    : <p className="text-xs text-muted-foreground">Revenue from dispensed items</p>
-                }
-            </CardContent>
-        </Card>
       </div>
 
        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-7">
         <Card className="col-span-4">
           <CardHeader>
-            <CardTitle>Weekly Sales Overview</CardTitle>
-            <CardDescription>Sales figures for the last 7 days.</CardDescription>
+            <CardTitle>Top 5 Dispensed Items</CardTitle>
+            <CardDescription>Most frequently sold items by quantity.</CardDescription>
           </CardHeader>
           <CardContent className="pl-2">
             {isLoading ? <Skeleton className="h-[350px] w-full" /> : (
                 <ResponsiveContainer width="100%" height={350}>
-                <BarChart data={weeklySalesData}>
-                    <XAxis
-                    dataKey="name"
-                    stroke="#888888"
-                    fontSize={12}
-                    tickLine={false}
-                    axisLine={false}
-                    />
+                <BarChart data={topDispensedItems} layout="vertical">
+                    <XAxis type="number" stroke="#888888" fontSize={12} />
                     <YAxis
-                    stroke="#888888"
-                    fontSize={12}
-                    tickLine={false}
-                    axisLine={false}
-                    tickFormatter={(value) => `${formatCurrency(value)}`}
-                    />
+                        dataKey="name"
+                        type="category"
+                        stroke="#888888"
+                        fontSize={12}
+                        tickLine={false}
+                        axisLine={false}
+                        width={150}
+                        />
                     <Tooltip
                         contentStyle={{
                             background: "hsl(var(--background))",
                             border: "1px solid hsl(var(--border))",
                             borderRadius: "var(--radius)"
                         }}
-                        formatter={(value) => [formatCurrency(Number(value)), "Sales"]}
+                        formatter={(value) => [value, "Total Quantity"]}
                     />
-                    <Bar dataKey="total" fill="hsl(var(--primary))" radius={[4, 4, 0, 0]} />
+                    <Bar dataKey="total" fill="hsl(var(--primary))" radius={[0, 4, 4, 0]} />
                 </BarChart>
                 </ResponsiveContainer>
             )}

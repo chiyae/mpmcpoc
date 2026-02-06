@@ -1,3 +1,4 @@
+
 'use client';
 import * as React from 'react';
 import {
@@ -128,13 +129,6 @@ export default function DispensaryDashboard() {
     <div className="space-y-6">
        <div className="flex justify-between items-center">
         <h1 className="text-3xl font-bold tracking-tight">Dispensary Dashboard</h1>
-        <Tabs value={salesPeriod} onValueChange={(value) => setSalesPeriod(value as 'day' | 'week' | 'month')}>
-            <TabsList>
-                <TabsTrigger value="day">Day</TabsTrigger>
-                <TabsTrigger value="week">Week</TabsTrigger>
-                <TabsTrigger value="month">Month</TabsTrigger>
-            </TabsList>
-        </Tabs>
       </div>
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
         <StatCard
@@ -158,13 +152,25 @@ export default function DispensaryDashboard() {
           description="Items expiring in 30 days"
           isLoading={isLoading}
         />
-        <StatCard
-          title={salesCardTitle}
-          value={formatCurrency(filteredSales)}
-          icon={DollarSign}
-          description="Revenue from dispensed items"
-          isLoading={isLoading}
-        />
+        <Card>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-sm font-medium">{salesCardTitle}</CardTitle>
+                <Tabs value={salesPeriod} onValueChange={(value) => setSalesPeriod(value as 'day' | 'week' | 'month')} className="h-auto p-0">
+                    <TabsList className="h-7 text-xs px-1">
+                        <TabsTrigger value="day" className="h-5 px-2 text-xs">Day</TabsTrigger>
+                        <TabsTrigger value="week" className="h-5 px-2 text-xs">Week</TabsTrigger>
+                        <TabsTrigger value="month" className="h-5 px-2 text-xs">Month</TabsTrigger>
+                    </TabsList>
+                </Tabs>
+            </CardHeader>
+            <CardContent>
+                {isLoading ? <Skeleton className="h-8 w-3/4" /> : <div className="text-2xl font-bold">{formatCurrency(filteredSales)}</div>}
+                 {isLoading 
+                    ? <Skeleton className="h-4 w-1/2 mt-1" /> 
+                    : <p className="text-xs text-muted-foreground">Revenue from dispensed items</p>
+                }
+            </CardContent>
+        </Card>
       </div>
 
        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-7">

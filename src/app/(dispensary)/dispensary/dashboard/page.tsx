@@ -12,7 +12,7 @@ import { Package, AlertTriangle, Pill } from "lucide-react";
 import { useCollection, useFirestore, useMemoFirebase } from '@/firebase';
 import { collection, query, where } from 'firebase/firestore';
 import type { Stock, Bill, Item } from '@/lib/types';
-import { differenceInDays, parseISO, subDays, isWithinInterval, format } from 'date-fns';
+import { differenceInDays, parseISO, subDays, isWithinInterval, format, isThisWeek, isThisMonth } from 'date-fns';
 import { StatCard } from '@/components/ui/stat-card';
 import { BarChart, XAxis, YAxis, Tooltip, Bar, ResponsiveContainer } from 'recharts';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -21,6 +21,8 @@ import type { DateRange } from 'react-day-picker';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Button } from '@/components/ui/button';
 import Link from 'next/link';
+import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
+
 
 // A simple helper to differentiate services from items based on ID format.
 // This assumes service IDs are non-numeric strings (e.g., 'CONSULTATION-FEE')
@@ -34,6 +36,9 @@ export default function DispensaryDashboard() {
     from: subDays(new Date(), 6),
     to: new Date(),
   });
+  
+  const [topItemsPeriod, setTopItemsPeriod] = React.useState<'week' | 'month' | 'all'>('month');
+
 
   // --- Data Fetching ---
   const dispensaryStockQuery = useMemoFirebase(
@@ -116,8 +121,16 @@ export default function DispensaryDashboard() {
       .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
       .flatMap(bill => bill.items.map(item => ({...item, billId: bill.id, date: bill.date })));
     
-    // Top 5 dispensed items by instance count
-     const dispensedCounts = dispensaryBills
+    // Top 5 dispensed items by instance count, filtered by period
+    const billsForTopItems = dispensaryBills.filter(bill => {
+        const billDate = parseISO(bill.date);
+        if (topItemsPeriod === 'week') return isThisWeek(billDate, { weekStartsOn: 1 });
+        if (topItemsPeriod === 'month') return isThisMonth(billDate);
+        // 'all' case
+        return true;
+    });
+
+     const dispensedCounts = billsForTopItems
       .flatMap(bill => bill.items)
       .reduce((acc, item) => {
           if (isService(item.itemId)) return acc;
@@ -138,7 +151,7 @@ export default function DispensaryDashboard() {
         recentlyDispensedItems: recentlyDispensed,
         topDispensedItems: topDispensed
     }
-  }, [dispensaryStocks, allItems, dispensaryBills, dateRange]);
+  }, [dispensaryStocks, allItems, dispensaryBills, dateRange, topItemsPeriod]);
 
   const isLoading = isLoadingStock || isLoadingBills || isLoadingItems || isLoadingPending;
 
@@ -197,8 +210,19 @@ export default function DispensaryDashboard() {
        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-7">
         <Card className="col-span-4">
           <CardHeader>
-            <CardTitle>Top 5 Dispensed Items</CardTitle>
-            <CardDescription>Most frequently dispensed items by number of transactions.</CardDescription>
+            <div className="flex justify-between items-start">
+              <div>
+                <CardTitle>Top 5 Dispensed Items</CardTitle>
+                <CardDescription>Most frequently dispensed items by number of transactions.</CardDescription>
+              </div>
+              <Tabs value={topItemsPeriod} onValueChange={(value) => setTopItemsPeriod(value as any)}>
+                  <TabsList>
+                      <TabsTrigger value="week">This Week</TabsTrigger>
+                      <TabsTrigger value="month">This Month</TabsTrigger>
+                      <TabsTrigger value="all">All Time</TabsTrigger>
+                  </TabsList>
+              </Tabs>
+            </div>
           </CardHeader>
           <CardContent className="pl-2">
             {isLoading ? <Skeleton className="h-[350px] w-full" /> : (

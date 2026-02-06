@@ -17,6 +17,11 @@ import { StatCard } from '@/components/ui/stat-card';
 import { BarChart, XAxis, YAxis, Tooltip, Bar, ResponsiveContainer } from 'recharts';
 import { Skeleton } from '@/components/ui/skeleton';
 
+// A simple helper to differentiate services from items based on ID format.
+// This assumes service IDs are non-numeric strings (e.g., 'CONSULTATION-FEE')
+// and item IDs are codes (e.g., 'PAR500').
+const isService = (itemId: string) => isNaN(parseInt(itemId.substring(itemId.length - 4)));
+
 export default function DispensaryDashboard() {
   const firestore = useFirestore();
 
@@ -81,18 +86,19 @@ export default function DispensaryDashboard() {
       .flatMap(bill => bill.items.map(item => ({...item, billId: bill.id})))
       .slice(0, 5);
     
-    // Top 5 dispensed items by quantity
+    // Top 5 dispensed items by instance count
      const dispensedCounts = dispensaryBills
       .flatMap(bill => bill.items)
       .reduce((acc, item) => {
-          acc[item.itemName] = (acc[item.itemName] || 0) + item.quantity;
+          if (isService(item.itemId)) return acc;
+          acc[item.itemName] = (acc[item.itemName] || 0) + 1;
           return acc;
       }, {} as Record<string, number>);
       
     const topDispensed = Object.entries(dispensedCounts)
         .sort((a,b) => b[1] - a[1])
         .slice(0,5)
-        .map(([name, total]) => ({ name, total }));
+        .map(([name, count]) => ({ name, count }));
 
 
     return {
@@ -140,7 +146,7 @@ export default function DispensaryDashboard() {
         <Card className="col-span-4">
           <CardHeader>
             <CardTitle>Top 5 Dispensed Items</CardTitle>
-            <CardDescription>Most frequently sold items by quantity.</CardDescription>
+            <CardDescription>Most frequently dispensed items by number of transactions.</CardDescription>
           </CardHeader>
           <CardContent className="pl-2">
             {isLoading ? <Skeleton className="h-[350px] w-full" /> : (
@@ -162,9 +168,9 @@ export default function DispensaryDashboard() {
                             border: "1px solid hsl(var(--border))",
                             borderRadius: "var(--radius)"
                         }}
-                        formatter={(value) => [value, "Total Quantity"]}
+                        formatter={(value) => [value, "Dispensing Frequency"]}
                     />
-                    <Bar dataKey="total" fill="hsl(var(--primary))" radius={[0, 4, 4, 0]} />
+                    <Bar dataKey="count" fill="hsl(var(--primary))" radius={[0, 4, 4, 0]} />
                 </BarChart>
                 </ResponsiveContainer>
             )}

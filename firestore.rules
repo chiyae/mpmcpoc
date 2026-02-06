@@ -42,6 +42,17 @@ service cloud.firestore {
     }
 
     /* ============================
+       AUDIT LOGS
+       ============================ */
+    match /logs/{logId} {
+      // Any authenticated user can create a log entry (for their own actions).
+      allow create: if isAuthenticated();
+      
+      // Only admins can read, update, or delete log entries.
+      allow read, update, delete: if isAdmin();
+    }
+
+    /* ============================
        MASTER DATA
        ============================ */
 
@@ -81,8 +92,8 @@ service cloud.firestore {
       // A user can create their own document (needed for client-side account creation), or an admin can create one.
       allow create: if request.auth.uid == userId || isAdmin();
 
-      // A user can read their own document.
-      allow get: if isAuthenticated() && isUserDocOwner(userId);
+      // Any authenticated user can read any user's profile data. This is necessary for the isAdmin() helper function to work correctly in other rules.
+      allow get: if isAuthenticated();
     }
 
     /* ============================

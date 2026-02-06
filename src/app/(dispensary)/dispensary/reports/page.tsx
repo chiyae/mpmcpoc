@@ -2,6 +2,7 @@
 'use client';
 
 import * as React from 'react';
+import { useRouter } from 'next/navigation';
 import { DateRangePicker } from '@/components/ui/date-range-picker';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { DateRange } from 'react-day-picker';
@@ -11,8 +12,11 @@ import type { Bill, BillItem } from '@/lib/types';
 import { collection, query, where } from 'firebase/firestore';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { Button } from '@/components/ui/button';
+import { ArrowLeft } from 'lucide-react';
 
 export default function DispensaryReportsPage() {
+  const router = useRouter();
   const firestore = useFirestore();
 
   const [dateRange, setDateRange] = React.useState<DateRange | undefined>({
@@ -56,11 +60,19 @@ export default function DispensaryReportsPage() {
 
   return (
     <div className="space-y-6">
-       <header className="space-y-1.5">
-            <h1 className="text-3xl font-bold tracking-tight">Dispensary Reports</h1>
-            <p className="text-muted-foreground">
-                Analyze item movement and sales from the dispensary.
-            </p>
+       <header className="flex items-start justify-between">
+            <div className="flex items-center gap-4">
+                <Button variant="outline" size="icon" className="h-8 w-8 flex-shrink-0" onClick={() => router.back()}>
+                    <ArrowLeft className="h-4 w-4" />
+                    <span className="sr-only">Back</span>
+                </Button>
+                <div>
+                    <h1 className="text-3xl font-bold tracking-tight">Dispensary Reports</h1>
+                    <p className="text-muted-foreground">
+                        Analyze item movement and sales from the dispensary.
+                    </p>
+                </div>
+            </div>
         </header>
 
       <Card>

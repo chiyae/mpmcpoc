@@ -1,6 +1,8 @@
+
 'use client';
 
 import * as React from 'react';
+import { useRouter } from 'next/navigation';
 import {
   CaretSortIcon,
 } from '@radix-ui/react-icons';
@@ -40,8 +42,10 @@ import { collection, query, where } from 'firebase/firestore';
 import { Skeleton } from '@/components/ui/skeleton';
 import { DateRangePicker } from '@/components/ui/date-range-picker';
 import { DateRange } from 'react-day-picker';
+import { ArrowLeft } from 'lucide-react';
 
 export default function DispensaryInternalOrdersPage() {
+  const router = useRouter();
   const firestore = useFirestore();
 
   const ordersQuery = useMemoFirebase(() => 
@@ -150,13 +154,21 @@ export default function DispensaryInternalOrdersPage() {
   const isLoading = isLoadingOrders || isLoadingItems;
 
   return (
-    <div className="w-full">
-      <div className="flex items-start justify-between mb-6">
-        <header>
-            <h1 className="text-3xl font-bold tracking-tight">Internal Order History</h1>
-            <p className="text-muted-foreground mt-1">
-            Track the status of stock requests you have made to the Bulk Store.
-            </p>
+    <div className="w-full space-y-6">
+      <div className="flex items-start justify-between">
+        <header className="space-y-1.5">
+            <div className="flex items-center gap-4">
+                <Button variant="outline" size="icon" className="h-8 w-8 flex-shrink-0" onClick={() => router.back()}>
+                    <ArrowLeft className="h-4 w-4" />
+                    <span className="sr-only">Back</span>
+                </Button>
+                <div>
+                    <h1 className="text-3xl font-bold tracking-tight">Internal Order History</h1>
+                    <p className="text-muted-foreground">
+                    Track the status of stock requests you have made to the Bulk Store.
+                    </p>
+                </div>
+            </div>
         </header>
         <DateRangePicker date={dateRange} onDateChange={setDateRange} />
       </div>

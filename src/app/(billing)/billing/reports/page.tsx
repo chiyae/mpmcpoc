@@ -2,10 +2,11 @@
 'use client';
 
 import * as React from 'react';
+import { useRouter } from 'next/navigation';
 import { DateRangePicker } from '@/components/ui/date-range-picker';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
-import { DollarSign, FileWarning, CheckCircle } from 'lucide-react';
+import { DollarSign, FileWarning, CheckCircle, ArrowLeft } from 'lucide-react';
 import { DateRange } from 'react-day-picker';
 import { subDays, isWithinInterval } from 'date-fns';
 import { useSettings } from '@/context/settings-provider';
@@ -19,6 +20,7 @@ import { Badge } from '@/components/ui/badge';
 
 
 export default function FinancialReportsPage() {
+  const router = useRouter();
   const { formatCurrency } = useSettings();
   const firestore = useFirestore();
 
@@ -60,9 +62,22 @@ export default function FinancialReportsPage() {
 
   return (
     <div className="space-y-6">
+        <header className="flex items-start justify-between">
+            <div className="flex items-center gap-4">
+                <Button variant="outline" size="icon" className="h-8 w-8 flex-shrink-0" onClick={() => router.back()}>
+                    <ArrowLeft className="h-4 w-4" />
+                    <span className="sr-only">Back</span>
+                </Button>
+                <div>
+                    <h1 className="text-3xl font-bold tracking-tight">Financial Reports</h1>
+                    <p className="text-muted-foreground">Generate and review financial summaries for selected periods.</p>
+                </div>
+            </div>
+        </header>
+
       <Card>
         <CardHeader>
-          <CardTitle>Financial Reports</CardTitle>
+          <CardTitle>Generate Report</CardTitle>
            <CardDescription>
             Select a date range to generate a financial summary for that period.
           </CardDescription>

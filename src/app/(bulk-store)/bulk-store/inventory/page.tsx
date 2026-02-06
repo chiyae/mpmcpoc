@@ -59,7 +59,7 @@ import { useCollection, useFirestore, useMemoFirebase } from '@/firebase';
 import { collection, doc, setDoc, writeBatch, query, where } from 'firebase/firestore';
 import { formatItemName } from '@/lib/utils';
 import { useRouter } from 'next/navigation';
-import { ClipboardList } from 'lucide-react';
+import { ArrowLeft, ClipboardList } from 'lucide-react';
 
 type BulkStoreInventoryItem = Item & {
   stock?: Stock; // Stock is now optional
@@ -351,7 +351,20 @@ export default function BulkStoreInventoryPage() {
 
 
   return (
-    <div className="w-full">
+    <div className="w-full space-y-6">
+        <header className="flex items-start justify-between">
+            <div className="flex items-center gap-4">
+                <Button variant="outline" size="icon" className="h-8 w-8 flex-shrink-0" onClick={() => router.back()}>
+                    <ArrowLeft className="h-4 w-4" />
+                    <span className="sr-only">Back</span>
+                </Button>
+                <div>
+                    <h1 className="text-3xl font-bold tracking-tight">Bulk Store Inventory</h1>
+                    <p className="text-muted-foreground">Manage stock levels and details for the main store.</p>
+                </div>
+            </div>
+        </header>
+
         <div className="flex items-center justify-between py-4">
             <Input
             placeholder="Filter items..."

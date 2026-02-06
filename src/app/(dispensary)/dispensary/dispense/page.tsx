@@ -2,6 +2,7 @@
 'use client';
 
 import * as React from 'react';
+import { useRouter } from 'next/navigation';
 import {
   Card,
   CardContent,
@@ -21,7 +22,7 @@ import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
 import type { Bill, Stock } from '@/lib/types';
 import { Badge } from '@/components/ui/badge';
-import { AlertCircle } from 'lucide-react';
+import { AlertCircle, ArrowLeft } from 'lucide-react';
 import {
     Dialog,
     DialogContent,
@@ -42,6 +43,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 const isService = (itemId: string) => isNaN(parseInt(itemId.substring(itemId.length - 4)));
 
 export default function DispensePage() {
+  const router = useRouter();
   const { toast } = useToast();
   const firestore = useFirestore();
 
@@ -132,12 +134,24 @@ export default function DispensePage() {
   };
 
   return (
-    <>
+    <div className="space-y-6">
+      <header className="flex items-start justify-between">
+        <div className="flex items-center gap-4">
+            <Button variant="outline" size="icon" className="h-8 w-8 flex-shrink-0" onClick={() => router.back()}>
+                <ArrowLeft className="h-4 w-4" />
+                <span className="sr-only">Back</span>
+            </Button>
+            <div>
+                <h1 className="text-3xl font-bold tracking-tight">Dispensing Queue</h1>
+                <p className="text-muted-foreground">Bills that have been paid and are awaiting collection.</p>
+            </div>
+        </div>
+      </header>
       <Card>
         <CardHeader>
           <CardTitle>Pending Dispensations</CardTitle>
           <CardDescription>
-            Bills that have been paid and are awaiting collection.
+            Select a bill to view items and confirm dispensation.
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -238,6 +252,6 @@ export default function DispensePage() {
           </DialogContent>
         </Dialog>
       )}
-    </>
+    </div>
   );
 }

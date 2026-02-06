@@ -1,6 +1,8 @@
+
 'use client';
 
 import * as React from 'react';
+import { useRouter } from 'next/navigation';
 import {
   CaretSortIcon,
   ChevronDownIcon,
@@ -53,8 +55,10 @@ import { collection, doc, setDoc } from 'firebase/firestore';
 import { Skeleton } from '@/components/ui/skeleton';
 import { DateRangePicker } from '@/components/ui/date-range-picker';
 import { DateRange } from 'react-day-picker';
+import { ArrowLeft } from 'lucide-react';
 
 export default function InvoicesAndBillsPage() {
+  const router = useRouter();
   const { toast } = useToast();
   const firestore = useFirestore();
   const { formatCurrency } = useSettings();
@@ -205,8 +209,19 @@ export default function InvoicesAndBillsPage() {
   });
 
   return (
-    <div className="w-full">
-      <h1 className="text-2xl font-bold mb-4">Invoices & Past Bills</h1>
+    <div className="w-full space-y-6">
+      <header className="flex items-start justify-between">
+        <div className="flex items-center gap-4">
+            <Button variant="outline" size="icon" className="h-8 w-8 flex-shrink-0" onClick={() => router.back()}>
+                <ArrowLeft className="h-4 w-4" />
+                <span className="sr-only">Back</span>
+            </Button>
+            <div>
+                <h1 className="text-3xl font-bold tracking-tight">Invoices & Past Bills</h1>
+                <p className="text-muted-foreground">Review and manage patient invoices and past bills.</p>
+            </div>
+        </div>
+      </header>
       <div className="flex items-center py-4 gap-4">
         <Input
           placeholder="Filter by Patient Name..."

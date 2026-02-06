@@ -84,7 +84,7 @@ export default function DispensaryInventoryPage() {
     
     let combinedData = dispensaryStocks.map(stock => {
       const itemInfo = allItems.find(item => item.id === stock.itemId);
-      if (!itemInfo || itemInfo.category !== 'Medicine') return null;
+      if (!itemInfo) return null;
       return {
         ...itemInfo,
         stockData: stock,
@@ -92,10 +92,21 @@ export default function DispensaryInventoryPage() {
     }).filter((item): item is DispensaryStockItem => !!item);
 
     if (prefilter === 'low-stock') {
-        combinedData = combinedData.filter(item => {
-            const { stockData, dispensaryReorderLevel } = item;
-            return stockData.currentStockQuantity < dispensaryReorderLevel;
-        });
+        const itemTotalStockMap = dispensaryStocks.reduce((acc, stock) => {
+            acc[stock.itemId] = (acc[stock.itemId] || 0) + stock.currentStockQuantity;
+            return acc;
+        }, {} as Record<string, number>);
+
+        const lowStockItemIds = new Set(
+            allItems
+                .filter(item => {
+                    const totalStock = itemTotalStockMap[item.id] || 0;
+                    return totalStock < item.dispensaryReorderLevel;
+                })
+                .map(item => item.id)
+        );
+        
+        combinedData = combinedData.filter(item => lowStockItemIds.has(item.id));
     } else if (prefilter === 'near-expiry') {
         combinedData = combinedData.filter(item => {
             const { stockData } = item;
@@ -170,7 +181,13 @@ export default function DispensaryInventoryPage() {
       cell: ({ row }) => {
         const quantity = row.original.stockData.currentStockQuantity;
         const { dispensaryReorderLevel } = row.original;
-        const isLowStock = dispensaryReorderLevel && quantity < dispensaryReorderLevel;
+        
+        // We need to check total stock for the item, not just this batch
+        const totalStock = dispensaryStocks
+            ?.filter(s => s.itemId === row.original.id)
+            .reduce((sum, s) => sum + s.currentStockQuantity, 0) || 0;
+
+        const isLowStock = dispensaryReorderLevel && totalStock < dispensaryReorderLevel;
   
         return (
           <div className="text-right font-medium">

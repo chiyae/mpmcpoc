@@ -2,6 +2,7 @@
 'use client';
 
 import * as React from 'react';
+import Link from 'next/link';
 import {
   Card,
   CardContent,
@@ -84,34 +85,46 @@ export default function BillingDashboard() {
   return (
     <div className="space-y-6">
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-        <StatCard
-            title="Total Revenue (Month)"
-            value={formatCurrency(totalRevenue)}
-            icon={DollarSign}
-            description="+10.2% from last month (mock)"
-            isLoading={isLoadingBills}
-        />
-        <StatCard
-            title="Outstanding Invoices"
-            value={outstandingInvoices}
-            icon={FileText}
-            description="Awaiting payment"
-            isLoading={isLoadingBills}
-        />
-        <StatCard
-            title="Average Bill Value"
-            value={formatCurrency(averageBillValue)}
-            icon={TrendingUp}
-            description="Across all patients"
-            isLoading={isLoadingBills}
-        />
-         <StatCard
-            title="Total Patients"
-            value={totalPatients}
-            icon={User}
-            description="Unique patients this month"
-            isLoading={isLoadingBills}
-        />
+        <Link href="/billing/reports">
+            <StatCard
+                title="Total Revenue (Month)"
+                value={formatCurrency(totalRevenue)}
+                icon={DollarSign}
+                description="+10.2% from last month (mock)"
+                isLoading={isLoadingBills}
+                className="hover:bg-accent transition-colors"
+            />
+        </Link>
+        <Link href="/billing/invoices">
+            <StatCard
+                title="Outstanding Invoices"
+                value={outstandingInvoices}
+                icon={FileText}
+                description="Awaiting payment"
+                isLoading={isLoadingBills}
+                className="hover:bg-accent transition-colors"
+            />
+        </Link>
+        <Link href="/billing/invoices">
+            <StatCard
+                title="Average Bill Value"
+                value={formatCurrency(averageBillValue)}
+                icon={TrendingUp}
+                description="Across all patients"
+                isLoading={isLoadingBills}
+                className="hover:bg-accent transition-colors"
+            />
+        </Link>
+         <Link href="/billing/invoices">
+            <StatCard
+                title="Total Patients"
+                value={totalPatients}
+                icon={User}
+                description="Unique patients this month"
+                isLoading={isLoadingBills}
+                className="hover:bg-accent transition-colors"
+            />
+        </Link>
       </div>
 
        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-7">

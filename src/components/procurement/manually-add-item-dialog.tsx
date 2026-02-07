@@ -26,7 +26,14 @@ export function ManuallyAddItemDialog({ isOpen, onOpenChange, allItems, onItemSe
 
     return (
         <Dialog open={isOpen} onOpenChange={onOpenChange}>
-            <DialogContent className="sm:max-w-xl">
+            <DialogContent 
+                className="sm:max-w-xl"
+                onInteractOutside={(e) => {
+                    // This prevents the dialog from closing when a click occurs outside its bounds,
+                    // which is necessary for the nested Command/Listbox component to register clicks.
+                    e.preventDefault();
+                }}
+            >
                 <DialogHeader>
                     <DialogTitle>Manually Add Item</DialogTitle>
                     <DialogDescription>
@@ -44,10 +51,6 @@ export function ManuallyAddItemDialog({ isOpen, onOpenChange, allItems, onItemSe
                                     <CommandItem 
                                         key={item.id} 
                                         onSelect={() => handleSelect(item)}
-                                        onMouseDown={(e) => {
-                                            e.preventDefault();
-                                            e.stopPropagation();
-                                        }}
                                     >
                                         {formatItemName(item)}
                                     </CommandItem>

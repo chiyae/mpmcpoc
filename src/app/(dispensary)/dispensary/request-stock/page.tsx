@@ -17,7 +17,7 @@ import { useCollection, useFirestore, useMemoFirebase } from '@/firebase';
 import { collection, doc, query, setDoc, where } from 'firebase/firestore';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Button } from '@/components/ui/button';
-import { AlertTriangle, ListPlus } from 'lucide-react';
+import { AlertTriangle, ListPlus, ArrowLeft } from 'lucide-react';
 import { ManuallyAddItemDialog } from '@/components/procurement/manually-add-item-dialog';
 import { formatItemName } from '@/lib/utils';
 
@@ -130,10 +130,18 @@ export default function RequestStockPage() {
     return (
         <Card className="max-w-4xl mx-auto">
             <CardHeader>
-                <CardTitle>Create Stock Request</CardTitle>
-                <CardDescription>
-                Specify the quantities you need from the bulk store for the selected items. You can add more items manually.
-                </CardDescription>
+                 <div className="flex items-start justify-between">
+                    <div>
+                        <CardTitle>Create Stock Request</CardTitle>
+                        <CardDescription>
+                        Specify the quantities you need from the bulk store for the selected items. You can add more items manually.
+                        </CardDescription>
+                    </div>
+                    <Button variant="outline" onClick={() => { setIsFormVisible(false); setRequestItems([]); }}>
+                        <ArrowLeft className="mr-2 h-4 w-4" />
+                        Back to Mode Selection
+                    </Button>
+                </div>
             </CardHeader>
             <CardContent>
                  <RequestStockForm
@@ -159,11 +167,17 @@ export default function RequestStockPage() {
 
   return (
     <div className='max-w-4xl mx-auto space-y-8'>
-        <header>
-            <h1 className="text-3xl font-bold tracking-tight">Request New Stock</h1>
-            <p className="text-muted-foreground mt-2">
-                Choose a method to build your stock request list.
-            </p>
+        <header className="flex items-center gap-4">
+             <Button variant="outline" size="icon" className="h-8 w-8 flex-shrink-0" onClick={() => router.back()}>
+                <ArrowLeft className="h-4 w-4" />
+                <span className="sr-only">Back</span>
+            </Button>
+            <div>
+                <h1 className="text-3xl font-bold tracking-tight">Request New Stock</h1>
+                <p className="text-muted-foreground">
+                    Choose a method to build your stock request list.
+                </p>
+            </div>
         </header>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">

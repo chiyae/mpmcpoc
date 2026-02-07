@@ -47,6 +47,7 @@ import {
   DialogFooter,
   DialogClose,
 } from '@/components/ui/dialog';
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { useToast } from '@/hooks/use-toast';
 import { useSettings } from '@/context/settings-provider';
@@ -208,6 +209,29 @@ export default function InvoicesAndBillsPage() {
     },
   });
 
+  const patientNameFilter = table.getColumn('patientName')?.getFilterValue() as string;
+
+  const { totalVisitCount, visitsInDateRange, uniquePatientName } = React.useMemo(() => {
+    if (!bills || !patientNameFilter) return { totalVisitCount: 0, visitsInDateRange: 0, uniquePatientName: null };
+
+    const filteredTableRows = table.getRowModel().rows;
+    const uniqueNamesInFilter = new Set(filteredTableRows.map(row => row.original.patientName));
+    
+    if (uniqueNamesInFilter.size === 1) {
+        const patientName = uniqueNamesInFilter.values().next().value;
+        const allVisitsForPatient = bills.filter(b => b.patientName === patientName).length;
+        
+        return { 
+            totalVisitCount: allVisitsForPatient, 
+            visitsInDateRange: filteredTableRows.length, 
+            uniquePatientName: patientName 
+        };
+    }
+    
+    return { totalVisitCount: 0, visitsInDateRange: 0, uniquePatientName: null };
+  }, [table.getRowModel().rows, bills, patientNameFilter]);
+
+
   return (
     <div className="w-full space-y-6">
       <header className="flex items-start justify-between">
@@ -222,6 +246,26 @@ export default function InvoicesAndBillsPage() {
             </div>
         </div>
       </header>
+
+      {uniquePatientName && (
+        <Card>
+          <CardHeader>
+            <CardTitle>Visit History: {uniquePatientName}</CardTitle>
+            <CardDescription>A summary of this patient's visits.</CardDescription>
+          </CardHeader>
+          <CardContent className="flex items-baseline gap-6">
+            <div>
+              <p className="text-4xl font-bold">{totalVisitCount}</p>
+              <p className="text-sm text-muted-foreground">Total Visits (All Time)</p>
+            </div>
+            <div>
+              <p className="text-2xl font-bold">{visitsInDateRange}</p>
+              <p className="text-sm text-muted-foreground">Visits in Selected Period</p>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
       <div className="flex items-center py-4 gap-4">
         <Input
           placeholder="Filter by Patient Name..."

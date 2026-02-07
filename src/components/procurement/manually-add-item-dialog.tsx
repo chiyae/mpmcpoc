@@ -30,7 +30,7 @@ export function ManuallyAddItemDialog({ isOpen, onOpenChange, allItems, onItemSe
                 <DialogHeader>
                     <DialogTitle>Manually Add Item</DialogTitle>
                     <DialogDescription>
-                        Search for an item from the master inventory to add it to the procurement list.
+                        Search for an item from the master inventory to add it to the list.
                     </DialogDescription>
                 </DialogHeader>
                 <Command shouldFilter={true}>

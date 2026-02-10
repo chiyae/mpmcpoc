@@ -40,12 +40,13 @@ The application requires credentials for Firebase and Google AI services.
     - Create a new API key.
     - Copy the key and paste it as the value for `GEMINI_API_KEY` in your `.env.local` file.
 
-Your `.env.local` file should look something like this:
+Your filled-out `.env.local` file should look similar to this:
 
 ```
-NEXT_PUBLIC_FIREBASE_PROJECT_ID="your-project-id"
+NEXT_PUBLIC_FIREBASE_API_KEY="AIzaSy...4U"
+NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN="your-project.firebaseapp.com"
 # ... other firebase vars
-GEMINI_API_KEY="your-gemini-api-key"
+GEMINI_API_KEY="AIzaSy...Yc"
 ```
 
 ### 3. Run the Development Server
@@ -62,3 +63,5 @@ The application also uses Genkit for AI features. To run the Genkit flows locall
 ```bash
 npm run genkit:dev
 ```
+
+This script will also use the keys from your `.env.local` file.

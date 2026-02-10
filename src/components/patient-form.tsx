@@ -17,7 +17,6 @@ import {
 } from "@/components/ui/form"
 import { Input } from "@/components/ui/input"
 import type { Patient } from "@/lib/types"
-import { useEffect } from "react"
 import { Popover, PopoverContent, PopoverTrigger } from "./ui/popover"
 import { CalendarIcon } from "lucide-react"
 import { Calendar } from "./ui/calendar"
@@ -41,22 +40,21 @@ type PatientFormProps = {
 export function PatientForm({ patient, onSubmit }: PatientFormProps) {
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
+    defaultValues: {
+      name: patient?.name || "",
+      address: patient?.address || "",
+      dateOfBirth: patient?.dateOfBirth ? new Date(patient.dateOfBirth) : undefined,
+    }
   });
 
-  useEffect(() => {
-    if (patient) {
-        form.reset({
-            name: patient.name,
-            dateOfBirth: new Date(patient.dateOfBirth),
-            address: patient.address || "",
-        });
-    } else {
-        form.reset({
-            name: "",
-            dateOfBirth: undefined,
-            address: "",
-        });
-    }
+  // When the patient prop changes (e.g., editing a different patient in the same dialog),
+  // we need to reset the form with the new values.
+  React.useEffect(() => {
+    form.reset({
+      name: patient?.name || "",
+      address: patient?.address || "",
+      dateOfBirth: patient?.dateOfBirth ? new Date(patient.dateOfBirth) : undefined,
+    });
   }, [patient, form]);
 
   async function handleFormSubmit(values: z.infer<typeof formSchema>) {

@@ -58,7 +58,14 @@ export default function PatientBillingPage() {
   );
   const { data: dispensaryStocks, isLoading: areStocksLoading } = useCollection<Stock>(dispensaryStockQuery);
   
-  const isLoading = areItemsLoading || areServicesLoading || areStocksLoading;
+  const billsCollectionQuery = useMemoFirebase(
+    () => (firestore ? collection(firestore, 'billings') : null),
+    [firestore]
+  );
+  const { data: allBills, isLoading: areBillsLoading } = useCollection<Bill>(billsCollectionQuery);
+
+
+  const isLoading = areItemsLoading || areServicesLoading || areStocksLoading || areBillsLoading;
 
   const billingLocationId = 'dispensary';
   
@@ -94,6 +101,18 @@ export default function PatientBillingPage() {
   const [paymentMethod, setPaymentMethod] = React.useState<PaymentMethod>('Cash');
   const [amountTendered, setAmountTendered] = React.useState('');
   const [discount, setDiscount] = React.useState('0');
+
+  const previousVisitCount = React.useMemo(() => {
+    if (!allBills || !patientName || patientName.length < 3) return 0;
+    // Case-insensitive and trims whitespace
+    const normalizedPatientName = patientName.trim().toLowerCase();
+    if (!normalizedPatientName) return 0;
+
+    const matchingBills = allBills.filter(bill => 
+        bill.patientName.trim().toLowerCase() === normalizedPatientName
+    );
+    return matchingBills.length;
+  }, [allBills, patientName]);
 
   const filteredMedicines = React.useMemo(() => {
     if (!medicineSearch) return [];
@@ -327,7 +346,14 @@ export default function PatientBillingPage() {
                 )}
               </div>
               <div>
-                <Label htmlFor="patientName">Patient Name</Label>
+                <div className="flex justify-between items-baseline">
+                  <Label htmlFor="patientName">Patient Name</Label>
+                  {patientName.length >= 3 && (
+                    <span className="text-sm font-light text-muted-foreground animate-in fade-in duration-300">
+                      {previousVisitCount > 0 ? `${previousVisitCount} previous visit(s) found` : 'No previous visits found'}
+                    </span>
+                  )}
+                </div>
                 <Input
                   id="patientName"
                   placeholder="Enter patient's full name"

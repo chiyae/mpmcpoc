@@ -374,9 +374,7 @@ export default function PatientBillingPage() {
                 )}
               
               <div>
-                <div className="flex justify-between items-baseline">
-                    <Label>Patient</Label>
-                </div>
+                <Label>Patient</Label>
                 {isLoading ? <Skeleton className="h-10 w-full" /> : (
                 <Popover open={isPatientSearchOpen} onOpenChange={setIsPatientSearchOpen}>
                     <PopoverTrigger asChild>

@@ -6,13 +6,13 @@ import { useRouter } from 'next/navigation';
 import { DateRangePicker } from '@/components/ui/date-range-picker';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
-import { DollarSign, FileWarning, CheckCircle, ArrowLeft } from 'lucide-react';
+import { DollarSign, FileWarning, CheckCircle, ArrowLeft, TrendingUp } from 'lucide-react';
 import { DateRange } from 'react-day-picker';
 import { subDays, isWithinInterval } from 'date-fns';
 import { useSettings } from '@/context/settings-provider';
 import { useCollection, useFirestore, useMemoFirebase } from '@/firebase';
-import type { Bill } from '@/lib/types';
-import { collection, query, where } from 'firebase/firestore';
+import type { Bill, Item } from '@/lib/types';
+import { collection } from 'firebase/firestore';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { format } from 'date-fns';
@@ -35,6 +35,13 @@ export default function FinancialReportsPage() {
   );
   const { data: allBills, isLoading: areBillsLoading } = useCollection<Bill>(billsCollectionQuery);
 
+  const itemsCollectionQuery = useMemoFirebase(
+    () => (firestore ? collection(firestore, 'items') : null),
+    [firestore]
+  );
+  const { data: allItems, isLoading: areItemsLoading } = useCollection<Item>(itemsCollectionQuery);
+
+
   const filteredBills = React.useMemo(() => {
     if (!allBills || !dateRange?.from || !dateRange?.to) {
         return [];
@@ -43,22 +50,38 @@ export default function FinancialReportsPage() {
   }, [allBills, dateRange]);
 
 
-  const { totalRevenue, paymentsReceived, outstandingAmount } = React.useMemo(() => {
-    if (!filteredBills) return { totalRevenue: 0, paymentsReceived: 0, outstandingAmount: 0 };
+  const billsWithProfit = React.useMemo(() => {
+    if (!filteredBills || !allItems) return [];
+    return filteredBills.map(bill => {
+        const profit = bill.items.reduce((currentBillProfit, billItem) => {
+            const masterItem = allItems.find(item => item.id === billItem.itemId);
+            // Assume 0 cost if not found (e.g., for services which are not in the items collection)
+            const unitCost = masterItem?.unitCost ?? 0;
+            const lineItemProfit = (billItem.unitPrice - unitCost) * billItem.quantity;
+            return currentBillProfit + lineItemProfit;
+        }, 0);
+        return { ...bill, profit };
+    })
+  }, [filteredBills, allItems]);
+
+  const { totalRevenue, paymentsReceived, outstandingAmount, totalProfit } = React.useMemo(() => {
+    if (!billsWithProfit) return { totalRevenue: 0, paymentsReceived: 0, outstandingAmount: 0, totalProfit: 0 };
     
-    const revenue = filteredBills.reduce((acc, bill) => acc + bill.grandTotal, 0);
-    const received = filteredBills
+    const revenue = billsWithProfit.reduce((acc, bill) => acc + bill.grandTotal, 0);
+    const received = billsWithProfit
         .filter(bill => bill.paymentDetails.status === 'Paid')
         .reduce((acc, bill) => acc + bill.grandTotal, 0);
+    const profit = billsWithProfit.reduce((acc, bill) => acc + (bill.profit || 0), 0);
 
     return {
         totalRevenue: revenue,
         paymentsReceived: received,
-        outstandingAmount: revenue - received
+        outstandingAmount: revenue - received,
+        totalProfit: profit
     }
-  }, [filteredBills]);
+  }, [billsWithProfit]);
 
-  const isLoading = areBillsLoading;
+  const isLoading = areBillsLoading || areItemsLoading;
 
   return (
     <div className="space-y-6">
@@ -87,7 +110,7 @@ export default function FinancialReportsPage() {
         </CardContent>
       </Card>
 
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Total Revenue</CardTitle>
@@ -97,6 +120,18 @@ export default function FinancialReportsPage() {
              {isLoading ? <Skeleton className="h-8 w-3/4" /> : <div className="text-2xl font-bold">{formatCurrency(totalRevenue)}</div>}
             <p className="text-xs text-muted-foreground">
               Total value of all bills in selected period.
+            </p>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Total Profit</CardTitle>
+            <TrendingUp className="h-4 w-4 text-green-500" />
+          </CardHeader>
+          <CardContent>
+             {isLoading ? <Skeleton className="h-8 w-3/4" /> : <div className="text-2xl font-bold">{formatCurrency(totalProfit)}</div>}
+            <p className="text-xs text-muted-foreground">
+              Calculated from sales in selected period.
             </p>
           </CardContent>
         </Card>
@@ -139,21 +174,22 @@ export default function FinancialReportsPage() {
                 <TableHead>Date</TableHead>
                 <TableHead>Patient</TableHead>
                 <TableHead>Status</TableHead>
-                <TableHead className="text-right">Amount</TableHead>
+                <TableHead className="text-right">Profit</TableHead>
+                <TableHead className="text-right">Total Amount</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {isLoading && Array.from({length: 5}).map((_, i) => (
-                <TableRow key={i}><TableCell colSpan={5}><Skeleton className="h-8 w-full" /></TableCell></TableRow>
+                <TableRow key={i}><TableCell colSpan={6}><Skeleton className="h-8 w-full" /></TableCell></TableRow>
               ))}
-              {!isLoading && filteredBills.length === 0 && (
+              {!isLoading && billsWithProfit.length === 0 && (
                 <TableRow>
-                  <TableCell colSpan={5} className="h-24 text-center">
+                  <TableCell colSpan={6} className="h-24 text-center">
                     No bills found in this date range.
                   </TableCell>
                 </TableRow>
               )}
-              {!isLoading && filteredBills.map((bill) => (
+              {!isLoading && billsWithProfit.map((bill) => (
                 <TableRow key={bill.id}>
                   <TableCell className="font-mono">{bill.id}</TableCell>
                   <TableCell>{format(new Date(bill.date), 'dd/MM/yyyy')}</TableCell>
@@ -163,6 +199,7 @@ export default function FinancialReportsPage() {
                         {bill.paymentDetails.status}
                     </Badge>
                   </TableCell>
+                  <TableCell className="text-right font-medium">{formatCurrency(bill.profit)}</TableCell>
                   <TableCell className="text-right font-medium">{formatCurrency(bill.grandTotal)}</TableCell>
                 </TableRow>
               ))}

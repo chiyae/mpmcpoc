@@ -23,15 +23,16 @@ export function FirebaseClientProvider({ children }: FirebaseClientProviderProps
 
   useEffect(() => {
     // This effect runs only on the client, after the initial render.
-    // It will attempt to initialize Firebase. If it fails (e.g. missing config)
-    // it will throw an error that Next.js can catch and display.
     if (typeof window !== 'undefined') {
         try {
-            setServices(initializeFirebase());
+            const initializedServices = initializeFirebase();
+            setServices(initializedServices);
         } catch (e) {
-            // Re-throw the error to be caught by the nearest error boundary.
-            // This is better than just logging it, as it makes the problem visible.
-            throw e;
+            // Don't re-throw the error, which causes a hard crash.
+            // Instead, log it and allow the app to render.
+            // Components that use Firebase will show a loading/error state.
+            console.error("Firebase initialization failed during client setup. The app may not function correctly.", e);
+            setServices(null);
         }
     }
   }, []); // Empty dependency array ensures this runs only once on mount.

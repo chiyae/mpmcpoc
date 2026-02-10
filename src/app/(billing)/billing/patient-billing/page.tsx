@@ -28,20 +28,12 @@ import { Label } from '@/components/ui/label';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { useSettings } from '@/context/settings-provider';
 import { useCollection, useFirestore, useMemoFirebase } from '@/firebase';
-import { collection, doc, writeBatch, query, where, setDoc } from 'firebase/firestore';
+import { collection, doc, writeBatch, query, where } from 'firebase/firestore';
 import { Badge } from '@/components/ui/badge';
 import { formatItemName } from '@/lib/utils';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '@/components/ui/command';
 import { Skeleton } from '@/components/ui/skeleton';
-import { PatientForm } from '@/components/patient-form';
-import {
-    Dialog,
-    DialogContent,
-    DialogDescription,
-    DialogHeader,
-    DialogTitle,
-  } from '@/components/ui/dialog';
 
 
 export default function PatientBillingPage() {
@@ -97,7 +89,6 @@ export default function PatientBillingPage() {
   // --- Form State ---
   const [selectedPatient, setSelectedPatient] = React.useState<Patient | null>(null);
   const [isPatientSearchOpen, setIsPatientSearchOpen] = React.useState(false);
-  const [isRegisterDialogOpen, setIsRegisterDialogOpen] = React.useState(false);
   const [billItems, setBillItems] = React.useState<BillItem[]>([]);
   const [billType, setBillType] = React.useState<BillType>('Walk-in');
   const [prescriptionNumber, setPrescriptionNumber] = React.useState('');
@@ -227,34 +218,6 @@ export default function PatientBillingPage() {
   const isOpdAndNoPrescription = billType === 'OPD' && !prescriptionNumber;
   const canFinalize = billItems.length > 0 && !!selectedPatient && !isOpdAndNoPrescription &&
     (paymentMethod === 'Invoice' || paymentMethod !== 'Cash' || (paymentMethod === 'Cash' && tenderedAmountValue >= grandTotal));
-
-  const handleRegisterPatient = async (patientData: Omit<Patient, 'id'>) => {
-    if (!firestore) {
-        toast({ variant: 'destructive', title: 'Error', description: 'Database not available.' });
-        return;
-    }
-
-    const regNumber = `PAT-${Date.now()}`;
-    const newPatientData: Patient = {
-        ...patientData,
-        id: regNumber,
-    };
-
-    try {
-        const patientRef = doc(firestore, 'patients', regNumber);
-        await setDoc(patientRef, newPatientData);
-
-        setIsRegisterDialogOpen(false);
-        setSelectedPatient(newPatientData);
-        toast({
-            title: "Patient Registered & Selected",
-            description: `Successfully registered ${newPatientData.name}.`
-        });
-    } catch(error) {
-        console.error("Error registering patient:", error);
-        toast({ variant: 'destructive', title: 'Registration Failed', description: 'Could not create new patient.' });
-    }
-  };
 
 
   const handleFinalizeBill = async () => {
@@ -394,12 +357,7 @@ export default function PatientBillingPage() {
                     <Command>
                         <CommandInput placeholder="Search patient by name or ID..." />
                         <CommandList>
-                            <CommandEmpty>
-                                No patient found. 
-                                <Button variant="link" size="sm" onClick={() => { setIsPatientSearchOpen(false); setIsRegisterDialogOpen(true); }}>
-                                    Register New Patient
-                                </Button>
-                            </CommandEmpty>
+                            <CommandEmpty>No patient found.</CommandEmpty>
                             <CommandGroup>
                             {allPatients?.map((patient) => (
                                 <CommandItem
@@ -628,20 +586,6 @@ export default function PatientBillingPage() {
           </Card>
         </div>
       </div>
-      <Dialog open={isRegisterDialogOpen} onOpenChange={setIsRegisterDialogOpen}>
-          <DialogContent className="sm:max-w-md">
-              <DialogHeader>
-                <DialogTitle>Register New Patient</DialogTitle>
-                <DialogDescription>
-                    Fill in the details for the new patient. A registration number will be generated automatically.
-                </DialogDescription>
-              </DialogHeader>
-              <PatientForm
-                  patient={null}
-                  onSubmit={handleRegisterPatient}
-              />
-          </DialogContent>
-      </Dialog>
     </div>
   );
 }

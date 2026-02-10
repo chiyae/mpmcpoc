@@ -1,8 +1,7 @@
 
-import { config } from 'dotenv';
-
-// Load .env.local to make sure the Gemini API key is available for Genkit.
-// Next.js automatically handles this for the main app, but the genkit script needs it explicitly.
-config({ path: '.env.local' });
-config();
-    
+// This file can be used to load environment variables for Genkit development.
+// For example, using dotenv:
+//
+// import { config } from 'dotenv';
+// config({ path: '.env.local' });
+// config();

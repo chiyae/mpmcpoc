@@ -12,7 +12,6 @@ export function initializeFirebase() {
     return getSdks(getApp());
   }
 
-  // Prioritize local config for development.
   // When running locally, firebaseConfig will have keys from .env.local.
   // When deployed on App Hosting, firebaseConfig values will be undefined,
   // but initializeApp() without arguments will work.
@@ -46,4 +45,3 @@ export * from './provider';
 export * from './client-provider';
 export * from './firestore/use-collection';
 export * from './firestore/use-doc';
-

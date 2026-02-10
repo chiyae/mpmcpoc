@@ -39,7 +39,7 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
-import type { Item } from '@/lib/types';
+import type { Item, PriceHistory } from '@/lib/types';
 import {
   Dialog,
   DialogContent,
@@ -50,7 +50,7 @@ import {
 } from '@/components/ui/dialog';
 import { useToast } from "@/hooks/use-toast";
 import { useCollection, useFirestore, useMemoFirebase } from '@/firebase';
-import { collection, doc, setDoc } from 'firebase/firestore';
+import { collection, doc, setDoc, writeBatch } from 'firebase/firestore';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useSettings } from '@/context/settings-provider';
 import { ItemForm } from '@/components/item-form';
@@ -107,10 +107,30 @@ export default function ItemMasterPage() {
   const handleFormSubmit = async (itemData: Omit<Item, 'id' | 'itemCode'>) => {
     if (!firestore) return;
     
+    const batch = writeBatch(firestore);
+    const now = new Date().toISOString();
+
     if (selectedItem) { // Editing existing item
         try {
             const itemRef = doc(firestore, 'items', selectedItem.id);
-            await setDoc(itemRef, itemData, { merge: true });
+            batch.set(itemRef, itemData, { merge: true });
+
+            // Log unitCost change if it differs
+            if (itemData.unitCost !== selectedItem.unitCost) {
+                const priceHistoryRef = doc(collection(firestore, 'items', selectedItem.id, 'priceHistory'));
+                const priceHistoryEntry: PriceHistory = { id: priceHistoryRef.id, date: now, type: 'unitCost', price: itemData.unitCost };
+                batch.set(priceHistoryRef, priceHistoryEntry);
+            }
+            
+            // Log sellingPrice change if it differs
+            if (itemData.sellingPrice !== selectedItem.sellingPrice) {
+                const priceHistoryRef = doc(collection(firestore, 'items', selectedItem.id, 'priceHistory'));
+                const priceHistoryEntry: PriceHistory = { id: priceHistoryRef.id, date: now, type: 'sellingPrice', price: itemData.sellingPrice };
+                batch.set(priceHistoryRef, priceHistoryEntry);
+            }
+
+            await batch.commit();
+
             handleCloseDialog();
             toast({
                 title: "Item Updated",
@@ -137,7 +157,19 @@ export default function ItemMasterPage() {
             id: itemCode,
             itemCode: itemCode,
           }
-          await setDoc(itemRef, finalData);
+          batch.set(itemRef, finalData);
+          
+          // Log initial unitCost
+          const unitCostHistoryRef = doc(collection(firestore, 'items', itemCode, 'priceHistory'));
+          const unitCostHistoryEntry: PriceHistory = { id: unitCostHistoryRef.id, date: now, type: 'unitCost', price: finalData.unitCost };
+          batch.set(unitCostHistoryRef, unitCostHistoryEntry);
+
+          // Log initial sellingPrice
+          const sellingPriceHistoryRef = doc(collection(firestore, 'items', itemCode, 'priceHistory'));
+          const sellingPriceHistoryEntry: PriceHistory = { id: sellingPriceHistoryRef.id, date: now, type: 'sellingPrice', price: finalData.sellingPrice };
+          batch.set(sellingPriceHistoryRef, sellingPriceHistoryEntry);
+
+          await batch.commit();
 
           handleCloseDialog();
           toast({

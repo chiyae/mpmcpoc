@@ -59,6 +59,12 @@ service cloud.firestore {
     match /items/{itemId} {
       allow read: if isAuthenticated();
       allow write: if isAdmin();
+
+      match /priceHistory/{historyId} {
+        allow read: if isAuthenticated();
+        allow create: if isAdmin();
+        allow update, delete: if false;
+      }
     }
 
     match /vendors/{vendorId} {

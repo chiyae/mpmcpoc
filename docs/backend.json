@@ -465,6 +465,34 @@
             "variance": { "type": "number" }
         },
         "required": ["id", "itemId", "itemName", "batchId", "systemQty", "physicalQty", "variance"]
+    },
+    "Log": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "Log",
+      "type": "object",
+      "description": "Represents an audit trail entry for a significant user action.",
+      "properties": {
+        "id": { "type": "string" },
+        "timestamp": { "type": "string", "format": "date-time" },
+        "userId": { "type": "string" },
+        "userDisplayName": { "type": "string" },
+        "action": { "type": "string" },
+        "details": { "type": "object" }
+      },
+      "required": ["id", "timestamp", "userId", "userDisplayName", "action"]
+    },
+    "PriceHistory": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "PriceHistory",
+      "type": "object",
+      "description": "Represents a historical record of a price change for an item.",
+      "properties": {
+        "id": { "type": "string" },
+        "date": { "type": "string", "format": "date-time" },
+        "type": { "type": "string", "enum": ["unitCost", "sellingPrice"] },
+        "price": { "type": "number" }
+      },
+      "required": ["id", "date", "type", "price"]
     }
   },
   "auth": {
@@ -480,6 +508,13 @@
         "definition": {
           "schema": { "$ref": "#/entities/Item" },
           "description": "Stores master data for each unique inventory item."
+        }
+      },
+      {
+        "path": "/items/{itemId}/priceHistory/{historyId}",
+        "definition": {
+          "schema": { "$ref": "#/entities/PriceHistory" },
+          "description": "Stores a log of all price changes for a given item."
         }
       },
       {
@@ -558,6 +593,13 @@
               "schema": { "$ref": "#/entities/StockTakeItem" },
               "description": "Stores the individual items counted in a stock-take session."
           }
+      },
+      {
+        "path": "/logs/{logId}",
+        "definition": {
+          "schema": { "$ref": "#/entities/Log" },
+          "description": "Stores audit log entries for user actions."
+        }
       }
     ],
     "reasoning": "The Firestore structure has been flattened to use top-level collections for each major entity: items, stocks, internalOrders, billings, users, vendors, services, and settings. This approach is straightforward, scalable, and simplifies security rules by removing the need for complex nested path checks and `get()` calls. Security and data access can be efficiently managed by querying collections directly and using denormalized fields (like `locationId` in the `stocks` collection) to filter data based on a user's role and assigned location."

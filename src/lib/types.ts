@@ -171,3 +171,10 @@ export interface Log {
     action: string;
     details: Record<string, any>;
 }
+
+export interface PriceHistory {
+    id: string;
+    date: string; // ISO date-time string
+    type: 'unitCost' | 'sellingPrice';
+    price: number;
+}

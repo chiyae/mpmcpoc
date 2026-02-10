@@ -30,10 +30,24 @@ The application requires credentials for Firebase and Google AI services.
     ```
 
 2.  **Get Firebase Credentials:**
-    - Go to your [Firebase Console](https://console.firebase.google.com/).
-    - Create a new project or select an existing one.
-    - In your project's settings (`Project settings` > `General` tab), find your web app configuration under "Your apps".
-    - Copy the values from the `firebaseConfig` object into the corresponding `NEXT_PUBLIC_FIREBASE_` variables in your `.env.local` file.
+    - Go to the [Firebase Console](https://console.firebase.google.com/).
+    - Select your project (or create one if you haven't already).
+    - In the project overview, click the **Gear icon** (⚙️) next to "Project Overview" in the top-left sidebar, then select **Project settings**.
+    - In the "General" tab, scroll down to the "Your apps" section.
+    - If you don't have a web app yet, click the **</>** (Web) icon to create one. Give it a nickname and register the app.
+    - Find your web app in the list and look for the `firebaseConfig` object. It will look like this:
+      ```javascript
+      const firebaseConfig = {
+        apiKey: "AIza...",
+        authDomain: "your-project.firebaseapp.com",
+        projectId: "your-project-id",
+        storageBucket: "your-project.appspot.com",
+        messagingSenderId: "12345...",
+        appId: "1:12345...:web:...",
+        measurementId: "G-..."
+      };
+      ```
+    - Copy the value for each key from this object and paste it into the corresponding `NEXT_PUBLIC_FIREBASE_` variable in your `.env.local` file. For example, the `apiKey` value goes into `NEXT_PUBLIC_FIREBASE_API_KEY`.
 
 3.  **Get Google AI (Gemini) API Key:**
     - Visit [Google AI Studio](https://aistudio.google.com/app/apikey).
@@ -45,7 +59,11 @@ Your filled-out `.env.local` file should look similar to this:
 ```
 NEXT_PUBLIC_FIREBASE_API_KEY="AIzaSy...4U"
 NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN="your-project.firebaseapp.com"
-# ... other firebase vars
+NEXT_PUBLIC_FIREBASE_PROJECT_ID="your-project-id"
+NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET="your-project.appspot.com"
+NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID="1234567890"
+NEXT_PUBLIC_FIREBASE_APP_ID="1:1234567890:web:abcdef123456"
+NEXT_PUBLIC_FIREBASE_MEASUREMENT_ID="G-ABCDEFGHIJ"
 GEMINI_API_KEY="AIzaSy...Yc"
 ```
 

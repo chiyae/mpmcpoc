@@ -51,6 +51,14 @@ service cloud.firestore {
       // Only admins can read, update, or delete log entries.
       allow read, update, delete: if isAdmin();
     }
+    
+    /* ============================
+       PATIENTS
+       ============================ */
+    match /patients/{patientId} {
+      // Admins, Cashiers, and Pharmacy staff can manage patient records.
+      allow read, write: if isAuthenticated() && (isAdmin() || isCashier() || isPharmacy());
+    }
 
     /* ============================
        MASTER DATA

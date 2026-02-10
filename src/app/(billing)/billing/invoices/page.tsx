@@ -215,16 +215,17 @@ export default function InvoicesAndBillsPage() {
     if (!bills || !patientNameFilter) return { totalVisitCount: 0, visitsInDateRange: 0, uniquePatientName: null };
 
     const filteredTableRows = table.getRowModel().rows;
-    const uniqueNamesInFilter = new Set(filteredTableRows.map(row => row.original.patientName));
+    const uniquePatientIds = new Set(filteredTableRows.map(row => row.original.patientId));
     
-    if (uniqueNamesInFilter.size === 1) {
-        const patientName = uniqueNamesInFilter.values().next().value;
-        const allVisitsForPatient = bills.filter(b => b.patientName === patientName).length;
+    if (uniquePatientIds.size === 1) {
+        const patientId = uniquePatientIds.values().next().value;
+        const patientName = filteredTableRows[0].original.patientName;
+        const allVisitsForPatient = bills.filter(b => b.patientId === patientId).length;
         
         return { 
             totalVisitCount: allVisitsForPatient, 
             visitsInDateRange: filteredTableRows.length, 
-            uniquePatientName: patientName 
+            uniquePatientName: patientName
         };
     }
     

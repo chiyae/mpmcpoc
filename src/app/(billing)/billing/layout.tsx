@@ -15,7 +15,7 @@ import {
   SidebarInset,
   SidebarRail,
 } from "@/components/ui/sidebar";
-import { Home, DollarSign, FileText, Settings, LogOut, LineChart } from "lucide-react";
+import { Home, DollarSign, FileText, Settings, LogOut, LineChart, Users } from "lucide-react";
 import Logo from "@/components/logo";
 import DashboardHeader from "@/components/dashboard-header";
 import { useAppUser } from "@/hooks/use-app-user";
@@ -52,6 +52,14 @@ export default function BillingLayout({ children }: { children: ReactNode }) {
                 <Link href="/billing/patient-billing">
                   <DollarSign />
                   <span>Patient Billing</span>
+                </Link>
+              </SidebarMenuButton>
+            </SidebarMenuItem>
+             <SidebarMenuItem>
+              <SidebarMenuButton asChild tooltip="Patients">
+                <Link href="/billing/patients">
+                  <Users />
+                  <span>Patients</span>
                 </Link>
               </SidebarMenuButton>
             </SidebarMenuItem>

@@ -22,8 +22,8 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { useToast } from '@/hooks/use-toast';
-import type { Bill, BillItem, PaymentMethod, BillType, Service, Item, Stock } from '@/lib/types';
-import { PlusCircle, Trash2, ArrowLeft } from 'lucide-react';
+import type { Bill, BillItem, PaymentMethod, BillType, Service, Item, Stock, Patient } from '@/lib/types';
+import { PlusCircle, Trash2, ArrowLeft, ChevronsUpDown } from 'lucide-react';
 import { Label } from '@/components/ui/label';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { useSettings } from '@/context/settings-provider';
@@ -31,6 +31,9 @@ import { useCollection, useFirestore, useMemoFirebase } from '@/firebase';
 import { collection, doc, writeBatch, query, where } from 'firebase/firestore';
 import { Badge } from '@/components/ui/badge';
 import { formatItemName } from '@/lib/utils';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '@/components/ui/command';
+import { Skeleton } from '@/components/ui/skeleton';
 
 
 export default function PatientBillingPage() {
@@ -64,9 +67,14 @@ export default function PatientBillingPage() {
   );
   const { data: allBills, isLoading: areBillsLoading } = useCollection<Bill>(billsCollectionQuery);
 
+  const patientsCollectionQuery = useMemoFirebase(
+    () => (firestore ? collection(firestore, 'patients') : null),
+    [firestore]
+  );
+  const { data: allPatients, isLoading: arePatientsLoading } = useCollection<Patient>(patientsCollectionQuery);
 
-  const isLoading = areItemsLoading || areServicesLoading || areStocksLoading || areBillsLoading;
 
+  const isLoading = areItemsLoading || areServicesLoading || areStocksLoading || areBillsLoading || arePatientsLoading;
   const billingLocationId = 'dispensary';
   
   const availableItems = React.useMemo(() => {
@@ -85,7 +93,8 @@ export default function PatientBillingPage() {
 
 
   // --- Form State ---
-  const [patientName, setPatientName] = React.useState('');
+  const [selectedPatient, setSelectedPatient] = React.useState<Patient | null>(null);
+  const [isPatientSearchOpen, setIsPatientSearchOpen] = React.useState(false);
   const [billItems, setBillItems] = React.useState<BillItem[]>([]);
   const [billType, setBillType] = React.useState<BillType>('Walk-in');
   const [prescriptionNumber, setPrescriptionNumber] = React.useState('');
@@ -103,16 +112,9 @@ export default function PatientBillingPage() {
   const [discount, setDiscount] = React.useState('0');
 
   const previousVisitCount = React.useMemo(() => {
-    if (!allBills || !patientName || patientName.length < 3) return 0;
-    // Case-insensitive and trims whitespace
-    const normalizedPatientName = patientName.trim().toLowerCase();
-    if (!normalizedPatientName) return 0;
-
-    const matchingBills = allBills.filter(bill => 
-        bill.patientName.trim().toLowerCase() === normalizedPatientName
-    );
-    return matchingBills.length;
-  }, [allBills, patientName]);
+    if (!allBills || !selectedPatient) return 0;
+    return allBills.filter(bill => bill.patientId === selectedPatient.id).length;
+  }, [allBills, selectedPatient]);
 
   const filteredMedicines = React.useMemo(() => {
     if (!medicineSearch) return [];
@@ -225,13 +227,13 @@ export default function PatientBillingPage() {
     : 0;
 
   const isOpdAndNoPrescription = billType === 'OPD' && !prescriptionNumber;
-  const canFinalize = billItems.length > 0 && !!patientName && !isOpdAndNoPrescription &&
+  const canFinalize = billItems.length > 0 && !!selectedPatient && !isOpdAndNoPrescription &&
     (paymentMethod === 'Invoice' || paymentMethod !== 'Cash' || (paymentMethod === 'Cash' && tenderedAmountValue >= grandTotal));
 
 
   const handleFinalizeBill = async () => {
-    if (!canFinalize || !firestore) {
-        toast({ variant: 'destructive', title: 'Error', description: 'Please fill all required fields and ensure tendered amount is sufficient.' });
+    if (!canFinalize || !firestore || !selectedPatient) {
+        toast({ variant: 'destructive', title: 'Error', description: 'Please select a patient, add items, and ensure all required fields are filled.' });
         return;
     }
 
@@ -240,8 +242,9 @@ export default function PatientBillingPage() {
     
     const newBill: Omit<Bill, 'prescriptionNumber'> & { prescriptionNumber?: string } = {
         id: billId,
+        patientId: selectedPatient.id,
+        patientName: selectedPatient.name,
         date: new Date().toISOString(),
-        patientName,
         billType,
         items: billItems,
         subtotal: subtotal,
@@ -268,11 +271,11 @@ export default function PatientBillingPage() {
 
         toast({
             title: paymentMethod === 'Invoice' ? "Invoice Finalized" : "Bill Finalized",
-            description: `A new document for ${patientName} has been generated.`,
+            description: `A new document for ${selectedPatient.name} has been generated.`,
         });
 
         // Reset state
-        setPatientName('');
+        setSelectedPatient(null);
         setBillItems([]);
         setBillType('Walk-in');
         setPrescriptionNumber('');
@@ -313,53 +316,85 @@ export default function PatientBillingPage() {
               <CardTitle>Patient & Bill Details</CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  <div>
-                    <Label>Bill Type</Label>
-                    <RadioGroup
-                      value={billType}
-                      onValueChange={(value: BillType) => setBillType(value)}
-                      className="flex items-center gap-4 mt-2"
-                    >
-                      <div className="flex items-center space-x-2">
-                        <RadioGroupItem value="Walk-in" id="walk-in" />
-                        <Label htmlFor="walk-in">Walk-in</Label>
-                      </div>
-                      <div className="flex items-center space-x-2">
-                        <RadioGroupItem value="OPD" id="opd" />
-                        <Label htmlFor="opd">OPD (Out-Patient)</Label>
-                      </div>
-                    </RadioGroup>
-                  </div>
+              <div>
+                <Label>Bill Type</Label>
+                <RadioGroup
+                    value={billType}
+                    onValueChange={(value: BillType) => setBillType(value)}
+                    className="flex items-center gap-4 mt-2"
+                >
+                    <div className="flex items-center space-x-2">
+                    <RadioGroupItem value="Walk-in" id="walk-in" />
+                    <Label htmlFor="walk-in">Walk-in</Label>
+                    </div>
+                    <div className="flex items-center space-x-2">
+                    <RadioGroupItem value="OPD" id="opd" />
+                    <Label htmlFor="opd">OPD (Out-Patient)</Label>
+                    </div>
+                </RadioGroup>
+                </div>
 
                 {billType === 'OPD' && (
-                  <div>
+                <div>
                     <Label htmlFor="prescriptionNumber">Prescription Number</Label>
                     <Input
-                      id="prescriptionNumber"
-                      placeholder="Enter prescription number"
-                      value={prescriptionNumber}
-                      onChange={(e) => setPrescriptionNumber(e.target.value)}
-                      required
+                    id="prescriptionNumber"
+                    placeholder="Enter prescription number"
+                    value={prescriptionNumber}
+                    onChange={(e) => setPrescriptionNumber(e.target.value)}
+                    required
                     />
-                  </div>
+                </div>
                 )}
-              </div>
+              
               <div>
                 <div className="flex justify-between items-baseline">
-                  <Label htmlFor="patientName">Patient Name</Label>
-                  {patientName.length >= 3 && (
-                    <span className="text-sm font-light text-muted-foreground animate-in fade-in duration-300">
-                      {previousVisitCount > 0 ? `${previousVisitCount} previous visit(s) found` : 'No previous visits found'}
-                    </span>
-                  )}
+                    <Label>Patient</Label>
+                     {selectedPatient && (
+                        <span className="text-sm font-light text-muted-foreground animate-in fade-in duration-300">
+                        {previousVisitCount > 0 ? `${previousVisitCount} previous visit(s) found` : 'First visit'}
+                        </span>
+                    )}
                 </div>
-                <Input
-                  id="patientName"
-                  placeholder="Enter patient's full name"
-                  value={patientName}
-                  onChange={(e) => setPatientName(e.target.value)}
-                />
+                {isLoading ? <Skeleton className="h-10 w-full" /> : (
+                <Popover open={isPatientSearchOpen} onOpenChange={setIsPatientSearchOpen}>
+                    <PopoverTrigger asChild>
+                    <Button
+                        variant="outline"
+                        role="combobox"
+                        aria-expanded={isPatientSearchOpen}
+                        className="w-full justify-between"
+                    >
+                        {selectedPatient
+                        ? `${selectedPatient.name} (${selectedPatient.id})`
+                        : "Select patient..."}
+                        <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                    </Button>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-[--radix-popover-trigger-width] p-0">
+                    <Command>
+                        <CommandInput placeholder="Search patient by name or ID..." />
+                        <CommandList>
+                            <CommandEmpty>No patient found. <Button variant="link" size="sm" onClick={() => router.push('/billing/patients')}>Register New Patient</Button></CommandEmpty>
+                            <CommandGroup>
+                            {allPatients?.map((patient) => (
+                                <CommandItem
+                                key={patient.id}
+                                value={`${patient.name} ${patient.id}`}
+                                onSelect={() => {
+                                    setSelectedPatient(patient);
+                                    setIsPatientSearchOpen(false);
+                                }}
+                                >
+                                {patient.name} <span className='ml-2 text-xs text-muted-foreground'>({patient.id})</span>
+                                </CommandItem>
+                            ))}
+                            </CommandGroup>
+                        </CommandList>
+                    </Command>
+                    </PopoverContent>
+                </Popover>
+                )}
               </div>
             </CardContent>
           </Card>

@@ -9,7 +9,8 @@ import { getFirestore } from 'firebase/firestore'
 // IMPORTANT: DO NOT MODIFY THIS FUNCTION
 export function initializeFirebase() {
   if (getApps().length) {
-    return getSdks(getApp());
+    const app = getApp();
+    return getSdks(app);
   }
 
   // When running locally, firebaseConfig will have keys from .env.local.
@@ -19,7 +20,7 @@ export function initializeFirebase() {
     const firebaseApp = initializeApp(firebaseConfig);
     return getSdks(firebaseApp);
   }
-
+  
   // If no apiKey in local config, assume it's running on App Hosting and try auto-init.
   try {
     const firebaseApp = initializeApp();

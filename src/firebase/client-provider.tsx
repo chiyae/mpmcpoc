@@ -22,10 +22,17 @@ export function FirebaseClientProvider({ children }: FirebaseClientProviderProps
   const [services, setServices] = useState<FirebaseServices | null>(null);
 
   useEffect(() => {
-    // This effect runs only on the client, after the initial render,
-    // ensuring environment variables are available.
+    // This effect runs only on the client, after the initial render.
+    // It will attempt to initialize Firebase. If it fails (e.g. missing config)
+    // it will throw an error that Next.js can catch and display.
     if (typeof window !== 'undefined') {
-      setServices(initializeFirebase());
+        try {
+            setServices(initializeFirebase());
+        } catch (e) {
+            // Re-throw the error to be caught by the nearest error boundary.
+            // This is better than just logging it, as it makes the problem visible.
+            throw e;
+        }
     }
   }, []); // Empty dependency array ensures this runs only once on mount.
 

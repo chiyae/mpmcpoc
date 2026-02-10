@@ -9,7 +9,6 @@ import { Button } from "@/components/ui/button"
 import {
   Form,
   FormControl,
-  FormDescription,
   FormField,
   FormItem,
   FormLabel,
@@ -17,17 +16,24 @@ import {
 } from "@/components/ui/form"
 import { Input } from "@/components/ui/input"
 import type { Patient } from "@/lib/types"
-import { Popover, PopoverContent, PopoverTrigger } from "./ui/popover"
-import { CalendarIcon } from "lucide-react"
-import { Calendar } from "./ui/calendar"
-import { cn } from "@/lib/utils"
-import { format } from "date-fns"
+import { format, parse } from "date-fns"
 import { Textarea } from "./ui/textarea"
 
 
 const formSchema = z.object({
   name: z.string().min(3, "Name must be at least 3 characters."),
-  dateOfBirth: z.date({ required_error: "Date of birth is required."}),
+  dateOfBirth: z.string()
+    .regex(/^\d{2}\/\d{2}\/\d{4}$/, "Date must be in DD/MM/YYYY format.")
+    .refine((dateString) => {
+      try {
+        const date = parse(dateString, "dd/MM/yyyy", new Date());
+        // `parse` can be lenient. This check ensures the date is real,
+        // e.g. it rejects "32/01/2023"
+        return format(date, 'dd/MM/yyyy') === dateString;
+      } catch {
+        return false;
+      }
+    }, "Please enter a valid date."),
   address: z.string().optional(),
 });
 
@@ -41,9 +47,9 @@ export function PatientForm({ patient, onSubmit }: PatientFormProps) {
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
     defaultValues: {
-      name: patient?.name || "",
-      address: patient?.address || "",
-      dateOfBirth: patient?.dateOfBirth ? new Date(patient.dateOfBirth) : undefined,
+      name: "",
+      address: "",
+      dateOfBirth: "",
     }
   });
 
@@ -53,14 +59,14 @@ export function PatientForm({ patient, onSubmit }: PatientFormProps) {
     form.reset({
       name: patient?.name || "",
       address: patient?.address || "",
-      dateOfBirth: patient?.dateOfBirth ? new Date(patient.dateOfBirth) : undefined,
+      dateOfBirth: patient?.dateOfBirth ? format(new Date(patient.dateOfBirth), "dd/MM/yyyy") : "",
     });
   }, [patient, form]);
 
   async function handleFormSubmit(values: z.infer<typeof formSchema>) {
     await onSubmit({
         ...values,
-        dateOfBirth: values.dateOfBirth.toISOString(),
+        dateOfBirth: parse(values.dateOfBirth, 'dd/MM/yyyy', new Date()).toISOString(),
     });
   }
 
@@ -86,39 +92,11 @@ export function PatientForm({ patient, onSubmit }: PatientFormProps) {
             control={form.control}
             name="dateOfBirth"
             render={({ field }) => (
-            <FormItem className="flex flex-col">
+            <FormItem>
                 <FormLabel>Date of Birth</FormLabel>
-                <Popover>
-                <PopoverTrigger asChild>
-                    <FormControl>
-                    <Button
-                        variant={"outline"}
-                        className={cn(
-                        "w-full pl-3 text-left font-normal",
-                        !field.value && "text-muted-foreground"
-                        )}
-                    >
-                        {field.value ? (
-                        format(field.value, "PPP")
-                        ) : (
-                        <span>Pick a date</span>
-                        )}
-                        <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
-                    </Button>
-                    </FormControl>
-                </PopoverTrigger>
-                <PopoverContent className="w-auto p-0" align="start">
-                    <Calendar
-                        mode="single"
-                        selected={field.value}
-                        onSelect={field.onChange}
-                        disabled={(date) =>
-                        date > new Date() || date < new Date("1900-01-01")
-                        }
-                        initialFocus
-                    />
-                </PopoverContent>
-                </Popover>
+                <FormControl>
+                    <Input placeholder="DD/MM/YYYY" {...field} />
+                </FormControl>
                 <FormMessage />
             </FormItem>
             )}

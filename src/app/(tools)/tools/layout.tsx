@@ -25,7 +25,7 @@ export default function ToolsLayout({ children }: { children: ReactNode }) {
   
   return (
     <SidebarProvider>
-      <Sidebar collapsible>
+      <Sidebar collapsible="icon">
         <SidebarRail />
         
         <SidebarContent>

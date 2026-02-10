@@ -209,8 +209,17 @@
         "prescriptionNumber": {
             "type": "string"
         },
+        "subtotal": {
+            "type": "number",
+            "description": "The total cost of all items before discount."
+        },
+        "discount": {
+            "type": "number",
+            "description": "The discount amount applied to the bill."
+        },
          "grandTotal": {
-          "type": "number"
+          "type": "number",
+          "description": "The final amount after discount (subtotal - discount)."
         },
         "paymentDetails": {
             "type": "object",
@@ -240,6 +249,7 @@
         "patientName",
         "date",
         "dispensingLocationId",
+        "subtotal",
         "grandTotal",
         "paymentDetails",
         "items"

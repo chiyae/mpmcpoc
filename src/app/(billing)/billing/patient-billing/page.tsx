@@ -93,6 +93,7 @@ export default function PatientBillingPage() {
   
   const [paymentMethod, setPaymentMethod] = React.useState<PaymentMethod>('Cash');
   const [amountTendered, setAmountTendered] = React.useState('');
+  const [discount, setDiscount] = React.useState('0');
 
   const filteredMedicines = React.useMemo(() => {
     if (!medicineSearch) return [];
@@ -195,7 +196,9 @@ export default function PatientBillingPage() {
     setBillItems(billItems.filter((item) => item.itemId !== itemId));
   };
   
-  const grandTotal = billItems.reduce((total, item) => total + item.total, 0);
+  const subtotal = billItems.reduce((total, item) => total + item.total, 0);
+  const discountAmount = parseFloat(discount) || 0;
+  const grandTotal = subtotal - discountAmount;
 
   const tenderedAmountValue = parseFloat(amountTendered);
   const change = (paymentMethod === 'Cash' && tenderedAmountValue >= grandTotal) 
@@ -222,6 +225,8 @@ export default function PatientBillingPage() {
         patientName,
         billType,
         items: billItems,
+        subtotal: subtotal,
+        discount: discountAmount,
         grandTotal,
         paymentDetails: {
           method: paymentMethod,
@@ -254,6 +259,7 @@ export default function PatientBillingPage() {
         setPrescriptionNumber('');
         setPaymentMethod('Cash');
         setAmountTendered('');
+        setDiscount('0');
     } catch(error) {
         console.error("Error finalizing bill: ", error);
         toast({
@@ -470,11 +476,30 @@ export default function PatientBillingPage() {
               </Table>
             </CardContent>
             <CardFooter className="flex flex-col items-end space-y-4">
-                <div className="grid grid-cols-2 gap-4 w-full max-w-sm self-end">
-                    <div className="col-span-2 text-right text-2xl font-bold">
-                        Grand Total: {formatCurrency(grandTotal)}
+                <div className="space-y-2 w-full max-w-sm self-end">
+                    <div className="flex justify-between items-center">
+                        <span className="text-muted-foreground">Subtotal</span>
+                        <span className="font-medium">{formatCurrency(subtotal)}</span>
                     </div>
+                    <div className="flex justify-between items-center">
+                        <Label htmlFor='discount'>Discount</Label>
+                        <Input
+                            id="discount"
+                            type="number"
+                            placeholder='0.00'
+                            className="w-32 h-8 text-right"
+                            value={discount}
+                            onChange={(e) => setDiscount(e.target.value)}
+                        />
+                    </div>
+                    <hr/>
+                    <div className="flex justify-between items-center text-xl font-bold">
+                        <span>Grand Total</span>
+                        <span>{formatCurrency(grandTotal)}</span>
+                    </div>
+                </div>
 
+                <div className="grid grid-cols-2 gap-4 w-full max-w-sm self-end">
                     <div className="col-span-2">
                         <Label htmlFor='paymentMethod'>Payment Method</Label>
                         <Select value={paymentMethod} onValueChange={(value) => setPaymentMethod(value as PaymentMethod)}>

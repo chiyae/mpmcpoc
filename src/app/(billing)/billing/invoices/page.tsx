@@ -395,8 +395,21 @@ export default function InvoicesAndBillsPage() {
                       </TableBody>
                     </Table>
                 </ScrollArea>
-                <div className="text-right text-lg font-bold">
-                    Grand Total: {formatCurrency(selectedBill.grandTotal)}
+                <div className="space-y-2 text-right">
+                    <div className="flex justify-end items-baseline gap-4">
+                        <span className="text-muted-foreground">Subtotal:</span>
+                        <span className="font-medium">{formatCurrency(selectedBill.subtotal)}</span>
+                    </div>
+                    {selectedBill.discount && selectedBill.discount > 0 ? (
+                        <div className="flex justify-end items-baseline gap-4">
+                            <span className="text-muted-foreground">Discount:</span>
+                            <span className="font-medium text-destructive">-{formatCurrency(selectedBill.discount)}</span>
+                        </div>
+                    ) : null}
+                    <div className="flex justify-end items-baseline gap-4 text-lg font-bold">
+                        <span>Grand Total:</span>
+                        <span>{formatCurrency(selectedBill.grandTotal)}</span>
+                    </div>
                 </div>
             </div>
           <DialogFooter>

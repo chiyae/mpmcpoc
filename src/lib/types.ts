@@ -99,6 +99,8 @@ export interface Bill {
   prescriptionNumber?: string;
   receiptNumber?: string;
   items: BillItem[];
+  subtotal: number;
+  discount?: number;
   grandTotal: number;
   paymentDetails: PaymentDetails;
   dispensingLocationId: string;

@@ -91,15 +91,35 @@ export function PatientForm({ patient, onSubmit }: PatientFormProps) {
         <FormField
             control={form.control}
             name="dateOfBirth"
-            render={({ field }) => (
-            <FormItem>
-                <FormLabel>Date of Birth</FormLabel>
-                <FormControl>
-                    <Input placeholder="DD/MM/YYYY" {...field} />
-                </FormControl>
-                <FormMessage />
-            </FormItem>
-            )}
+            render={({ field }) => {
+                const handleDateChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+                    let value = e.target.value.replace(/[^\d]/g, '');
+                    if (value.length > 8) {
+                        value = value.slice(0, 8);
+                    }
+                    if (value.length > 4) {
+                        value = `${value.slice(0, 2)}/${value.slice(2, 4)}/${value.slice(4)}`;
+                    } else if (value.length > 2) {
+                        value = `${value.slice(0, 2)}/${value.slice(2)}`;
+                    }
+                    field.onChange(value);
+                };
+
+                return (
+                    <FormItem>
+                        <FormLabel>Date of Birth</FormLabel>
+                        <FormControl>
+                            <Input 
+                                placeholder="DD/MM/YYYY" 
+                                {...field} 
+                                onChange={handleDateChange} 
+                                maxLength={10} 
+                            />
+                        </FormControl>
+                        <FormMessage />
+                    </FormItem>
+                )
+            }}
         />
          <FormField
             control={form.control}

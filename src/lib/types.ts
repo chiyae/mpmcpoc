@@ -93,7 +93,6 @@ export interface PaymentDetails {
 
 export interface Bill {
   id: string; // Bill Number
-  patientId: string;
   patientName: string; // Denormalized for easy display
   date: string; // ISO date string
   billType: BillType;
@@ -113,14 +112,6 @@ export interface Service {
     name: string;
     fee: number;
 }
-
-export interface Patient {
-    id: string; // Registration Number
-    name: string;
-    dateOfBirth: string; // ISO String
-    address?: string;
-}
-
 
 export interface StockTakeItem {
     id: string; // Document ID

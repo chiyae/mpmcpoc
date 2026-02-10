@@ -48,7 +48,7 @@ export default function BillingDashboard() {
     const totalRevenue = monthlyBills.reduce((acc, bill) => acc + bill.grandTotal, 0);
     const outstandingInvoices = bills.filter(bill => bill.paymentDetails.status === 'Unpaid').length;
     const averageBillValue = bills.length > 0 ? bills.reduce((acc, bill) => acc + bill.grandTotal, 0) / bills.length : 0;
-    const totalPatients = new Set(bills.map(bill => bill.patientId)).size;
+    const totalPatients = new Set(bills.map(bill => bill.patientName)).size;
     
     const recentPayments = bills
         .filter(bill => bill.paymentDetails.status === 'Paid')
@@ -115,16 +115,13 @@ export default function BillingDashboard() {
                 className="hover:bg-accent transition-colors"
             />
         </Link>
-         <Link href="/billing/patients">
-            <StatCard
-                title="Total Patients"
-                value={totalPatients}
-                icon={User}
-                description="Unique patients this month"
-                isLoading={isLoadingBills}
-                className="hover:bg-accent transition-colors"
-            />
-        </Link>
+        <StatCard
+            title="Total Patients"
+            value={totalPatients}
+            icon={User}
+            description="Unique patients this month"
+            isLoading={isLoadingBills}
+        />
       </div>
 
        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-7">

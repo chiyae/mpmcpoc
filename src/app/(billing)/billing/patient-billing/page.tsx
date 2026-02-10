@@ -22,8 +22,8 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { useToast } from '@/hooks/use-toast';
-import type { Bill, BillItem, PaymentMethod, BillType, Service, Item, Stock, Patient } from '@/lib/types';
-import { PlusCircle, Trash2, ArrowLeft, ChevronsUpDown } from 'lucide-react';
+import type { Bill, BillItem, PaymentMethod, BillType, Service, Item, Stock } from '@/lib/types';
+import { PlusCircle, Trash2, ArrowLeft } from 'lucide-react';
 import { Label } from '@/components/ui/label';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { useSettings } from '@/context/settings-provider';
@@ -31,8 +31,6 @@ import { useCollection, useFirestore, useMemoFirebase } from '@/firebase';
 import { collection, doc, writeBatch, query, where } from 'firebase/firestore';
 import { Badge } from '@/components/ui/badge';
 import { formatItemName } from '@/lib/utils';
-import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
-import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '@/components/ui/command';
 import { Skeleton } from '@/components/ui/skeleton';
 
 
@@ -61,14 +59,8 @@ export default function PatientBillingPage() {
   );
   const { data: dispensaryStocks, isLoading: areStocksLoading } = useCollection<Stock>(dispensaryStockQuery);
   
-  const patientsCollectionQuery = useMemoFirebase(
-    () => (firestore ? collection(firestore, 'patients') : null),
-    [firestore]
-  );
-  const { data: allPatients, isLoading: arePatientsLoading } = useCollection<Patient>(patientsCollectionQuery);
 
-
-  const isLoading = areItemsLoading || areServicesLoading || areStocksLoading || arePatientsLoading;
+  const isLoading = areItemsLoading || areServicesLoading || areStocksLoading;
   const billingLocationId = 'dispensary';
   
   const availableItems = React.useMemo(() => {
@@ -87,8 +79,7 @@ export default function PatientBillingPage() {
 
 
   // --- Form State ---
-  const [selectedPatient, setSelectedPatient] = React.useState<Patient | null>(null);
-  const [isPatientSearchOpen, setIsPatientSearchOpen] = React.useState(false);
+  const [patientName, setPatientName] = React.useState('');
   const [billItems, setBillItems] = React.useState<BillItem[]>([]);
   const [billType, setBillType] = React.useState<BillType>('Walk-in');
   const [prescriptionNumber, setPrescriptionNumber] = React.useState('');
@@ -216,13 +207,13 @@ export default function PatientBillingPage() {
     : 0;
 
   const isOpdAndNoPrescription = billType === 'OPD' && !prescriptionNumber;
-  const canFinalize = billItems.length > 0 && !!selectedPatient && !isOpdAndNoPrescription &&
+  const canFinalize = billItems.length > 0 && !!patientName && !isOpdAndNoPrescription &&
     (paymentMethod === 'Invoice' || paymentMethod !== 'Cash' || (paymentMethod === 'Cash' && tenderedAmountValue >= grandTotal));
 
 
   const handleFinalizeBill = async () => {
-    if (!canFinalize || !firestore || !selectedPatient) {
-        toast({ variant: 'destructive', title: 'Error', description: 'Please select a patient, add items, and ensure all required fields are filled.' });
+    if (!canFinalize || !firestore) {
+        toast({ variant: 'destructive', title: 'Error', description: 'Please enter a patient name, add items, and ensure all required fields are filled.' });
         return;
     }
 
@@ -231,8 +222,7 @@ export default function PatientBillingPage() {
     
     const newBill: Omit<Bill, 'prescriptionNumber'> & { prescriptionNumber?: string } = {
         id: billId,
-        patientId: selectedPatient.id,
-        patientName: selectedPatient.name,
+        patientName: patientName,
         date: new Date().toISOString(),
         billType,
         items: billItems,
@@ -260,11 +250,11 @@ export default function PatientBillingPage() {
 
         toast({
             title: paymentMethod === 'Invoice' ? "Invoice Finalized" : "Bill Finalized",
-            description: `A new document for ${selectedPatient.name} has been generated.`,
+            description: `A new document for ${patientName} has been generated.`,
         });
 
         // Reset state
-        setSelectedPatient(null);
+        setPatientName('');
         setBillItems([]);
         setBillType('Walk-in');
         setPrescriptionNumber('');
@@ -337,46 +327,13 @@ export default function PatientBillingPage() {
                 )}
               
               <div>
-                <Label>Patient</Label>
-                {isLoading ? <Skeleton className="h-10 w-full" /> : (
-                <Popover open={isPatientSearchOpen} onOpenChange={setIsPatientSearchOpen}>
-                    <PopoverTrigger asChild>
-                    <Button
-                        variant="outline"
-                        role="combobox"
-                        aria-expanded={isPatientSearchOpen}
-                        className="w-full justify-between"
-                    >
-                        {selectedPatient
-                        ? `${selectedPatient.name} (${selectedPatient.id})`
-                        : "Select patient..."}
-                        <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
-                    </Button>
-                    </PopoverTrigger>
-                    <PopoverContent className="w-[--radix-popover-trigger-width] p-0">
-                    <Command>
-                        <CommandInput placeholder="Search patient by name or ID..." />
-                        <CommandList>
-                            <CommandEmpty>No patient found.</CommandEmpty>
-                            <CommandGroup>
-                            {allPatients?.map((patient) => (
-                                <CommandItem
-                                key={patient.id}
-                                value={`${patient.name} ${patient.id}`}
-                                onSelect={() => {
-                                    setSelectedPatient(patient);
-                                    setIsPatientSearchOpen(false);
-                                }}
-                                >
-                                {patient.name} <span className='ml-2 text-xs text-muted-foreground'>({patient.id})</span>
-                                </CommandItem>
-                            ))}
-                            </CommandGroup>
-                        </CommandList>
-                    </Command>
-                    </PopoverContent>
-                </Popover>
-                )}
+                <Label htmlFor="patientName">Patient Name</Label>
+                <Input 
+                    id="patientName"
+                    placeholder="Enter patient's full name"
+                    value={patientName}
+                    onChange={(e) => setPatientName(e.target.value)}
+                />
               </div>
             </CardContent>
           </Card>

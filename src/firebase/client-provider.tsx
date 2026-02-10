@@ -1,3 +1,4 @@
+
 'use client';
 
 import React, { useState, useEffect, type ReactNode } from 'react';
@@ -23,7 +24,9 @@ export function FirebaseClientProvider({ children }: FirebaseClientProviderProps
   useEffect(() => {
     // This effect runs only on the client, after the initial render,
     // ensuring environment variables are available.
-    setServices(initializeFirebase());
+    if (typeof window !== 'undefined') {
+      setServices(initializeFirebase());
+    }
   }, []); // Empty dependency array ensures this runs only once on mount.
 
   return (

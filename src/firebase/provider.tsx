@@ -118,6 +118,17 @@ export const useFirebase = (): FirebaseServicesAndUser => {
     throw new Error('useFirebase must be used within a FirebaseProvider.');
   }
 
+  if (!context.firebaseApp || !context.auth || !context.firestore) {
+    return {
+      firebaseApp: null,
+      firestore: null,
+      auth: null,
+      user: null,
+      isUserLoading: true, // While services are unavailable, we are effectively loading.
+      userError: null,
+    };
+  }
+
   return {
     firebaseApp: context.firebaseApp,
     firestore: context.firestore,

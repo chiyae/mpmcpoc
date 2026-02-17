@@ -32,13 +32,15 @@ import { collection, doc, writeBatch, query, where } from 'firebase/firestore';
 import { Badge } from '@/components/ui/badge';
 import { formatItemName } from '@/lib/utils';
 import { Skeleton } from '@/components/ui/skeleton';
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogClose } from '@/components/ui/dialog';
+import { Receipt } from '@/components/receipt';
 
 
 export default function PatientBillingPage() {
   const router = useRouter();
   const { toast } = useToast();
   const firestore = useFirestore();
-  const { formatCurrency } = useSettings();
+  const { settings, formatCurrency } = useSettings();
 
   // --- Data Fetching ---
   const itemsCollectionQuery = useMemoFirebase(
@@ -95,6 +97,9 @@ export default function PatientBillingPage() {
   const [paymentMethod, setPaymentMethod] = React.useState<PaymentMethod>('Cash');
   const [amountTendered, setAmountTendered] = React.useState('');
   const [discount, setDiscount] = React.useState('0');
+  
+  // --- Receipt State ---
+  const [billForReceipt, setBillForReceipt] = React.useState<Bill | null>(null);
 
   const filteredMedicines = React.useMemo(() => {
     if (!medicineSearch) return [];
@@ -217,11 +222,14 @@ export default function PatientBillingPage() {
         return;
     }
 
-    const billId = `BILL-${Date.now()}`;
+    const timestamp = Date.now();
+    const billId = `BILL-${timestamp}`;
+    const receiptNumber = `RCPT-${timestamp}`;
     const billRef = doc(firestore, 'billings', billId);
     
-    const newBill: Omit<Bill, 'prescriptionNumber'> & { prescriptionNumber?: string } = {
+    const newBill: Bill = {
         id: billId,
+        receiptNumber: receiptNumber,
         patientName: patientName,
         date: new Date().toISOString(),
         billType,
@@ -237,23 +245,17 @@ export default function PatientBillingPage() {
         },
         dispensingLocationId: billingLocationId,
         isDispensed: false,
+        ...(billType === 'OPD' && prescriptionNumber && { prescriptionNumber }),
     };
-    
-    if (billType === 'OPD' && prescriptionNumber) {
-      newBill.prescriptionNumber = prescriptionNumber;
-    }
 
     try {
         const batch = writeBatch(firestore);
         batch.set(billRef, newBill);
         await batch.commit();
 
-        toast({
-            title: paymentMethod === 'Invoice' ? "Invoice Finalized" : "Bill Finalized",
-            description: `A new document for ${patientName} has been generated.`,
-        });
+        setBillForReceipt(newBill);
 
-        // Reset state
+        // Reset state after successful save, before showing receipt
         setPatientName('');
         setBillItems([]);
         setBillType('Walk-in');
@@ -543,6 +545,20 @@ export default function PatientBillingPage() {
           </Card>
         </div>
       </div>
+      
+      <Dialog open={!!billForReceipt} onOpenChange={(open) => !open && setBillForReceipt(null)}>
+        <DialogContent className="sm:max-w-md p-0">
+          <div id="printable-receipt">
+            <Receipt bill={billForReceipt} settings={settings} />
+          </div>
+          <DialogFooter className="p-6 pt-0 hide-on-print">
+            <DialogClose asChild>
+                <Button variant="outline">Close</Button>
+            </DialogClose>
+            <Button onClick={() => window.print()}>Print Receipt</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

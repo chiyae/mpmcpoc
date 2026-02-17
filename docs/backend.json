@@ -187,7 +187,7 @@
         },
         "patientName": {
           "type": "string",
-          "description": "Denormalized patient's name for easy display."
+          "description": "Patient's name for easy display."
         },
         "date": {
           "type": "string",
@@ -208,6 +208,10 @@
         },
         "prescriptionNumber": {
             "type": "string"
+        },
+        "receiptNumber": {
+            "type": "string",
+            "description": "A unique identifier for the printable receipt."
         },
         "subtotal": {
             "type": "number",
@@ -250,6 +254,7 @@
         "date",
         "dispensingLocationId",
         "subtotal",
+        "discount",
         "grandTotal",
         "paymentDetails",
         "items"

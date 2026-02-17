@@ -206,14 +206,34 @@ export default function PatientBillingPage() {
   const discountAmount = parseFloat(discount) || 0;
   const grandTotal = subtotal - discountAmount;
 
-  const tenderedAmountValue = parseFloat(amountTendered);
-  const change = (paymentMethod === 'Cash' && tenderedAmountValue >= grandTotal) 
+  const tenderedAmountValue = parseFloat(amountTendered); // This can be NaN
+  const change = (paymentMethod === 'Cash' && !isNaN(tenderedAmountValue) && tenderedAmountValue >= grandTotal) 
     ? tenderedAmountValue - grandTotal 
     : 0;
 
   const isOpdAndNoPrescription = billType === 'OPD' && !prescriptionNumber;
-  const canFinalize = billItems.length > 0 && !!patientName && !isOpdAndNoPrescription &&
-    (paymentMethod === 'Invoice' || paymentMethod !== 'Cash' || (paymentMethod === 'Cash' && tenderedAmountValue >= grandTotal));
+
+  const canFinalize = React.useMemo(() => {
+    // Condition 1: Must have items and a patient name.
+    if (billItems.length === 0 || !patientName) {
+      return false;
+    }
+    
+    // Condition 2: If bill type is OPD, a prescription number is required.
+    if (isOpdAndNoPrescription) {
+      return false;
+    }
+
+    // Condition 3: Check payment validity.
+    if (paymentMethod === 'Cash') {
+      // For cash, the tendered amount must be a valid number and sufficient to cover the total.
+      const tendered = parseFloat(amountTendered);
+      return !isNaN(tendered) && tendered >= grandTotal;
+    }
+
+    // For all other methods ('Invoice', 'Mobile Money', etc.), we can proceed.
+    return true;
+  }, [billItems.length, patientName, isOpdAndNoPrescription, paymentMethod, amountTendered, grandTotal]);
 
 
   const handleFinalizeBill = async () => {

@@ -19,6 +19,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { isThisMonth, parseISO, subMonths, format, startOfMonth, isAfter } from 'date-fns';
 import { StatCard } from '@/components/ui/stat-card';
 import { ResponsiveContainer, BarChart, XAxis, YAxis, Tooltip, Bar } from 'recharts';
+import { Button } from '@/components/ui/button';
 
 
 export default function BillingDashboard() {
@@ -84,44 +85,64 @@ export default function BillingDashboard() {
 
   return (
     <div className="space-y-6">
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-        <Link href="/billing/reports">
+      <div className="grid gap-6 lg:grid-cols-5">
+        <div className="lg:col-span-2">
+            <Card className="h-full flex flex-col">
+                <CardHeader>
+                    <CardTitle className="text-2xl">Patient Billing</CardTitle>
+                    <CardDescription>
+                        Create new bills and invoices for patients. This is the primary function of the billing module.
+                    </CardDescription>
+                </CardHeader>
+                <CardContent className="flex-grow flex items-center justify-center">
+                    <Link href="/billing/patient-billing">
+                        <Button size="lg">
+                            <DollarSign className="mr-2 h-4 w-4" />
+                            Create New Bill
+                        </Button>
+                    </Link>
+                </CardContent>
+            </Card>
+        </div>
+        <div className="lg:col-span-3 grid gap-4 md:grid-cols-2">
+            <Link href="/billing/reports">
+                <StatCard
+                    title="Total Revenue (Month)"
+                    value={formatCurrency(totalRevenue)}
+                    icon={DollarSign}
+                    description="+10.2% from last month (mock)"
+                    isLoading={isLoadingBills}
+                    className="hover:bg-accent transition-colors"
+                />
+            </Link>
+            <Link href="/billing/invoices">
+                <StatCard
+                    title="Outstanding Invoices"
+                    value={outstandingInvoices}
+                    icon={FileText}
+                    description="Awaiting payment"
+                    isLoading={isLoadingBills}
+                    className="hover:bg-accent transition-colors"
+                />
+            </Link>
+            <Link href="/billing/invoices">
+                <StatCard
+                    title="Average Bill Value"
+                    value={formatCurrency(averageBillValue)}
+                    icon={TrendingUp}
+                    description="Across all patients"
+                    isLoading={isLoadingBills}
+                    className="hover:bg-accent transition-colors"
+                />
+            </Link>
             <StatCard
-                title="Total Revenue (Month)"
-                value={formatCurrency(totalRevenue)}
-                icon={DollarSign}
-                description="+10.2% from last month (mock)"
+                title="Total Patients"
+                value={totalPatients}
+                icon={User}
+                description="Unique patients this month"
                 isLoading={isLoadingBills}
-                className="hover:bg-accent transition-colors"
             />
-        </Link>
-        <Link href="/billing/invoices">
-            <StatCard
-                title="Outstanding Invoices"
-                value={outstandingInvoices}
-                icon={FileText}
-                description="Awaiting payment"
-                isLoading={isLoadingBills}
-                className="hover:bg-accent transition-colors"
-            />
-        </Link>
-        <Link href="/billing/invoices">
-            <StatCard
-                title="Average Bill Value"
-                value={formatCurrency(averageBillValue)}
-                icon={TrendingUp}
-                description="Across all patients"
-                isLoading={isLoadingBills}
-                className="hover:bg-accent transition-colors"
-            />
-        </Link>
-        <StatCard
-            title="Total Patients"
-            value={totalPatients}
-            icon={User}
-            description="Unique patients this month"
-            isLoading={isLoadingBills}
-        />
+        </div>
       </div>
 
        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-7">

@@ -23,7 +23,7 @@ export function LpoDocument({ lpo }: LpoDocumentProps) {
   const { settings, formatCurrency } = useSettings();
 
   return (
-    <div className="bg-background rounded-lg shadow-lg p-8 max-w-4xl mx-auto printable-area">
+    <div className="bg-background rounded-lg shadow-lg p-8 max-w-4xl mx-auto">
       {/* Header */}
       <header className="flex justify-between items-start mb-8 pb-4 border-b">
         <div>

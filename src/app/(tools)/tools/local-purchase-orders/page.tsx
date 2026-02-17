@@ -234,10 +234,18 @@ export default function LocalPurchaseOrdersPage() {
 
         {selectedLpo && (
             <Dialog open={isPdfViewerOpen} onOpenChange={setIsPdfViewerOpen}>
-                <DialogContent className="max-w-4xl h-[90vh] p-0">
-                    <PDFViewer width="100%" height="100%">
-                        <LpoPdfDocument lpo={selectedLpo} settings={settings} formatCurrency={formatCurrency} />
-                    </PDFViewer>
+                <DialogContent className="max-w-4xl h-[90vh] flex flex-col p-0">
+                    <DialogHeader className="p-6 pb-4 border-b">
+                        <DialogTitle>PDF Preview: {selectedLpo.lpoNumber}</DialogTitle>
+                        <DialogDescription>
+                            This is a preview of the LPO. Use your browser's print functionality to save or print.
+                        </DialogDescription>
+                    </DialogHeader>
+                    <div className="flex-1 w-full h-full">
+                        <PDFViewer width="100%" height="100%">
+                            <LpoPdfDocument lpo={selectedLpo} settings={settings} formatCurrency={formatCurrency} />
+                        </PDFViewer>
+                    </div>
                 </DialogContent>
             </Dialog>
         )}

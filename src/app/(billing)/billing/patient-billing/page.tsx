@@ -211,16 +211,14 @@ export default function PatientBillingPage() {
     ? tenderedAmountValue - grandTotal 
     : 0;
 
-  const isOpdAndNoPrescription = billType === 'OPD' && !prescriptionNumber;
-
   const canFinalize = React.useMemo(() => {
     // Condition 1: Must have items and a patient name.
-    if (billItems.length === 0 || !patientName) {
+    if (billItems.length === 0 || !patientName.trim()) {
       return false;
     }
     
     // Condition 2: If bill type is OPD, a prescription number is required.
-    if (isOpdAndNoPrescription) {
+    if (billType === 'OPD' && !prescriptionNumber.trim()) {
       return false;
     }
 
@@ -233,7 +231,7 @@ export default function PatientBillingPage() {
 
     // For all other methods ('Invoice', 'Mobile Money', etc.), we can proceed.
     return true;
-  }, [billItems.length, patientName, isOpdAndNoPrescription, paymentMethod, amountTendered, grandTotal]);
+  }, [billItems.length, patientName, billType, prescriptionNumber, paymentMethod, amountTendered, grandTotal]);
 
 
   const handleFinalizeBill = async () => {
@@ -568,6 +566,12 @@ export default function PatientBillingPage() {
       
       <Dialog open={!!billForReceipt} onOpenChange={(open) => !open && setBillForReceipt(null)}>
         <DialogContent className="sm:max-w-md p-0">
+          <DialogHeader className="p-6 pb-0 hide-on-print">
+            <DialogTitle>Print Receipt</DialogTitle>
+            <DialogDescription>
+              Review the receipt below. You can print it directly from this window.
+            </DialogDescription>
+          </DialogHeader>
           <div id="printable-receipt">
             <Receipt bill={billForReceipt} settings={settings} />
           </div>

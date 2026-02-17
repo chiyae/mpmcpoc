@@ -65,26 +65,26 @@ export function Receipt({ bill, settings }: ReceiptProps) {
         </TableBody>
         <TableFooter>
           <TableRow>
-            <TableCell colSpan={3} className="text-black text-right font-bold">Subtotal</TableCell>
-            <TableCell className="text-black text-right font-bold">{formatCurrency(bill.subtotal)}</TableCell>
+            <TableCell colSpan={3} className="text-black text-right font-bold py-1">Subtotal</TableCell>
+            <TableCell className="text-black text-right font-bold py-1">{formatCurrency(bill.subtotal)}</TableCell>
           </TableRow>
-          {bill.discount && bill.discount > 0 ? (
+          {bill.discount > 0 && (
              <TableRow>
-                <TableCell colSpan={3} className="text-black text-right font-bold">Discount</TableCell>
-                <TableCell className="text-black text-right font-bold">-{formatCurrency(bill.discount)}</TableCell>
+                <TableCell colSpan={3} className="text-black text-right font-bold py-1">Discount</TableCell>
+                <TableCell className="text-black text-right font-bold py-1">-{formatCurrency(bill.discount)}</TableCell>
             </TableRow>
-          ) : null}
+          )}
           <TableRow className="text-base">
-            <TableCell colSpan={3} className="text-black text-right font-extrabold">Grand Total</TableCell>
-            <TableCell className="text-black text-right font-extrabold">{formatCurrency(bill.grandTotal)}</TableCell>
+            <TableCell colSpan={3} className="text-black text-right font-extrabold py-1">Grand Total</TableCell>
+            <TableCell className="text-black text-right font-extrabold py-1">{formatCurrency(bill.grandTotal)}</TableCell>
           </TableRow>
            <TableRow>
-            <TableCell colSpan={3} className="text-black text-right">Amount Tendered</TableCell>
-            <TableCell className="text-black text-right">{formatCurrency(bill.paymentDetails.amountTendered)}</TableCell>
+            <TableCell colSpan={3} className="text-black text-right py-1">Amount Tendered</TableCell>
+            <TableCell className="text-black text-right py-1">{formatCurrency(bill.paymentDetails.amountTendered)}</TableCell>
           </TableRow>
            <TableRow>
-            <TableCell colSpan={3} className="text-black text-right">Change</TableCell>
-            <TableCell className="text-black text-right">{formatCurrency(bill.paymentDetails.change)}</TableCell>
+            <TableCell colSpan={3} className="text-black text-right py-1">Change</TableCell>
+            <TableCell className="text-black text-right py-1">{formatCurrency(bill.paymentDetails.change)}</TableCell>
           </TableRow>
         </TableFooter>
       </Table>

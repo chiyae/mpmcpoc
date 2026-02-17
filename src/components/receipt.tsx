@@ -1,3 +1,4 @@
+
 'use client';
 
 import * as React from 'react';
@@ -67,12 +68,12 @@ export function Receipt({ bill, settings }: ReceiptProps) {
             <TableCell colSpan={3} className="text-black text-right font-bold">Subtotal</TableCell>
             <TableCell className="text-black text-right font-bold">{formatCurrency(bill.subtotal)}</TableCell>
           </TableRow>
-          {bill.discount && bill.discount > 0 && (
+          {bill.discount && bill.discount > 0 ? (
              <TableRow>
                 <TableCell colSpan={3} className="text-black text-right font-bold">Discount</TableCell>
                 <TableCell className="text-black text-right font-bold">-{formatCurrency(bill.discount)}</TableCell>
             </TableRow>
-          )}
+          ) : null}
           <TableRow className="text-base">
             <TableCell colSpan={3} className="text-black text-right font-extrabold">Grand Total</TableCell>
             <TableCell className="text-black text-right font-extrabold">{formatCurrency(bill.grandTotal)}</TableCell>

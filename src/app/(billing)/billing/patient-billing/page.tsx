@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import * as React from 'react';
@@ -34,6 +35,7 @@ import { formatItemName } from '@/lib/utils';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogClose } from '@/components/ui/dialog';
 import { Receipt } from '@/components/receipt';
+import { ScrollArea } from '@/components/ui/scroll-area';
 
 
 export default function PatientBillingPage() {
@@ -212,24 +214,19 @@ export default function PatientBillingPage() {
     : 0;
 
   const canFinalize = React.useMemo(() => {
-    // Condition 1: Must have items and a patient name.
     if (billItems.length === 0 || !patientName.trim()) {
       return false;
     }
     
-    // Condition 2: If bill type is OPD, a prescription number is required.
     if (billType === 'OPD' && !prescriptionNumber.trim()) {
       return false;
     }
 
-    // Condition 3: Check payment validity.
     if (paymentMethod === 'Cash') {
-      // For cash, the tendered amount must be a valid number and sufficient to cover the total.
       const tendered = parseFloat(amountTendered);
       return !isNaN(tendered) && tendered >= grandTotal;
     }
 
-    // For all other methods ('Invoice', 'Mobile Money', etc.), we can proceed.
     return true;
   }, [billItems.length, patientName, billType, prescriptionNumber, paymentMethod, amountTendered, grandTotal]);
 
@@ -573,7 +570,9 @@ export default function PatientBillingPage() {
             </DialogDescription>
           </DialogHeader>
           <div id="printable-receipt">
-            <Receipt bill={billForReceipt} settings={settings} />
+            <ScrollArea className="h-[60vh]">
+              <Receipt bill={billForReceipt} settings={settings} />
+            </ScrollArea>
           </div>
           <DialogFooter className="p-6 pt-0 hide-on-print">
             <DialogClose asChild>
@@ -586,3 +585,4 @@ export default function PatientBillingPage() {
     </div>
   );
 }
+

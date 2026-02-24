@@ -36,3 +36,12 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# API-related files
+*.env
+.env.local
+api-keys/
+secrets/
+config/api-keys/
+credentials.json
+.api-key
